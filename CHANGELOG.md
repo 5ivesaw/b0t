@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0-alpha.0 — Phase 2 sensor inspector
+
+- Added independently toggleable terrain, collision/support, entity/LOS, and landmark world overlays.
+- Added selected-block decoding and stable tracked-entity selection/cycling.
+- Added eight compact inspector pages for body, terrain, entities, inventory, events, difference, and system state.
+- Added deterministic current-versus-previous observation comparison.
+- Added bounded asynchronous full-snapshot JSON export under `.minecraft/sawbotv1/exports/`.
+- Added one-observation-step capture while frozen.
+- Prevented frozen sensor/map caches from mutating between explicit steps.
+- Added world-render timing and export queue/status instrumentation.
+- Drained queued lower-priority key presses after takeover/emergency actions.
+- Expanded offline verification to 508 assertions plus full JSON parsing and exact array-bound checks.
+- Updated GitHub CI, JAR validation, release assets, documentation, and runtime gates.
+
 ## 0.2.0-alpha.2 — Observation freeze state correction
 
 - Separated observation freezing from the autonomous enabled/disabled mode.

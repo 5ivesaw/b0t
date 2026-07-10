@@ -4,42 +4,54 @@ SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a 
 
 ## Current gate
 
-**Phase 0 passed real runtime acceptance on the target machine.** The repository now contains the **Phase 1 — Internal Eyes candidate** (`0.2.0-alpha.2`). Phase 1 must pass its GitHub build and in-client sensor checklist before Phase 2 begins.
+**Phase 0 and Phase 1 passed real runtime acceptance on the target machine.** This repository contains the **Phase 2 — Sensor Inspector candidate** (`0.3.0-alpha.0`). Phase 2 must pass its GitHub build and in-client checklist before Phase 3 telemetry begins.
 
-Implemented Phase 1 state:
+Implemented foundation:
 
 - Immutable Observation Contract `sawbot.observation/0.2`
-- Self/body state and support/void probes
-- Bounded 13×9×13 egocentric local terrain tensor
-- Incremental 33×33 mid-range map with bounded cache, support-height fast path, and periodic full rescans
-- Loaded-entity tracking with stable IDs, LOS, occlusion, attackability, and conservative team relation
-- Fixed inventory/resource encoding
-- Bounded landmarks, events, server timing, validity flags, and per-sensor timings
-- F7 textual sensor inspector and P immutable snapshot freeze independent of enable/disable state
+- Self/body state, support probes, and void distance
+- Bounded 13×9×13 egocentric terrain tensor
+- Incremental 33×33 mid-range map
+- Stable loaded-entity tracking with LOS, occlusion, attackability, and team relation
+- Fixed 41-slot inventory/resource representation
+- Bounded landmarks, events, timing, validity, and performance fields
+- Immutable freeze independent of enable/disable state
+- Independently toggleable terrain, collision/support, entity/LOS, and landmark overlays
+- Eight compact text-inspector pages
+- Selected-block and stable tracked-entity inspection
+- Current-versus-previous snapshot comparison
+- Bounded asynchronous one-shot JSON export
+- One-observation-step capture while frozen
 - Conflict-free F10/F9/F12 safety controls
 
 The repository still contains **no neural model, autonomous actuator loop, Bedwars policy, runtime pathfinder, aim assist, scaffold controller, packet advantage, screenshot/OCR pipeline, or public-server automation**.
 
-The complete locked brief is preserved in [`docs/PROJECT_BRIEF.txt`](docs/PROJECT_BRIEF.txt). Phase reports and gates are in [`docs/PHASE0_ACCEPTANCE.md`](docs/PHASE0_ACCEPTANCE.md), [`docs/PHASE1_REPORT.md`](docs/PHASE1_REPORT.md), and [`docs/PHASE_GATES.md`](docs/PHASE_GATES.md).
+The complete locked brief is preserved in [`docs/PROJECT_BRIEF.txt`](docs/PROJECT_BRIEF.txt). Runtime evidence and gate reports are in:
+
+- [`docs/PHASE0_ACCEPTANCE.md`](docs/PHASE0_ACCEPTANCE.md)
+- [`docs/PHASE1_ACCEPTANCE.md`](docs/PHASE1_ACCEPTANCE.md)
+- [`docs/PHASE2_REPORT.md`](docs/PHASE2_REPORT.md)
+- [`docs/PHASE_GATES.md`](docs/PHASE_GATES.md)
 
 ## GitHub CI and release
 
 Every push or pull request runs:
 
-1. Java 8-targeted offline contract/sensor verification.
-2. The 71 assertion foundation/Phase 1 test suite.
-3. A real remapped Forge 1.8.9 build using the online GitHub runner.
-4. Release-JAR structure/version validation.
-5. Workflow artifact packaging.
+1. Java 8-targeted offline contract, safety, sensor, and inspector verification.
+2. The 508-assertion regression suite.
+3. Generated snapshot JSON parsing and exact bounded-array checks.
+4. A real remapped Forge 1.8.9 build on GitHub.
+5. Release-JAR structure/version validation.
+6. Workflow artifact packaging.
 
-To publish the Phase 1 candidate from GitHub:
+To publish this candidate:
 
 1. Open **Actions → Release → Run workflow**.
-2. Enter `0.2.0-alpha.2`.
+2. Enter `0.3.0-alpha.0`.
 3. Keep prerelease enabled.
 4. Run the workflow.
 
-The workflow creates tag `v0.2.0-alpha.2` and publishes the installable JAR, sources, checksums, Phase 1 report, Phase 0 acceptance evidence, and release guide.
+The workflow creates tag `v0.3.0-alpha.0` and publishes the installable JAR, sources, checksums, Phase 2 report, and earlier acceptance evidence.
 
 ## Toolchain
 
@@ -50,11 +62,6 @@ The workflow creates tag `v0.2.0-alpha.2` and publishes the installable JAR, sou
 - Java 8 toolchain/bytecode for Minecraft
 - Minecraft Forge `1.8.9-11.15.1.2318-1.8.9`
 - MCP mappings `stable_22`
-
-
-### Runtime corrections through 0.2.0-alpha.2
-
-Minecraft 1.8.9 already owns F5 for perspective, F6 for Twitch broadcast, and F8 for smooth camera. The Phase 1 defaults were moved so SawBot no longer triggers those vanilla actions. Alpha.2 also fixes the observation freeze being incorrectly coupled to the enabled state. All keys remain rebindable under Options → Controls → SawBotV1.
 
 ## Local build
 
@@ -67,7 +74,7 @@ Install JDK 17 and JDK 8, then run:
 The final remapped mod is written to:
 
 ```text
-sawbot-forge-1.8.9/build/libs/SawBotV1-0.2.0-alpha.2-mc1.8.9.jar
+sawbot-forge-1.8.9/build/libs/SawBotV1-0.3.0-alpha.0-mc1.8.9.jar
 ```
 
 Launch a development client with:
@@ -82,18 +89,35 @@ Launch a development client with:
 bash tools/offline-verify.sh
 ```
 
-This checks source-level Java 8 compatibility against narrow API stubs and runs 71 assertions. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
+This verifies Java 8 source compatibility against narrow APIs, runs 508 assertions, emits and parses a complete debug snapshot, and validates repository/release structure. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
 
-## Keys
+## Controls
 
-- Telemetry intent is intentionally unbound until Phase 3
-- `P`: freeze/unfreeze the immutable observation snapshot whether SawBot is enabled or disabled
-- `F7`: toggle the textual Phase 1 sensor inspector
-- `F10`: enable/disable SawBot state
-- `F9`: immediate manual takeover and release
-- `F12`: emergency release all controlled inputs
+All bindings are configurable under **Options → Controls → SawBotV1**.
 
-Phase 1 sensors can be inspected, but no action-driving model exists and the mod must not move the player.
+| Key | Function |
+|---|---|
+| F10 | Enable/disable SawBot state |
+| F9 | Immediate manual takeover |
+| F12 | Emergency release all controlled inputs |
+| F7 | Show/hide inspector panel |
+| P | Freeze/unfreeze immutable observation |
+| . | Capture one observation while frozen |
+| H | Next inspector page |
+| B | Toggle terrain-cell overlay |
+| C | Toggle collision/support overlay |
+| N | Toggle entity/LOS overlay |
+| M | Toggle landmark overlay |
+| [ / ] | Previous/next tracked entity |
+| O | Export current snapshot as JSON |
+
+Debug exports are written under:
+
+```text
+.minecraft/sawbotv1/exports/
+```
+
+Phase 2 remains non-autonomous: it must not move, aim, attack, place, shop, or play Bedwars.
 
 ## Safety scope
 

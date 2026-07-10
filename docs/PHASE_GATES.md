@@ -36,7 +36,7 @@ Evidence: `docs/PHASE0_ACCEPTANCE.md`.
 
 ## Phase 1 — Internal eyes
 
-Implemented in the `0.2.0-alpha.2` candidate:
+Accepted on the target machine with candidate `0.2.0-alpha.2`:
 
 - [x] Typed immutable Observation Contract v0.2.
 - [x] Self/body state.
@@ -50,23 +50,48 @@ Implemented in the `0.2.0-alpha.2` candidate:
 - [x] Universal landmark, bounded event history, server timing.
 - [x] Snapshot sequence/age and per-sensor timing HUD.
 - [x] F7 inspector and P immutable freeze independent of control enable state.
-- [x] Offline Java 8 verification including freeze/control-state regression checks.
+- [x] GitHub Forge build and installed JAR worked.
+- [x] `validity 0x1ff` observed.
+- [x] Entity and inventory values reacted to runtime changes.
+- [x] Frozen observation number remained fixed while tick/age continued.
+- [x] Target-machine sensor samples were approximately 1.2–5.6 ms at 10 Hz.
+- [x] No serious FPS collapse or repeated SawBot error was reported.
 
-Runtime acceptance still required:
+Evidence: `docs/PHASE1_ACCEPTANCE.md`.
+
+**Gate: PASS.**
+
+## Phase 2 — Sensor inspector
+
+Implemented in candidate `0.3.0-alpha.0`:
+
+- [x] Independently toggleable terrain, collision/support, entity/LOS, and landmark overlays.
+- [x] Selected block decoding from frozen snapshot coordinates.
+- [x] Stable entity selection and cycling.
+- [x] Compact body, terrain, entity, inventory, event, difference, and system pages.
+- [x] Immutable current-versus-previous snapshot comparison.
+- [x] Bounded asynchronous human-readable snapshot export.
+- [x] One-observation-step capture while frozen.
+- [x] Frozen sensors and map cache do not mutate between explicit steps.
+- [x] Export and render timing/status visible.
+- [x] Offline Java 8 verification and generated JSON validation.
+
+Runtime acceptance required:
 
 - [ ] GitHub CI performs the real Loom/Forge compile and remap.
-- [ ] Updated JAR launches without SawBot errors.
-- [ ] Full and partial blocks classify correctly.
-- [ ] Slab, stair, and fence support distances are plausible.
-- [ ] Void/edge support probes react correctly.
-- [ ] Mid-range map fills while stationary and remains populated while moving/turning.
-- [ ] Entity IDs remain stable and occlusion changes correctly.
-- [ ] Inventory/resource values update correctly.
-- [ ] Events occur on the expected snapshots without false damage attribution.
-- [ ] P freezes sequence and snapshot values while DISABLED and ENABLED; unfreeze resumes.
-- [ ] Sensor extraction times are measured on target hardware.
-- [ ] Five-minute movement test has no repeated errors or serious FPS collapse.
+- [ ] Updated JAR launches without repeated SawBot errors.
+- [ ] Every inspector page is usable at 1366×768.
+- [ ] Terrain and collision overlays correspond to selected model cells.
+- [ ] Entity boxes, IDs, LOS, and occlusion are correct.
+- [ ] Landmark marker is correct.
+- [ ] One `.` press while frozen increments observation sequence exactly once.
+- [ ] O produces a valid bounded JSON export matching the HUD sequence.
+- [ ] Difference page responds to known changes.
+- [ ] F10/F9/F12 safety controls remain authoritative.
+- [ ] Overlay-off FPS remains equivalent to Phase 1.
+- [ ] Individual overlay costs are measured without serious FPS collapse.
+- [ ] Five-minute inspector test has no repeated SawBot errors.
 
 **Gate: PENDING USER RUNTIME TEST.**
 
-No Phase 2 implementation begins before this checklist passes.
+No Phase 3 telemetry implementation begins before this checklist passes.

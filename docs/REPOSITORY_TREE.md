@@ -1,4 +1,4 @@
-# Repository tree — Phase 1 GitHub-ready candidate
+# Repository tree — Phase 2 GitHub-ready candidate
 
 ```text
 SawBotV1/
@@ -18,34 +18,30 @@ SawBotV1/
 ├── gradlew / gradlew.bat
 ├── docs/
 │   ├── PROJECT_BRIEF.txt
-│   ├── VISION.md
 │   ├── ARCHITECTURE.md
-│   ├── SAFETY_SCOPE.md
 │   ├── PERFORMANCE_BUDGET.md
 │   ├── OBSERVATION_CONTRACT.md
 │   ├── ACTION_CONTRACT.md
-│   ├── TELEMETRY_FORMAT.md
-│   ├── TRAINING_STRATEGY.md
-│   ├── SIMULATOR_VALIDATION.md
-│   ├── SOURCE_AUDIT.md
-│   ├── RISK_REGISTER.md
 │   ├── PHASE_GATES.md
 │   ├── PHASE0_ACCEPTANCE.md
+│   ├── PHASE1_ACCEPTANCE.md
 │   ├── PHASE1_REPORT.md
+│   ├── PHASE2_REPORT.md
 │   ├── GITHUB_RELEASES.md
-│   ├── PHASE1_FILE_MANIFEST.txt
-│   └── REPOSITORY_TREE.md
+│   ├── PHASE2_FILE_MANIFEST.txt
+│   └── remaining design/audit documents
 ├── sawbot-common/src/main/java/dev/fivesaw/sawbot/common/
 │   ├── action/
 │   ├── events/
-│   ├── observation/
+│   ├── observation/       # includes ObservationDiff + calculator
 │   ├── protocol/
 │   └── versioning/
 ├── sawbot-forge-1.8.9/src/main/
 │   ├── java/dev/fivesaw/sawbot/forge/
 │   │   ├── client/
 │   │   ├── config/
-│   │   ├── hud/
+│   │   ├── hud/           # text HUD + world debug renderer
+│   │   ├── inspection/    # selection, pages, JSON export
 │   │   ├── map/
 │   │   ├── performance/
 │   │   ├── safety/
@@ -66,4 +62,4 @@ SawBotV1/
     └── local bootstrap/preflight scripts
 ```
 
-Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the Gradle build. The future trainer, simulator, arena, and tools boundaries remain present but are intentionally not presented as runnable implementations before their phase gates.
+Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the Gradle build. Trainer, simulator, arena, and high-volume telemetry implementations remain gated.

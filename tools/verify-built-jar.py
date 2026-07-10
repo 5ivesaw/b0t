@@ -17,6 +17,10 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/forge/sensors/ObservationPipeline.class",
     "dev/fivesaw/sawbot/forge/sensors/LocalTerrainSensor.class",
     "dev/fivesaw/sawbot/forge/tracking/EntityTrackerSensor.class",
+    "dev/fivesaw/sawbot/common/observation/ObservationDiffCalculator.class",
+    "dev/fivesaw/sawbot/forge/inspection/InspectorController.class",
+    "dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.class",
+    "dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class",
 }
 
 

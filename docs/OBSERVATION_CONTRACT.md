@@ -134,3 +134,9 @@ Includes ping, smoothed ping jitter, ticks since a classified enemy observation,
 - Snapshot age and each sensor's extraction time visible.
 - No client-thread exception or unsafe worker access.
 - Measured target-hardware cost recorded before Phase 2.
+
+## Phase 2 tooling note
+
+Phase 2 does not change `sawbot.observation/0.2`. Inspector page, overlay visibility, crosshair selection, export queue status, and snapshot differences are development-tool state and are deliberately excluded from the model input.
+
+The human-readable `sawbot.snapshot.debug/0.1` export serializes every bounded v0.2 field without Java serialization. It is for individual inspection only and is not the Phase 3 high-volume trajectory format.

@@ -20,4 +20,18 @@ public final class EgocentricTransform {
         double radians = Math.toRadians(yawDegrees);
         return (float)(-dx * Math.sin(radians) + dz * Math.cos(radians));
     }
+    public static int rightFromWorldDelta(int dx, int dz, byte quadrant) {
+        switch (quadrant & 3) { case 0: return -dx; case 1: return -dz; case 2: return dx; default: return dz; }
+    }
+    public static int forwardFromWorldDelta(int dx, int dz, byte quadrant) {
+        switch (quadrant & 3) { case 0: return dz; case 1: return -dx; case 2: return -dz; default: return dx; }
+    }
+    public static double worldDx(float right, float forward, float yawDegrees) {
+        double radians = Math.toRadians(yawDegrees);
+        return -right * Math.cos(radians) - forward * Math.sin(radians);
+    }
+    public static double worldDz(float right, float forward, float yawDegrees) {
+        double radians = Math.toRadians(yawDegrees);
+        return -right * Math.sin(radians) + forward * Math.cos(radians);
+    }
 }

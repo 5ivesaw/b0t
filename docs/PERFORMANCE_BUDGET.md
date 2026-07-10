@@ -63,3 +63,19 @@ The user-confirmed Phase 0 runtime screenshot on 2026-07-10 showed approximately
 - Entities are capped at 32, events at 64, landmarks at 64, inventory slots at 41.
 - All extraction remains on the client thread; no worker reads live Minecraft objects.
 - F7 textual inspector is optional. Phase 2 world overlays do not exist yet.
+
+## Phase 2 inspector budget
+
+| Component | Default | Hard bound | Target on HP 840 G3 |
+|---|---:|---:|---:|
+| World overlays | Off | Four independent toggles | Zero cost when off except one branch |
+| Terrain outlines | Off | 256 boxes/frame | Measure; disable independently if >2 ms avg |
+| Collision outlines | Off | 256 boxes/frame | Measure; disable independently if >2 ms avg |
+| Entity boxes/labels | Off | 32 entities | Measure; target <1 ms in MVP arena |
+| Landmark markers | Off | 64 landmarks | Target <0.5 ms |
+| Snapshot comparison | Snapshot publication only | 1,521 terrain + 1,089 map + 32 entities + 41 slots | Target <1 ms at 10 Hz |
+| Debug export queue | User-triggered | 4 immutable requests | Reject newest when full |
+| Export workers | One daemon | Exactly one | No Minecraft world access |
+| Debug JSON | One snapshot/file | Bounded by observation contract | Never used as Phase 3 trajectory format |
+
+The System inspector page reports world-render average/maximum time. Runtime acceptance must compare overlay-off FPS with Phase 1 and measure each overlay separately before combined use.

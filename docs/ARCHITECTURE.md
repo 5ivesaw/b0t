@@ -73,3 +73,13 @@ Resetting a 33×33 map whenever the player crosses a block or changes cardinal d
 **Status:** Accepted
 
 A target hurt timer can change because of another player, fall damage, fire, or other causes. Phase 1 emits `ENTITY_HURT_OBSERVED` and leaves `HIT_CONFIRMED`/`DAMAGE_DEALT` unknown until proper interaction and packet/event correlation exists. This avoids training on fabricated labels.
+
+## Phase 2 decision — inspector state is outside the model contract
+
+Phase 2 adds selected block/entity state, HUD pages, visual-overlay toggles, snapshot comparison, and debug-export status without changing Observation Contract v0.2. These are tooling concerns, not neural inputs. Keeping them outside `ObservationSnapshot` prevents debug UI choices from contaminating training data or forcing a schema bump.
+
+`ObservationDiffCalculator` lives in `sawbot-common` because it is a deterministic pure operation over immutable snapshots. Minecraft crosshair selection, rendering, and file export remain in the Forge module.
+
+Frozen mode now halts every observation sensor and the mid-range cache. A single explicit step captures once on the current client tick and returns to frozen mode. This is an observation-system step, not a world/server pause.
+
+Snapshot debug export uses one bounded background worker and a four-item queue. Only immutable snapshots and immutable inspector metadata cross the thread boundary. The worker never reads Minecraft world objects.

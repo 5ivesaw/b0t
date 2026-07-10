@@ -6,6 +6,10 @@ import dev.fivesaw.sawbot.common.observation.*;
 import dev.fivesaw.sawbot.common.versioning.SchemaVersion;
 import dev.fivesaw.sawbot.forge.client.SawBotKeyBindings;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
+import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
+import dev.fivesaw.sawbot.forge.inspection.InspectorController;
+import dev.fivesaw.sawbot.forge.inspection.SnapshotJsonWriter;
+import java.io.StringWriter;
 import dev.fivesaw.sawbot.forge.safety.SawBotMode;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
 import dev.fivesaw.sawbot.forge.sensors.ObservationPipeline;
@@ -47,6 +51,12 @@ public final class FoundationContractTest {
         observationFreezeIsIndependentOfEnableState();
         phase1PipelineCreatesBoundedSnapshot();
         frozenPipelinePreservesSnapshot();
+        egocentricInverseTransformsAreStable();
+        observationDifferenceIsDeterministic();
+        blockInspectionUsesSnapshotBasis();
+        singleStepRequiresFreezeAndCapturesExactlyOnce();
+        snapshotDebugJsonContainsBoundedInputs();
+        phase2KeyDefaultsAreStable();
         System.out.println("PASS FoundationContractTest (" + checks + " checks)");
     }
 
@@ -76,6 +86,106 @@ public final class FoundationContractTest {
     private static ObservationSnapshot pipelineSnapshot;
     private static void phase1PipelineCreatesBoundedSnapshot(){Minecraft minecraft=Minecraft.getMinecraft();World world=new World();EntityPlayerSP player=new EntityPlayerSP();player.posX=0.5;player.posY=64;player.posZ=0.5;player.onGround=true;world.setBlockStateForTest(new BlockPos(0,63,0),Blocks.wool.getDefaultState());player.inventory.mainInventory[0]=new ItemStack(Items.iron_ingot,4);player.inventory.mainInventory[1]=new ItemStack(new ItemBlock(Blocks.wool),16);EntityPlayer enemy=new EntityPlayer();enemy.posX=3;enemy.posY=64;enemy.posZ=0.5;world.loadedEntityList.add(enemy);minecraft.theWorld=world;minecraft.thePlayer=player;ObservationPipeline pipeline=new ObservationPipeline(minecraft,2);pipeline.tick(1,false);pipeline.tick(2,false);pipelineSnapshot=pipeline.latest();require(pipelineSnapshot!=null,"pipeline snapshot");require(pipelineSnapshot.schemaVersion().equals(SchemaVersion.OBSERVATION_V0_2),"pipeline schema");require(pipelineSnapshot.localTerrain().blockStateIds().length==LocalTerrainSnapshot.CELL_COUNT,"terrain bounded");require(pipelineSnapshot.midRangeMap().relativeSurfaceY().length==MidRangeMapSnapshot.COLUMN_COUNT,"map bounded");require(pipelineSnapshot.entities().count()==1,"entity captured");require(pipelineSnapshot.inventory().iron()==4&&pipelineSnapshot.inventory().wool()==16,"resources captured");require((pipelineSnapshot.sensorValidityFlags()&SensorValidity.ALL_PHASE1)==SensorValidity.ALL_PHASE1,"validity flags");require(pipelineSnapshot.sensorTimings().totalNanos()>=0,"timing captured");}
     private static void frozenPipelinePreservesSnapshot(){Minecraft minecraft=Minecraft.getMinecraft();ObservationPipeline pipeline=new ObservationPipeline(minecraft,1);pipeline.tick(10,false);ObservationSnapshot before=pipeline.latest();require(before!=null,"freeze baseline");pipeline.tick(11,true);require(pipeline.latest().sequenceNumber()==before.sequenceNumber(),"frozen sequence stable");}
+
+
+    private static void egocentricInverseTransformsAreStable(){
+        for(byte quadrant=0;quadrant<4;quadrant++){
+            for(int right=-3;right<=3;right++)for(int forward=-3;forward<=3;forward++){
+                int dx=EgocentricTransform.worldDx(right,forward,quadrant);
+                int dz=EgocentricTransform.worldDz(right,forward,quadrant);
+                require(EgocentricTransform.rightFromWorldDelta(dx,dz,quadrant)==right,"inverse right q"+quadrant);
+                require(EgocentricTransform.forwardFromWorldDelta(dx,dz,quadrant)==forward,"inverse forward q"+quadrant);
+            }
+        }
+        float right=2.5f,forward=-1.25f,yaw=37f;
+        double dx=EgocentricTransform.worldDx(right,forward,yaw),dz=EgocentricTransform.worldDz(right,forward,yaw);
+        require(Math.abs(EgocentricTransform.right(dx,dz,yaw)-right)<0.0001f,"continuous inverse right");
+        require(Math.abs(EgocentricTransform.forward(dx,dz,yaw)-forward)<0.0001f,"continuous inverse forward");
+    }
+
+    private static void observationDifferenceIsDeterministic(){
+        ObservationSnapshot before=snapshotAt(10,1,0,0,0,terrainWithCenter((short)1),inventory());
+        List<ItemSlotObservation> slots=new ArrayList<ItemSlotObservation>(inventory().slots());
+        slots.set(0,new ItemSlotObservation(0,5,0,3,0,0,ItemCategory.BLOCK));
+        InventorySnapshot changedInventory=new InventorySnapshot(slots,0,"NONE",0,0,0,0,3);
+        ObservationSnapshot after=snapshotAt(12,2,3,4,0,terrainWithCenter((short)2),changedInventory);
+        ObservationDiff diff=ObservationDiffCalculator.compare(before,after);
+        require(diff.fromSequence()==1&&diff.toSequence()==2,"diff sequence");
+        require(diff.clientTickDelta()==2,"diff tick delta");
+        require(Math.abs(diff.positionDistance()-5f)<0.0001f,"diff position");
+        require(diff.terrainChangedCells()==1,"diff terrain cell");
+        require(diff.inventoryChangedSlots()==1,"diff inventory slot");
+        require(diff.entitiesAdded()==0&&diff.entitiesRemoved()==0,"diff entity stability");
+    }
+
+    private static void blockInspectionUsesSnapshotBasis(){
+        short[] ids=new short[LocalTerrainSnapshot.CELL_COUNT];byte[] categories=new byte[ids.length];short[] flags=new short[ids.length];byte[] collision=new byte[ids.length];
+        int index=LocalTerrainSnapshot.index(2,1,-3);ids[index]=42;categories[index]=(byte)BlockSemanticCategory.PARTIAL.ordinal();flags[index]=LocalTerrainSnapshot.FLAG_PARTIAL_BLOCK;collision[index]=2;
+        LocalTerrainSnapshot terrain=new LocalTerrainSnapshot(100,64,200,(byte)1,ids,categories,flags,collision,0);
+        BlockPos position=new BlockPos(103,65,198);
+        BlockInspection inspected=InspectorController.inspectBlock(terrain,position);
+        require(inspected.insideTensor(),"block inside tensor");
+        require(inspected.rightOffset()==2&&inspected.upOffset()==1&&inspected.forwardOffset()==-3,"block offsets");
+        require(inspected.terrainIndex()==index&&inspected.blockStateId()==42,"block decoded");
+        require(inspected.category()==BlockSemanticCategory.PARTIAL&&inspected.collisionHeightClass()==2,"block semantics");
+        BlockInspection outside=InspectorController.inspectBlock(terrain,new BlockPos(500,80,500));
+        require(!outside.insideTensor()&&outside.terrainIndex()==-1,"outside block marked");
+    }
+
+    private static void singleStepRequiresFreezeAndCapturesExactlyOnce(){
+        Minecraft minecraft=Minecraft.getMinecraft();
+        SawBotStateController controller=new SawBotStateController(minecraft,new TestLogger());
+        require(!controller.requestObservationStep(),"step rejected while live");
+        controller.toggleFrozen();
+        require(controller.requestObservationStep(),"step accepted while frozen");
+        require(controller.consumeObservationStepRequest(),"step consumed once");
+        require(!controller.consumeObservationStepRequest(),"step not repeated");
+        World world=new World();EntityPlayerSP player=new EntityPlayerSP();player.posY=64;world.setBlockStateForTest(new BlockPos(0,63,0),Blocks.wool.getDefaultState());minecraft.theWorld=world;minecraft.thePlayer=player;
+        ObservationPipeline pipeline=new ObservationPipeline(minecraft,20);
+        pipeline.tick(100,true,true);ObservationSnapshot first=pipeline.latest();
+        require(first!=null&&first.sequenceNumber()==1,"single step captures despite interval");
+        pipeline.tick(101,true,false);require(pipeline.latest().sequenceNumber()==1,"frozen tick does not capture");
+        pipeline.tick(102,true,true);require(pipeline.latest().sequenceNumber()==2,"second step increments once");
+        require(pipeline.previous()!=null&&pipeline.previous().sequenceNumber()==1,"previous snapshot retained");
+    }
+
+    private static void snapshotDebugJsonContainsBoundedInputs(){
+        try{
+            ObservationSnapshot snapshot=richSnapshot();
+            StringWriter writer=new StringWriter();
+            SnapshotJsonWriter.write(snapshot,ObservationDiff.EMPTY,null,-1,writer);
+            String json=writer.toString();
+            require(json.contains("\"exportFormat\": \"sawbot.snapshot.debug/0.1\""),"json export format");
+            require(json.contains("\"blockStateIds\""),"json terrain arrays");
+            require(json.contains("\"relativeSurfaceY\""),"json map arrays");
+            require(json.contains("\"slots\""),"json inventory slots");
+            require(json.contains("\"previousAction\""),"json action");
+            require(json.length()<200000,"json remains bounded");
+            String fixture=System.getProperty("sawbot.fixture");
+            if(fixture!=null&&!fixture.isEmpty())java.nio.file.Files.write(java.nio.file.Paths.get(fixture),json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }catch(Exception exception){throw new AssertionError("snapshot JSON",exception);}
+    }
+
+    private static void phase2KeyDefaultsAreStable(){
+        SawBotKeyBindings keys=new SawBotKeyBindings();
+        Set<Integer> codes=new HashSet<Integer>();
+        int[] values={keys.stepObservation.getKeyCode(),keys.cycleInspectorPage.getKeyCode(),keys.toggleTerrainOverlay.getKeyCode(),keys.toggleCollisionOverlay.getKeyCode(),keys.toggleEntityOverlay.getKeyCode(),keys.toggleLandmarkOverlay.getKeyCode(),keys.previousEntity.getKeyCode(),keys.nextEntity.getKeyCode(),keys.exportSnapshot.getKeyCode()};
+        for(int value:values){require(value!=org.lwjgl.input.Keyboard.KEY_NONE,"phase2 key is bound");require(codes.add(Integer.valueOf(value)),"phase2 key unique");}
+    }
+
+
+    private static ObservationSnapshot richSnapshot(){
+        SelfState self=new SelfState(18,2,19,4,1,64,3,0.1f,0f,0.2f,0f,0f,0f,15,-5,0,true,false,false,false,false,false,true,false,false,0,1,0,0,0,0,8,1);
+        List<EntityObservation> entityList=new ArrayList<EntityObservation>();
+        entityList.add(new EntityObservation(4,44,EntityKind.PLAYER,TeamRelation.ENEMY,2,0,4,0.1f,0,0,0,0,0,30,0,0.6f,1.8f,17,5,4.5f,ItemCategory.SWORD.ordinal(),2,true,true,false,true,false,false,true,0.9f));
+        EntitySetSnapshot entitySet=new EntitySetSnapshot(entityList,0);
+        List<LandmarkObservation> landmarkList=Collections.singletonList(new LandmarkObservation(3,LandmarkType.WORLD_SPAWN,TeamRelation.NEUTRAL,5,0,6,7,8,0.1f,0.3f,1,true));
+        List<ObservationEvent> eventList=Collections.singletonList(new ObservationEvent(ObservationEventType.ENTITY_ENTERED_RANGE,20,4,2,0,4,1,true));
+        return new ObservationSnapshot(20,1007,new UUID(1,2),7,"world:test","universal/0.1",self,terrainWithCenter((short)9),midRange(),entitySet,inventory(),new LandmarkSetSnapshot(landmarkList),new EventHistorySnapshot(eventList,0),timing(),TaskStateSnapshot.UNIVERSAL,ActionCommand.zero(6,1007,"none"),SensorValidity.ALL_PHASE1,sensorTimings());
+    }
+
+    private static LocalTerrainSnapshot terrainWithCenter(short stateId){short[] ids=new short[LocalTerrainSnapshot.CELL_COUNT];byte[] categories=new byte[ids.length];short[] flags=new short[ids.length];byte[] collision=new byte[ids.length];ids[LocalTerrainSnapshot.index(0,0,0)]=stateId;return new LocalTerrainSnapshot(0,0,0,(byte)0,ids,categories,flags,collision,0);}
+    private static ObservationSnapshot snapshotAt(long tick,long sequence,double x,double y,double z,LocalTerrainSnapshot terrain,InventorySnapshot inventory){SelfState self=new SelfState(20,0,20,0,x,y,z,0,0,0,0,0,0,0,0,0,true,false,false,false,false,false,false,false,false,0,0,0,0,0,0,0,0);return new ObservationSnapshot(tick,1000+sequence,new UUID(1,2),sequence,"world:test","universal/0.1",self,terrain,midRange(),entities(),inventory,landmarks(),events(),timing(),TaskStateSnapshot.UNIVERSAL,ActionCommand.zero(Math.max(0,sequence-1),1000+sequence,"none"),SensorValidity.ALL_PHASE1,sensorTimings());}
 
     private static LocalTerrainSnapshot terrain(){return new LocalTerrainSnapshot(0,0,0,(byte)0,new short[LocalTerrainSnapshot.CELL_COUNT],new byte[LocalTerrainSnapshot.CELL_COUNT],new short[LocalTerrainSnapshot.CELL_COUNT],new byte[LocalTerrainSnapshot.CELL_COUNT],0);}
     private static MidRangeMapSnapshot midRange(){return new MidRangeMapSnapshot(0,0,0,(byte)0,new short[MidRangeMapSnapshot.COLUMN_COUNT],new short[MidRangeMapSnapshot.COLUMN_COUNT],new short[MidRangeMapSnapshot.COLUMN_COUNT],0);}
