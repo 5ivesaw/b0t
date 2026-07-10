@@ -13,6 +13,10 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/forge/SawBotMod.class",
     "dev/fivesaw/sawbot/common/action/ActionCommand.class",
     "dev/fivesaw/sawbot/common/observation/ObservationSnapshot.class",
+    "dev/fivesaw/sawbot/common/observation/LocalTerrainSnapshot.class",
+    "dev/fivesaw/sawbot/forge/sensors/ObservationPipeline.class",
+    "dev/fivesaw/sawbot/forge/sensors/LocalTerrainSensor.class",
+    "dev/fivesaw/sawbot/forge/tracking/EntityTrackerSensor.class",
 }
 
 

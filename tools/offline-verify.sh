@@ -14,7 +14,7 @@ from pathlib import Path
 import json, os
 root=Path(os.environ['ROOT_FOR_PY'])
 resource=root/'sawbot-forge-1.8.9/src/main/resources/mcmod.info'
-text=resource.read_text(encoding='utf-8').replace('${version}','0.1.0').replace('${mcversion}','1.8.9')
+text=resource.read_text(encoding='utf-8').replace('${version}','0.2.0-alpha.0').replace('${mcversion}','1.8.9')
 json.loads(text)
 print('PASS mcmod.info JSON expansion check')
 PYVALIDATEJSON
@@ -29,6 +29,8 @@ required = [
     root / 'tools/package-release.sh',
     root / 'tools/verify-built-jar.py',
     root / 'docs/GITHUB_RELEASES.md',
+    root / 'docs/PHASE0_ACCEPTANCE.md',
+    root / 'docs/PHASE1_REPORT.md',
     root / 'GITHUB_UPLOAD_QUICKSTART.md',
 ]
 missing = [str(path.relative_to(root)) for path in required if not path.is_file()]
@@ -44,9 +46,9 @@ properties = (root / 'gradle.properties').read_text(encoding='utf-8')
 if 'loom.platform=forge' not in properties:
     raise SystemExit('gradle.properties does not declare loom.platform=forge')
 verifier = (root / 'tools/verify-built-jar.py').read_text(encoding='utf-8')
-if 'dev/fivesaw/sawbot/forge/SawBotMod.class' not in verifier:
-    raise SystemExit('Release verifier does not check the actual Forge entry class')
+if 'dev/fivesaw/sawbot/forge/SawBotMod.class' not in verifier or 'dev/fivesaw/sawbot/forge/sensors/ObservationPipeline.class' not in verifier:
+    raise SystemExit('Release verifier does not check the Forge entry class and Phase 1 pipeline')
 print('PASS GitHub repository packaging check')
 PYREPOCHECK
 
-printf '%s\n' 'PASS offline Phase 0 verification'
+printf '%s\n' 'PASS offline Phase 1 verification'

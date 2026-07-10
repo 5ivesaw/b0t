@@ -1,0 +1,1 @@
+package net.minecraft.item; import net.minecraft.block.Block; public class ItemBlock extends Item { private final Block block; public ItemBlock(Block block){this.block=block;} public Block getBlock(){return block;} }

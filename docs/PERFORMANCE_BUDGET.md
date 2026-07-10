@@ -1,4 +1,4 @@
-# Performance Budget v0.1
+# Performance Budget v0.2
 
 Primary target: HP EliteBook 840 G3, i5-6200U (2C/4T), Intel HD 520, 8 GB RAM, 1366x768, Windows, visible Minecraft 1.8.9.
 
@@ -49,3 +49,17 @@ Debug renderers are budgeted separately and individually toggleable. Full collis
 - SawBot steady-state Java heap overhead in normal HUD mode: target <= 128 MB.
 - Observation snapshots in queues: target <= 32 MB total.
 - Every cache must expose size and have an eviction rule.
+
+
+## Phase 0 accepted measurement
+
+The user-confirmed Phase 0 runtime screenshot on 2026-07-10 showed approximately 10 microseconds average and 1,289 microseconds maximum for the foundation client handler at that captured moment, with no serious observed FPS loss during a five-minute idle test. These values are evidence for Phase 0 only and are not substituted for Phase 1 per-sensor percentiles.
+
+## Phase 1 implementation bounds
+
+- Observation publication defaults to 10 Hz.
+- Local terrain is fixed at 1,521 cells per publication.
+- Mid-range map storage is fixed at 1,089 output columns and a 4,096-column LRU cache; only two map rows are refreshed per client tick. Recent known surfaces are revalidated in a ±4-block band, with a complete bounded column rescan forced at least every 100 client ticks.
+- Entities are capped at 32, events at 64, landmarks at 64, inventory slots at 41.
+- All extraction remains on the client thread; no worker reads live Minecraft objects.
+- F7 textual inspector is optional. Phase 2 world overlays do not exist yet.

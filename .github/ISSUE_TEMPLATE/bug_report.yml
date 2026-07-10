@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible SawBotV1 Phase 0 problem.
+description: Report a reproducible SawBotV1 Phase 1 problem.
 title: '[Bug] '
 labels: [bug]
 body:
@@ -10,9 +10,11 @@ body:
       options:
         - Build or GitHub Actions
         - Client launch
-        - HUD
+        - HUD or sensor inspector
+        - Self/terrain/map sensors
+        - Entity/inventory/event sensors
         - Key bindings or emergency stop
-        - Contracts or offline verifier
+        - Contracts, immutability, or offline verifier
         - Documentation
     validations:
       required: true

@@ -1,47 +1,19 @@
 package dev.fivesaw.sawbot.forge.hud;
 
+import dev.fivesaw.sawbot.common.observation.ObservationSnapshot;
+import dev.fivesaw.sawbot.common.observation.SensorTimings;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
+import dev.fivesaw.sawbot.forge.sensors.ObservationPipeline;
 import net.minecraft.client.Minecraft;
 
 public final class FoundationHud {
-    private static final int WHITE = 0xFFFFFF;
-    private static final int MUTED = 0xA0A0A0;
-    private static final int SAFE = 0x55FF55;
-    private static final int WARNING = 0xFFAA00;
-
-    private final Minecraft minecraft;
-    private final SawBotStateController state;
-    private final RollingTimingWindow tickTiming;
-
-    public FoundationHud(Minecraft minecraft, SawBotStateController state, RollingTimingWindow tickTiming) {
-        this.minecraft = minecraft;
-        this.state = state;
-        this.tickTiming = tickTiming;
-    }
-
-    public void render(long clientTick) {
-        if (minecraft.fontRendererObj == null) return;
-        int x = 6;
-        int y = 6;
-        int statusColour = state.isEnabled() ? WARNING : SAFE;
-        draw("SawBotV1  Phase 0", x, y, WHITE); y += 10;
-        draw("State: " + state.mode(), x, y, statusColour); y += 10;
-        draw("Tick: " + clientTick + "  Handler avg: " + micros(tickTiming.averageNanos()) + " us", x, y, MUTED); y += 10;
-        draw("Latest/max: " + micros(tickTiming.latestNanos()) + "/" + micros(tickTiming.maximumNanos()) + " us", x, y, MUTED); y += 10;
-        draw("F8 toggle  F9 takeover  F12 emergency", x, y, MUTED);
-        if (state.inspectorVisible()) {
-            y += 10;
-            draw("Inspector: Phase 0 placeholder (no model inputs exist yet)", x, y, WARNING);
-        }
-        if (state.telemetryRequested()) {
-            y += 10;
-            draw("Telemetry intent: ON (writer intentionally absent until Phase 3)", x, y, WARNING);
-        }
-    }
-
-    private void draw(String text, int x, int y, int colour) {
-        minecraft.fontRendererObj.drawStringWithShadow(text, x, y, colour);
-    }
-    private static long micros(long nanos) { return nanos / 1_000L; }
+    private static final int WHITE=0xFFFFFF,MUTED=0xA0A0A0,SAFE=0x55FF55,WARNING=0xFFAA00,INFO=0x55FFFF;
+    private final Minecraft minecraft;private final SawBotStateController state;private final RollingTimingWindow tickTiming;private final ObservationPipeline observations;
+    public FoundationHud(Minecraft minecraft,SawBotStateController state,RollingTimingWindow tickTiming,ObservationPipeline observations){this.minecraft=minecraft;this.state=state;this.tickTiming=tickTiming;this.observations=observations;}
+    public void render(long clientTick){if(minecraft.fontRendererObj==null)return;int x=6,y=6;int statusColour=state.isEnabled()?WARNING:SAFE;draw("SawBotV1  Phase 1",x,y,WHITE);y+=10;draw("State: "+state.mode(),x,y,statusColour);y+=10;ObservationSnapshot snapshot=observations.latest();if(snapshot==null){draw("Eyes: waiting for a world snapshot",x,y,WARNING);y+=10;}else{long age=observations.snapshotAgeMillis();draw("Tick "+clientTick+"  Obs #"+snapshot.sequenceNumber()+"  age "+age+" ms",x,y,age>300?WARNING:MUTED);y+=10;draw("Eyes "+micros(snapshot.sensorTimings().totalNanos())+" us  entities "+snapshot.entities().count()+"  events "+snapshot.events().count(),x,y,MUTED);y+=10;draw("HP "+one(snapshot.selfState().health())+"  wool "+snapshot.inventory().wool()+"  ping "+(snapshot.serverTiming().pingValid()?snapshot.serverTiming().estimatedPingMillis()+" ms":"unknown"),x,y,MUTED);y+=10;}
+        draw("Handler avg/max "+micros(tickTiming.averageNanos())+"/"+micros(tickTiming.maximumNanos())+" us",x,y,MUTED);y+=10;draw("F7 inspector  F8 toggle  F9 takeover  F12 emergency",x,y,MUTED);
+        if(state.inspectorVisible()&&snapshot!=null){y+=12;draw("Observation "+snapshot.schemaVersion()+"  validity 0x"+Long.toHexString(snapshot.sensorValidityFlags()),x,y,INFO);y+=10;draw("XYZ "+one((float)snapshot.selfState().absoluteX())+" "+one((float)snapshot.selfState().absoluteY())+" "+one((float)snapshot.selfState().absoluteZ())+"  yaw "+one(snapshot.selfState().yawDegrees()),x,y,WHITE);y+=10;draw("Support L/C/R "+one(snapshot.selfState().supportDistanceLeft())+"/"+one(snapshot.selfState().supportDistanceCenter())+"/"+one(snapshot.selfState().supportDistanceRight())+"  void "+one(snapshot.selfState().distanceToVoid()),x,y,WHITE);y+=10;draw("Terrain changed "+snapshot.localTerrain().changedCellCount()+"  facing "+snapshot.localTerrain().facingQuadrant()+"  map rows/tick "+snapshot.midRangeMap().rowsUpdatedThisTick(),x,y,WHITE);y+=10;draw("Inventory Fe/Au/D/E/W "+snapshot.inventory().iron()+"/"+snapshot.inventory().gold()+"/"+snapshot.inventory().diamonds()+"/"+snapshot.inventory().emeralds()+"/"+snapshot.inventory().wool(),x,y,WHITE);y+=10;SensorTimings t=snapshot.sensorTimings();draw("us self "+micros(t.selfNanos())+" terrain "+micros(t.terrainNanos())+" map "+micros(t.midRangeNanos())+" entity "+micros(t.entitiesNanos()),x,y,MUTED);y+=10;draw("us inv "+micros(t.inventoryNanos())+" landmark "+micros(t.landmarksNanos())+" events "+micros(t.eventsNanos())+" timing "+micros(t.serverTimingNanos()),x,y,MUTED);}
+        if(state.telemetryRequested()){y+=10;draw("Telemetry intent ON; writer remains locked until Phase 3",x,y,WARNING);}}
+    private void draw(String text,int x,int y,int colour){minecraft.fontRendererObj.drawStringWithShadow(text,x,y,colour);}private static long micros(long nanos){return nanos/1_000L;}private static String one(float value){if(Float.isNaN(value))return "NaN";if(Float.isInfinite(value))return value>0?"Inf":"-Inf";boolean negative=value<0f;float absolute=Math.abs(value);long scaled=Math.round(absolute*10f);return (negative?"-":"")+(scaled/10L)+"."+(scaled%10L);}
 }

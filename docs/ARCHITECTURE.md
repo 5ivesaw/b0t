@@ -49,3 +49,27 @@ Observation and action names, bounds, ordering, validity semantics, and stale-me
 **Boundaries:** This is a build-system migration only. It does not alter the observation/action contracts, runtime safety requirements, task scope, source package structure, or Minecraft/Forge target.
 
 **Consequences:** Local contributors need Java 17 for Gradle and Java 8 for compilation/runtime testing. CI installs both explicitly. Release artifacts are validated before publication.
+
+## Phase 1 observation lifecycle
+
+At each client tick, `ObservationPipeline` verifies world identity, incrementally refreshes two mid-range map rows, and—at the configured interval—captures all live Minecraft state on the client thread. Sensor results are converted immediately into bounded common-module value objects. The volatile `latest` reference publishes one complete immutable graph to the HUD and future workers; no partially assembled snapshot is observable.
+
+`LocalTerrainSensor` builds a cardinally egocentric 13×9×13 tensor. `BlockSemanticClassifier` caches static state semantics but computes dynamic replaceability and collision lists at the actual block position. `MidRangeMapSensor` stores absolute world-column samples in a bounded LRU cache and reprojects them into a 33×33 egocentric output, avoiding full invalidation on movement and rotation. `EntityTrackerSensor` assigns stable short-lived IDs and uses conservative scoreboard-team semantics. Inventory, events, landmark, and server timing sensors remain bounded.
+
+### ADR-0006: Observation schema v0.2 uses typed immutable components
+
+**Status:** Accepted
+
+The Phase 0 placeholder snapshot was insufficient for runtime validation. Schema v0.2 introduces fixed arrays, bounded lists, explicit validity bits, and sensor timing. Constructors reject missing/non-finite state and defensively copy mutable inputs. This is a deliberate schema bump; v0.1 remains identified only for migration/testing history.
+
+### ADR-0007: Mid-range spatial cache is world-coordinate, output is egocentric
+
+**Status:** Accepted
+
+Resetting a 33×33 map whenever the player crosses a block or changes cardinal direction would leave a moving agent with mostly unknown state. Phase 1 therefore maintains at most 4,096 absolute X/Z samples and reprojects them into the current egocentric frame. Two rows are refreshed per tick, keeping work bounded while preserving useful older samples with explicit ages.
+
+### ADR-0008: Observed hurt state is not damage attribution
+
+**Status:** Accepted
+
+A target hurt timer can change because of another player, fall damage, fire, or other causes. Phase 1 emits `ENTITY_HURT_OBSERVED` and leaves `HIT_CONFIRMED`/`DAMAGE_DEALT` unknown until proper interaction and packet/event correlation exists. This avoids training on fabricated labels.

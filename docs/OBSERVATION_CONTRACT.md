@@ -1,85 +1,136 @@
-# Observation Contract v0.1
+# Observation Contract v0.2
 
-Contract identifier: `sawbot.observation/0.1`
+Identifier: `sawbot.observation/0.2`  
+Status: Phase 1 runtime candidate  
+Compatibility: breaking replacement for the placeholder-only v0.1 snapshot
 
-The wire contract is deterministic, bounded, little-endian, and independent of Forge classes. Arrays use fixed capacity plus an explicit count. Relative geometry uses the player's yaw-aligned egocentric frame: +Z forward, +X right, +Y up. Floating values are IEEE-754 `f32` unless marked `f64`. Invalid numeric values are never encoded as NaN; validity is represented by flags and canonical zero values.
+## Invariants
 
-## Top-level `ObservationSnapshot`
+- Snapshots are created only on Minecraft's client thread.
+- Published snapshots contain no live Minecraft `World`, `Entity`, `ItemStack`, `Block`, mutable collection, or mutable array reference.
+- Arrays are fixed-size and defensively copied.
+- Lists are bounded and unmodifiable.
+- Coordinates intended for policy input are egocentric; absolute coordinates remain available for tooling and map adapters.
+- No screenshot, framebuffer, OCR, image, video, or armour-colour pixel input exists.
+- A snapshot is identified by world/episode, monotonically increasing sequence number, client tick, and monotonic timestamp.
+- Schema meaning changes require a version bump and migration note.
 
-| Field | Portable type | Rule |
+## Root `ObservationSnapshot`
+
+| Field | Type | Constraint |
 |---|---|---|
-| `schemaVersion` | UTF-8 enum, max 32 bytes | exactly `sawbot.observation/0.1` |
-| `clientTick` | `i64` | monotonically nondecreasing within world session |
-| `monotonicTimestampNanos` | `i64` | monotonic process clock, never wall clock |
-| `episodeId` | 16 bytes | UUID bytes; all zero when no episode |
-| `sequenceNumber` | `i64` nonnegative | strictly increases for published snapshots |
-| `worldIdentifier` | UTF-8, max 96 bytes | privacy-safe adapter/world hash, not arbitrary path |
-| `taskAdapterIdentifier` | UTF-8, max 48 bytes | `universal` in Phase 1; later `bedwars/0.x` |
-| `selfState` | `SelfState` | one record |
-| `localTerrain` | `LocalTerrain` | exactly 13×9×13 cells in v0.1 |
-| `midRangeMap` | `MidRangeMap` | exactly 33×33 columns in v0.1 |
-| `entities` | `EntityObservation[32] + count` | deterministic priority/order |
-| `inventory` | `InventoryState` | 45 player slots + armour/cursor metadata |
-| `landmarks` | `LandmarkObservation[64] + count` | bounded and confidence-labelled |
-| `events` | `EventObservation[64] + count` | oldest-to-newest among retained events |
-| `serverTiming` | `ServerTiming` | observations only, no packet manipulation |
-| `taskState` | bounded tagged record, max 2048 bytes | universal empty state until adapter exists |
-| `previousAction` | `ActionCommandSummary` | last accepted or canonical zero action |
-| `sensorValidityFlags` | `u64` bitset | group validity/partial/unknown flags |
+| `schemaVersion` | enum | always `sawbot.observation/0.2` |
+| `clientTick` | int64 | non-negative |
+| `monotonicTimestampNanos` | int64 | non-negative, monotonic-clock domain |
+| `episodeId` | UUID | changes when the client world identity changes |
+| `sequenceNumber` | int64 | starts at 1 per episode and increases per published snapshot |
+| `worldIdentifier` | string | bounded to 96 characters; sanitized world name and dimension |
+| `taskAdapterIdentifier` | string | bounded to 48 characters; `universal/0.1` in Phase 1 |
+| `selfState` | `SelfState` | required |
+| `localTerrain` | `LocalTerrainSnapshot` | required, 1,521 cells |
+| `midRangeMap` | `MidRangeMapSnapshot` | required, 1,089 columns |
+| `entities` | `EntitySetSnapshot` | required, maximum 32 |
+| `inventory` | `InventorySnapshot` | required, exactly 41 slots |
+| `landmarks` | `LandmarkSetSnapshot` | required, maximum 64 |
+| `events` | `EventHistorySnapshot` | required, maximum 64 |
+| `serverTiming` | `ServerTimingSnapshot` | required |
+| `taskState` | `TaskStateSnapshot` | required; universal placeholder in Phase 1 |
+| `previousAction` | `ActionCommand` | required; zero action until Phase 4 |
+| `sensorValidityFlags` | uint64 bit mask | explicit validity per sensor group |
+| `sensorTimings` | `SensorTimings` | nanoseconds per sensor group and total |
 
-## `SelfState`
+Default publication interval is two client ticks, approximately 10 snapshots per second at 20 TPS. It is configurable from 1–20 ticks. Frozen mode retains the last immutable snapshot and does not increment the sequence number.
 
-Uses relative policy features plus tooling-only absolute coordinates. Policy exporters may mask absolute coordinates.
+## Self state
 
-- `health`, `absorption`, `hunger`: `f32`
-- `armourPoints`, `armourToughnessEquivalent`: `f32`
-- `absoluteX/Y/Z`: `f64`, tooling channel
-- `velocityX/Y/Z`, `accelerationX/Y/Z`: `f32`, egocentric
-- `yawDegrees`, `pitchDegrees`: `f32`, normalized yaw `[-180,180)`, pitch `[-90,90]`
-- booleans: `onGround`, `horizontalCollision`, `verticalCollision`, `inLiquid`, `onLadder`, `insideBlock`, `sprinting`, `sneaking`, `usingItem`
-- `airborneTicks`, `hurtTimerTicks`, `attackCooldownTicks`, `currentActionDurationTicks`: `u16`
-- `fallDistance`, `supportDistanceLeft/Center/Right`, `distanceToVoid`: `f32`, clamped `[0,64]`, validity flags when unknown
-- `selectedSlot`: `u8`, range `0..8`
-- `recentServerCorrectionTicks`: `u16`, `65535` means none in retained horizon
-- potion effects: maximum 16 records ordered by stable effect ID
+Includes health, absorption, hunger, armour, absolute position, egocentric velocity and acceleration estimates, yaw, pitch, fall distance, grounded/collision/liquid/ladder/inside-block flags, sprint/sneak/use state, airborne ticks, hurt timer, selected slot, active-potion count, three foot-support distances, and centre distance-to-support/void probe.
 
-## `LocalTerrain`
+Support probes use Minecraft collision boxes rather than block-name assumptions, allowing slabs, stairs, fences, and other partial geometry to contribute their actual top surfaces.
 
-Dimensions are `[x=13][y=9][z=13]`, centered on the player-foot block with offsets X `-6..+6`, Y `-4..+4`, Z `-6..+6`, then yaw-rotated to the egocentric frame by deterministic nearest cardinal orientation in v0.1. Exact continuous yaw remains in self state.
+## Local terrain tensor
 
-Each cell uses a compact record:
+Shape: `13 right × 9 up × 13 forward = 1,521 cells`.
 
-- `blockCategory`: `u16` stable semantic ID
-- `flags`: `u16` bitset for solid, fullBlock, partialBlock, replaceable, liquid, hazard, climbable, interactable, bedComponent, safeSupport, validPlacementSupport, recentlyChanged, loaded, unknown
-- `collisionHeightClass`: `u8` (`NONE`, `QUARTER`, `HALF`, `THREE_QUARTER`, `FULL`, `COMPLEX`)
-- `teamColourCategory`: `u8`
-- `breakTimeCategory`: `u8`
-- `shapeIndex`: `u8` into a versioned collision-shape table; `0` means none/unknown
+The tensor is player-centred and rotated into one of four cardinal egocentric quadrants. Each cell contains:
 
-Classification is cached by block state. Collision geometry, not visual model bounds, is authoritative.
+- Minecraft block-state ID stored as 16-bit bits.
+- Stable semantic category enum.
+- Bit flags: solid, full, partial, replaceable, liquid, hazard, climbable, interactable, bed, safe support, valid placement support, recently changed, loaded, unknown.
+- Collision class: `0 none`, `1 quarter`, `2 half`, `3 three-quarter`, `4 full`, `5 other single box`, `6 compound/multiple boxes`.
 
-## `MidRangeMap`
+Static semantic classifications are cached by state ID. Dynamic replaceability and collision geometry are evaluated against the actual world position. Complex block collision lists are collected through Minecraft's collision API.
 
-33×33 egocentric columns, offset `-16..+16`. Each column contains highest walkable relative Y (`i8`), and bit/quantized fields for void, obstruction, safe landing, narrow bridge, platform/island, bed/generator/shop region, team ownership, recent change, known enemy occupancy, route confidence, and loaded/unknown.
+## Mid-range map
+
+Shape: `33 × 33 = 1,089 columns`, egocentric around the player.
+
+Each column contains relative walkable surface height, flags, and sample age. Flags currently represent loaded/unknown, void, overhead obstruction, safe landing, narrow-bridge hint, and platform hint.
+
+The map updates two rows per client tick. Samples are stored in a bounded 4,096-entry world-coordinate LRU cache and reprojected when the player moves or rotates, so the map is not discarded on every block step or cardinal turn. A complete stationary sweep takes at most 17 client ticks.
 
 ## Entities
 
-Maximum 32. Sort key: task relevance descending, threat descending, distance ascending, stable tracking ID ascending. A tracked entity keeps its ID through short occlusion/unload grace; ID reuse is forbidden within an episode.
+Maximum 32 observations. Candidates within 64 blocks are deterministically sorted by semantic priority and stable short-lived tracking ID. Tracks are evicted after a 40-tick absence.
 
-Every entity includes type/category, stable tracking ID, team relationship, relative position/velocity/acceleration, bounding box, health/armour/held item when available, movement flags, timers, distance, reach relationship, `lineOfSight`, `occluded`, `attackable`, `loaded`, edge/bed distances, recent combat timing, and `trackingConfidence` `[0,1]`.
+Each observation contains:
+
+- Tracking ID and Minecraft entity ID.
+- Entity kind and team relationship.
+- Egocentric relative position and relative velocity.
+- Bounding-box width and height.
+- Health, armour summary, held-item category, hurt timer.
+- Grounded, sprinting, sneaking.
+- `lineOfSight`, `occluded`, `attackable`, `loaded`, `trackingConfidence`.
+
+`attackable` requires a living, loaded, non-dead target, current line of sight, and distance no greater than 3.1 blocks. Players without scoreboard-team information are `UNKNOWN`, not automatically classified as enemies. Exact state for occluded loaded entities remains available for controlled private research, while `occluded=true` and `attackable=false` prevent the state from being mistaken for a mechanically valid through-wall attack.
 
 ## Inventory
 
-Stable item categories only. Each slot includes category ID, stack count, durability class, enchantment summary bits, and usability flags. Strings and display names are excluded from policy input.
+Exactly 41 slots:
+
+- Main inventory/hotbar: 0–35.
+- Armour: 36–39.
+- Cursor stack: 40.
+
+Each slot has stable item category, numeric item ID, metadata, bounded count, durability class, and enchantment summary bits. The snapshot also contains selected hotbar slot, bounded open-container type, and aggregate iron/gold/diamond/emerald/wool counts. Arbitrary display names are excluded.
+
+## Landmarks and task state
+
+Phase 1 emits the local world spawn as a universal semantic landmark. Bedwars landmarks are deliberately deferred to the Bedwars task adapter. The task state is `universal/0.1`, inactive.
 
 ## Events
 
-Maximum 64, retained by monotonic timestamp. Each contains event type, age in ticks, tracking ID or `-1`, relative position, magnitude, success state, and bounded task metadata. Overflow drops oldest and increments `eventsDroppedSinceEpisodeStart`.
+Maximum 64; overflow drops the oldest event and increments a dropped counter.
 
-## Determinism and immutability
+Implemented Phase 1 events include damage received, resource collected/spent, entity entered/left range, observed entity hurt-timer transition, local block placed/broken heuristic, large position correction heuristic, and respawn.
 
-- Identical client state and adapter configuration must encode byte-identically.
-- Constructors defensively copy all arrays.
-- Published snapshot objects expose copies or read-only scalar accessors.
-- No live `World`, `Entity`, `ItemStack`, `Block`, collection, or mutable buffer reference crosses the client-thread boundary.
-- Semantic meaning changes require a minor/major schema bump and migration note.
+Important attribution rule: `ENTITY_HURT_OBSERVED` does **not** claim SawBot caused the damage. `DAMAGE_DEALT` and `HIT_CONFIRMED` remain contract values for a later packet/interaction-correlated implementation and are not fabricated from a target hurt timer.
+
+## Server timing
+
+Includes ping, smoothed ping jitter, ticks since a classified enemy observation, ticks since confirmed hit, ticks since placement acknowledgement, and ticks since server correction. Unknown ages use the bounded sentinel `65535`; ping has a separate validity flag. Phase 1 does not yet observe placement acknowledgements or produce hit confirmations, so those fields honestly remain unknown.
+
+## Validity bits
+
+- bit 0: self
+- bit 1: local terrain
+- bit 2: mid-range map
+- bit 3: entities
+- bit 4: inventory
+- bit 5: landmarks
+- bit 6: events
+- bit 7: server timing
+- bit 8: task state
+
+## Phase 1 acceptance requirements
+
+- Correct full and partial block classifications in a real client.
+- Correct void/support behavior at edges, slabs, stairs, and fences.
+- Stable entity IDs while entities remain loaded.
+- Conservative team classification and explicit occlusion.
+- Inventory changes reflected on the expected snapshot.
+- Event timing inspected against known actions.
+- Snapshot freeze preserves immutable values and sequence number.
+- Snapshot age and each sensor's extraction time visible.
+- No client-thread exception or unsafe worker access.
+- Measured target-hardware cost recorded before Phase 2.

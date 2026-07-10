@@ -1,17 +1,11 @@
 package dev.fivesaw.sawbot.common.observation;
 
 import dev.fivesaw.sawbot.common.action.ActionCommand;
+import dev.fivesaw.sawbot.common.events.EventHistorySnapshot;
 import dev.fivesaw.sawbot.common.versioning.SchemaVersion;
-import java.util.Arrays;
 import java.util.UUID;
 
 public final class ObservationSnapshot {
-    public static final int LOCAL_TERRAIN_CELLS = 13 * 9 * 13;
-    public static final int MID_RANGE_COLUMNS = 33 * 33;
-    public static final int MAX_ENTITIES = 32;
-    public static final int MAX_LANDMARKS = 64;
-    public static final int MAX_EVENTS = 64;
-
     private final SchemaVersion schemaVersion;
     private final long clientTick;
     private final long monotonicTimestampNanos;
@@ -19,72 +13,47 @@ public final class ObservationSnapshot {
     private final long sequenceNumber;
     private final String worldIdentifier;
     private final String taskAdapterIdentifier;
-    private final byte[] selfState;
-    private final byte[] localTerrain;
-    private final byte[] midRangeMap;
-    private final byte[] entities;
-    private final byte[] inventory;
-    private final byte[] landmarks;
-    private final byte[] events;
-    private final byte[] serverTiming;
-    private final byte[] taskState;
+    private final SelfState selfState;
+    private final LocalTerrainSnapshot localTerrain;
+    private final MidRangeMapSnapshot midRangeMap;
+    private final EntitySetSnapshot entities;
+    private final InventorySnapshot inventory;
+    private final LandmarkSetSnapshot landmarks;
+    private final EventHistorySnapshot events;
+    private final ServerTimingSnapshot serverTiming;
+    private final TaskStateSnapshot taskState;
     private final ActionCommand previousAction;
     private final long sensorValidityFlags;
+    private final SensorTimings sensorTimings;
 
     public ObservationSnapshot(long clientTick, long monotonicTimestampNanos, UUID episodeId, long sequenceNumber,
-                               String worldIdentifier, String taskAdapterIdentifier, byte[] selfState,
-                               byte[] localTerrain, byte[] midRangeMap, byte[] entities, byte[] inventory,
-                               byte[] landmarks, byte[] events, byte[] serverTiming, byte[] taskState,
-                               ActionCommand previousAction, long sensorValidityFlags) {
-        if (clientTick < 0 || monotonicTimestampNanos < 0 || sequenceNumber < 0) {
-            throw new IllegalArgumentException("tick, timestamp, and sequence must be nonnegative");
-        }
-        this.schemaVersion = SchemaVersion.OBSERVATION_V0_1;
+                               String worldIdentifier, String taskAdapterIdentifier, SelfState selfState,
+                               LocalTerrainSnapshot localTerrain, MidRangeMapSnapshot midRangeMap,
+                               EntitySetSnapshot entities, InventorySnapshot inventory,
+                               LandmarkSetSnapshot landmarks, EventHistorySnapshot events,
+                               ServerTimingSnapshot serverTiming, TaskStateSnapshot taskState,
+                               ActionCommand previousAction, long sensorValidityFlags, SensorTimings sensorTimings) {
+        if (clientTick < 0 || monotonicTimestampNanos < 0 || sequenceNumber < 0) throw new IllegalArgumentException("tick/timestamp/sequence");
+        this.schemaVersion = SchemaVersion.OBSERVATION_V0_2;
         this.clientTick = clientTick;
         this.monotonicTimestampNanos = monotonicTimestampNanos;
         this.episodeId = episodeId == null ? new UUID(0L, 0L) : episodeId;
         this.sequenceNumber = sequenceNumber;
         this.worldIdentifier = bounded(worldIdentifier, 96, "worldIdentifier");
         this.taskAdapterIdentifier = bounded(taskAdapterIdentifier, 48, "taskAdapterIdentifier");
-        this.selfState = copy(selfState, "selfState");
-        this.localTerrain = copy(localTerrain, "localTerrain");
-        this.midRangeMap = copy(midRangeMap, "midRangeMap");
-        this.entities = copy(entities, "entities");
-        this.inventory = copy(inventory, "inventory");
-        this.landmarks = copy(landmarks, "landmarks");
-        this.events = copy(events, "events");
-        this.serverTiming = copy(serverTiming, "serverTiming");
-        this.taskState = copy(taskState, "taskState");
-        if (previousAction == null) throw new IllegalArgumentException("previousAction");
-        this.previousAction = previousAction;
-        this.sensorValidityFlags = sensorValidityFlags;
+        if (selfState == null || localTerrain == null || midRangeMap == null || entities == null || inventory == null || landmarks == null || events == null || serverTiming == null || taskState == null || previousAction == null || sensorTimings == null) {
+            throw new IllegalArgumentException("snapshot component");
+        }
+        this.selfState = selfState; this.localTerrain = localTerrain; this.midRangeMap = midRangeMap;
+        this.entities = entities; this.inventory = inventory; this.landmarks = landmarks; this.events = events;
+        this.serverTiming = serverTiming; this.taskState = taskState; this.previousAction = previousAction;
+        this.sensorValidityFlags = sensorValidityFlags; this.sensorTimings = sensorTimings;
     }
-
-    private static String bounded(String value, int max, String field) {
-        if (value == null || value.isEmpty() || value.length() > max) throw new IllegalArgumentException(field);
-        return value;
-    }
-    private static byte[] copy(byte[] value, String field) {
-        if (value == null) throw new IllegalArgumentException(field);
-        return Arrays.copyOf(value, value.length);
-    }
-
-    public SchemaVersion schemaVersion() { return schemaVersion; }
-    public long clientTick() { return clientTick; }
-    public long monotonicTimestampNanos() { return monotonicTimestampNanos; }
-    public UUID episodeId() { return episodeId; }
-    public long sequenceNumber() { return sequenceNumber; }
-    public String worldIdentifier() { return worldIdentifier; }
-    public String taskAdapterIdentifier() { return taskAdapterIdentifier; }
-    public byte[] selfState() { return Arrays.copyOf(selfState, selfState.length); }
-    public byte[] localTerrain() { return Arrays.copyOf(localTerrain, localTerrain.length); }
-    public byte[] midRangeMap() { return Arrays.copyOf(midRangeMap, midRangeMap.length); }
-    public byte[] entities() { return Arrays.copyOf(entities, entities.length); }
-    public byte[] inventory() { return Arrays.copyOf(inventory, inventory.length); }
-    public byte[] landmarks() { return Arrays.copyOf(landmarks, landmarks.length); }
-    public byte[] events() { return Arrays.copyOf(events, events.length); }
-    public byte[] serverTiming() { return Arrays.copyOf(serverTiming, serverTiming.length); }
-    public byte[] taskState() { return Arrays.copyOf(taskState, taskState.length); }
-    public ActionCommand previousAction() { return previousAction; }
-    public long sensorValidityFlags() { return sensorValidityFlags; }
+    private static String bounded(String value,int max,String field){if(value==null||value.isEmpty()||value.length()>max)throw new IllegalArgumentException(field);return value;}
+    public SchemaVersion schemaVersion(){return schemaVersion;} public long clientTick(){return clientTick;} public long monotonicTimestampNanos(){return monotonicTimestampNanos;}
+    public UUID episodeId(){return episodeId;} public long sequenceNumber(){return sequenceNumber;} public String worldIdentifier(){return worldIdentifier;} public String taskAdapterIdentifier(){return taskAdapterIdentifier;}
+    public SelfState selfState(){return selfState;} public LocalTerrainSnapshot localTerrain(){return localTerrain;} public MidRangeMapSnapshot midRangeMap(){return midRangeMap;}
+    public EntitySetSnapshot entities(){return entities;} public InventorySnapshot inventory(){return inventory;} public LandmarkSetSnapshot landmarks(){return landmarks;}
+    public EventHistorySnapshot events(){return events;} public ServerTimingSnapshot serverTiming(){return serverTiming;} public TaskStateSnapshot taskState(){return taskState;}
+    public ActionCommand previousAction(){return previousAction;} public long sensorValidityFlags(){return sensorValidityFlags;} public SensorTimings sensorTimings(){return sensorTimings;}
 }

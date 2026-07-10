@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0-alpha.0 — Phase 1 internal eyes
+
+- Recorded successful real-client Phase 0 acceptance on the target machine.
+- Added immutable Observation Contract `sawbot.observation/0.2`.
+- Added self/body state, egocentric velocity/acceleration, collision-box support samples, and void-distance probe.
+- Added bounded 13×9×13 egocentric local terrain tensor with semantic flags and compound collision classes.
+- Added an incremental 33×33 mid-range map with a 4,096-column bounded world-coordinate cache, cached support-height revalidation, periodic full rescans, and movement/rotation re-projection.
+- Added stable loaded-entity tracking with bounded priority, team relation, LOS, occlusion, attackability, and confidence.
+- Added fixed 41-slot inventory encoding and iron/gold/diamond/emerald/wool summaries.
+- Added bounded landmarks, events, server timing, sensor validity, sequence/age, and per-sensor timing.
+- Added F7 sensor inspector and F6 immutable snapshot freeze.
+- Replaced false hurt-timer damage attribution with `ENTITY_HURT_OBSERVED`.
+- Expanded offline verification to 56 assertions, including cache re-projection, bounded support-height hint scans, hazardous-surface rejection, and conservative team classification.
+- Updated GitHub CI/release assets and JAR verification for Phase 1.
+
 ## 0.1.0-alpha.0 — Phase 0 foundation
 
 - Locked private-research scope and safety boundary.
@@ -8,12 +23,5 @@
 - Added Forge 1.8.9 client entry point, key bindings, safe state controller, emergency key release, minimal HUD, and bounded timing window.
 - Added Java 8 offline verifier and contract smoke tests.
 - Added standalone control-centre prototype.
-
-## 0.1.0-alpha.0 GitHub packaging update
-
-- Added GitHub Actions CI for offline verification and a real Forge 1.8.9 build.
-- Added manual and tag-triggered GitHub Release publishing.
-- Added validated installable JAR, sources JAR, checksums, and release documentation assets.
-- Replaced the deprecated ForgeGradle 2.1 build lane with Gradle 8.8 and Architectury Loom while preserving Java 8 output and Forge 1.8.9 runtime compatibility.
-- Added checksum-verifying local Gradle bootstrap launchers.
-- Made `SAWBOT_VERSION` override the repository default so manually selected GitHub Release versions are embedded and validated correctly.
+- Added GitHub Actions CI and release publishing with validated JARs, sources, and checksums.
+- Replaced deprecated ForgeGradle 2.1 with Gradle 8.8 and Architectury Loom while retaining Java 8 output and Forge 1.8.9 runtime compatibility.

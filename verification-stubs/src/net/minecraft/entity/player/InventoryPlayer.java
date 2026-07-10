@@ -1,0 +1,1 @@
+package net.minecraft.entity.player; import net.minecraft.item.ItemStack; public class InventoryPlayer { public final ItemStack[] mainInventory=new ItemStack[36]; public final ItemStack[] armorInventory=new ItemStack[4]; public int currentItem; private ItemStack cursor; public ItemStack getItemStack(){return cursor;} }

@@ -1,45 +1,55 @@
 # SawBotV1
 
-SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a visible, inspectable neural agent. Minecraft is the agent's body. The mod reads structured internal game state, never screen pixels, and actuates the same legitimate client controls available to a player.
+SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a visible, inspectable neural agent. Minecraft is the agent's body. The mod reads structured internal game state, never screen pixels, and later actuates only the same legitimate client controls available to a player.
 
 ## Current gate
 
-This repository is stopped at **Phase 0 — Forge Foundation**. It contains contracts, engineering records, a safe client lifecycle, key bindings, a minimal HUD, bounded timing instrumentation, an offline verifier, a standalone control-centre prototype, and GitHub CI/release automation.
+**Phase 0 passed real runtime acceptance on the target machine.** The repository now contains the **Phase 1 — Internal Eyes candidate** (`0.2.0-alpha.0`). Phase 1 must pass its GitHub build and in-client sensor checklist before Phase 2 begins.
 
-It contains no Bedwars logic, neural training, pathfinder, aim assist, scaffold controller, packet advantage, screenshot pipeline, or public-server automation.
+Implemented Phase 1 state:
 
-The complete locked project brief is preserved verbatim in [`docs/PROJECT_BRIEF.txt`](docs/PROJECT_BRIEF.txt).
+- Immutable Observation Contract `sawbot.observation/0.2`
+- Self/body state and support/void probes
+- Bounded 13×9×13 egocentric local terrain tensor
+- Incremental 33×33 mid-range map with bounded cache, support-height fast path, and periodic full rescans
+- Loaded-entity tracking with stable IDs, LOS, occlusion, attackability, and conservative team relation
+- Fixed inventory/resource encoding
+- Bounded landmarks, events, server timing, validity flags, and per-sensor timings
+- F7 textual sensor inspector and F6 immutable snapshot freeze
+- Existing F8/F9/F12 safety controls
 
-## GitHub build and automatic releases
+The repository still contains **no neural model, autonomous actuator loop, Bedwars policy, runtime pathfinder, aim assist, scaffold controller, packet advantage, screenshot/OCR pipeline, or public-server automation**.
 
-Every push and pull request runs:
+The complete locked brief is preserved in [`docs/PROJECT_BRIEF.txt`](docs/PROJECT_BRIEF.txt). Phase reports and gates are in [`docs/PHASE0_ACCEPTANCE.md`](docs/PHASE0_ACCEPTANCE.md), [`docs/PHASE1_REPORT.md`](docs/PHASE1_REPORT.md), and [`docs/PHASE_GATES.md`](docs/PHASE_GATES.md).
 
-- Offline contract and safety verification
-- A real remapped Minecraft Forge 1.8.9 build
-- Release-JAR structure and version validation
-- Workflow artifact upload
+## GitHub CI and release
 
-A release can be published entirely from GitHub:
+Every push or pull request runs:
 
-1. Open **Actions**.
-2. Select **Release**.
-3. Select **Run workflow**.
-4. Enter `0.1.0-alpha.0` or another version without the `v` prefix.
-5. Run it.
+1. Java 8-targeted offline contract/sensor verification.
+2. The 56 assertion foundation/Phase 1 test suite.
+3. A real remapped Forge 1.8.9 build using the online GitHub runner.
+4. Release-JAR structure/version validation.
+5. Workflow artifact packaging.
 
-The workflow creates the tag and GitHub Release, then attaches the installable JAR, sources, checksums, and reports. See [`GITHUB_UPLOAD_QUICKSTART.md`](GITHUB_UPLOAD_QUICKSTART.md) and [`docs/GITHUB_RELEASES.md`](docs/GITHUB_RELEASES.md).
+To publish the Phase 1 candidate from GitHub:
+
+1. Open **Actions → Release → Run workflow**.
+2. Enter `0.2.0-alpha.0`.
+3. Keep prerelease enabled.
+4. Run the workflow.
+
+The workflow creates tag `v0.2.0-alpha.0` and publishes the installable JAR, sources, checksums, Phase 1 report, Phase 0 acceptance evidence, and release guide.
 
 ## Toolchain
 
 - Gradle 8.8
 - Architectury Loom `0.10.0.5`
 - Architectury Pack200 `0.1.3`
-- Java 17 for the Gradle process
-- Java 8 toolchain for compiled Minecraft code
+- Java 17 for Gradle
+- Java 8 toolchain/bytecode for Minecraft
 - Minecraft Forge `1.8.9-11.15.1.2318-1.8.9`
 - MCP mappings `stable_22`
-
-The modern build lane replaces the deprecated ForgeGradle 2.1 setup while retaining Minecraft 1.8.9 and Java 8 output.
 
 ## Local build
 
@@ -49,37 +59,37 @@ Install JDK 17 and JDK 8, then run:
 .\gradlew.bat clean ciBuild
 ```
 
-or:
-
-```bash
-./gradlew clean ciBuild
-```
-
-The launchers download Gradle 8.8 and verify its official SHA-256 checksum. The final mod is written to:
+The final remapped mod is written to:
 
 ```text
-sawbot-forge-1.8.9/build/libs/SawBotV1-<version>-mc1.8.9.jar
+sawbot-forge-1.8.9/build/libs/SawBotV1-0.2.0-alpha.0-mc1.8.9.jar
 ```
 
-## Offline source verification
+Launch a development client with:
+
+```powershell
+.\gradlew.bat runClient
+```
+
+## Offline verification
 
 ```bash
 bash tools/offline-verify.sh
 ```
 
-This does not replace a real Forge build or client launch. It checks Java 8 source compatibility, contracts, state transitions, action validation, input release, metadata, and bounded timing logic.
+This checks source-level Java 8 compatibility against narrow API stubs and runs 56 assertions. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
 
-## Phase 0 keys
+## Keys
 
-- `F8`: enable/disable SawBot
-- `F9`: immediate manual takeover
-- `F12`: emergency release all inputs
-- `F7`: toggle inspector placeholder
-- `F6`: freeze/unfreeze foundation state
-- `F5`: toggle telemetry intent placeholder
+- `F5`: telemetry intent placeholder; no writer until Phase 3
+- `F6`: freeze/unfreeze the immutable observation snapshot while SawBot is enabled
+- `F7`: toggle the textual Phase 1 sensor inspector
+- `F8`: enable/disable SawBot state
+- `F9`: immediate manual takeover and release
+- `F12`: emergency release all controlled inputs
 
-No action-driving model exists in Phase 0.
+Phase 1 sensors can be inspected, but no action-driving model exists and the mod must not move the player.
 
 ## Safety scope
 
-Autonomous testing is restricted to single-player worlds, LAN tests, owned private servers, and purpose-built local arenas. The project does not permit anti-cheat bypasses, public-server automation, authentication bypasses, packet manipulation for advantage, altered reach, impossible placement, or silent server-only controls.
+Autonomous testing is restricted to single-player worlds, LAN tests, owned private servers, and purpose-built local arenas. The project prohibits anti-cheat bypasses, public-server automation, authentication bypasses, packet manipulation for advantage, altered reach, impossible placement, and silent server-only controls.

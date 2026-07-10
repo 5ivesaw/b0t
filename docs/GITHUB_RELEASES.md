@@ -1,89 +1,77 @@
 # GitHub CI and Releases
 
-## What the repository now does
+## CI
 
-Every push and pull request runs two independent checks:
+Every push and pull request runs two jobs:
 
-1. **Offline verification** compiles the contracts and Forge-facing source against narrow API stubs, then executes the Phase 0 safety tests.
-2. **Forge build** uses Gradle 8.8 with Architectury Loom, runs Gradle on Java 17, compiles the mod for Java 8, remaps the Forge JAR, validates its contents, and uploads it as a workflow artifact.
+1. **Offline contracts and safety checks** compiles common and Forge-facing source for Java 8 against narrow verification stubs and runs 56 assertions covering contracts, safety, bounded state, terrain transforms, mid-range caching, conservative team classification, and the Phase 1 pipeline.
+2. **Build Forge 1.8.9 mod** installs Java 8 and Java 17, runs Gradle 8.8 with Architectury Loom, remaps the Forge JAR, validates required Phase 1 classes and metadata, and uploads release-shaped artifacts.
 
-The build lane was modernized because legacy ForgeGradle 2.1 and Gradle 2.x are no longer a dependable foundation for present-day hosted CI. This changes build tooling only; it does not change SawBot's runtime contracts, safety scope, or Minecraft 1.8.9 target.
+The real Forge dependency resolution/remapping occurs in GitHub because generated packaging environments may not have network access to Minecraft/Forge/Loom artifacts.
 
-## Uploading the repository
+## Updating the repository
 
-1. Extract the ZIP.
-2. Create an empty GitHub repository.
-3. Upload **the contents inside the `SawBotV1` folder**, not the outer ZIP folder.
-4. Commit to the default branch.
-5. Open the repository's **Actions** tab and allow the first CI run to finish.
+For the existing repository `5ivesaw/b0t`:
 
-No repository secret or personal access token is required. GitHub supplies the release workflow with a short-lived `GITHUB_TOKEN`. The workflow requests only `contents: write` while publishing a release.
+```powershell
+git add .
+git commit -m "Implement SawBotV1 Phase 1 internal eyes"
+git push origin main
+```
 
-## Creating a release from the GitHub website
+Wait for both CI jobs to pass before publishing a tag.
 
-1. Open **Actions**.
-2. Select **Release**.
-3. Select **Run workflow**.
-4. Enter a version without `v`, such as `0.1.0-alpha.0`.
-5. Leave **Publish as a prerelease** enabled for Phase 0.
-6. Run the workflow.
+## Publishing `0.2.0-alpha.0`
 
-The workflow builds and verifies the project, creates tag `v<version>`, publishes the GitHub Release, and attaches:
+Website method:
+
+1. Open **Actions → Release → Run workflow**.
+2. Enter `0.2.0-alpha.0` without the `v` prefix.
+3. Keep prerelease enabled.
+4. Run the workflow.
+
+Tag method:
+
+```powershell
+git tag -a v0.2.0-alpha.0 -m "SawBotV1 Phase 1 internal eyes"
+git push origin v0.2.0-alpha.0
+```
+
+A suffix such as `-alpha.0`, `-beta.1`, or `-rc.1` is marked as a prerelease when the workflow is triggered by a tag.
+
+## Release assets
 
 - Installable Forge JAR
 - Sources JAR
-- SHA-256 checksums
-- Phase 0 report
-- GitHub build/release guide
+- `SHA256SUMS.txt`
+- `PHASE1_REPORT.md`
+- `PHASE0_ACCEPTANCE.md`
+- This guide
 
-## Creating a release with Git
+The release workflow uses GitHub's short-lived workflow token and requests only `contents: write`.
 
-Pushing a version tag also starts the release workflow:
-
-```bash
-git tag v0.1.0-alpha.0
-git push origin v0.1.0-alpha.0
-```
-
-Versions containing a suffix such as `-alpha.0`, `-beta.1`, or `-rc.1` are automatically marked as prereleases when triggered by a tag.
-
-## Workflow files
-
-- `.github/workflows/ci.yml`
-- `.github/workflows/release.yml`
-- `.github/release.yml`
-- `.github/dependabot.yml`
-
-## Release integrity
+## Integrity checks
 
 `tools/verify-built-jar.py` rejects a release when:
 
-- The expected remapped Forge JAR is missing.
-- `mcmod.info` is absent or malformed.
-- The version inside `mcmod.info` does not match the release version.
-- Core Forge or common-contract classes are missing.
-- Java source files leaked into the installable JAR.
+- The expected remapped JAR is missing.
+- `mcmod.info` is absent, malformed, or has the wrong version/Minecraft version/mod ID.
+- The Forge entry class, Observation v0.2 classes, ObservationPipeline, terrain sensor, or entity tracker is missing.
+- Java source leaked into the installable JAR.
 
-`tools/package-release.sh` then creates `SHA256SUMS.txt` for the released assets.
+`tools/package-release.sh` checks the sources JAR and generates SHA-256 hashes for every published asset.
 
 ## Local build
 
-The checked-in `gradlew` and `gradlew.bat` are checksum-verifying bootstrap launchers. They download Gradle 8.8 into the user's Gradle cache because this generated archive cannot safely embed an unverified wrapper JAR.
-
-Gradle itself runs on Java 17. Compilation targets a Java 8 toolchain.
+Gradle runs on Java 17 and compiles Minecraft code using a Java 8 toolchain:
 
 ```powershell
 .\gradlew.bat clean ciBuild
+.\gradlew.bat runClient
 ```
 
-```bash
-./gradlew clean ciBuild
-```
-
-For local development, install JDK 17 and JDK 8. If Gradle does not discover JDK 8 automatically, set:
+If Gradle cannot discover JDK 8, add its absolute path to the user Gradle properties:
 
 ```properties
-org.gradle.java.installations.paths=/absolute/path/to/jdk8
+org.gradle.java.installations.paths=C:\Path\To\JDK8
 ```
-
-inside the user's `~/.gradle/gradle.properties` file.

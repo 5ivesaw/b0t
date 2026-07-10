@@ -1,28 +1,23 @@
-# Repository tree — Phase 0 GitHub-ready foundation
+# Repository tree — Phase 1 GitHub-ready candidate
 
 ```text
 SawBotV1/
 ├── .github/
-│   ├── workflows/
-│   │   ├── ci.yml
-│   │   └── release.yml
+│   ├── workflows/{ci.yml,release.yml}
 │   ├── ISSUE_TEMPLATE/bug_report.yml
 │   ├── dependabot.yml
 │   └── release.yml
-├── .gitattributes
-├── .gitignore
 ├── README.md
 ├── GITHUB_UPLOAD_QUICKSTART.md
-├── SECURITY.md
-├── LICENSE
 ├── CHANGELOG.md
+├── LICENSE
+├── SECURITY.md
 ├── settings.gradle
 ├── build.gradle
 ├── gradle.properties
-├── gradlew
-├── gradlew.bat
-├── gradle/wrapper/gradle-wrapper.properties
+├── gradlew / gradlew.bat
 ├── docs/
+│   ├── PROJECT_BRIEF.txt
 │   ├── VISION.md
 │   ├── ARCHITECTURE.md
 │   ├── SAFETY_SCOPE.md
@@ -35,41 +30,40 @@ SawBotV1/
 │   ├── SOURCE_AUDIT.md
 │   ├── RISK_REGISTER.md
 │   ├── PHASE_GATES.md
+│   ├── PHASE0_ACCEPTANCE.md
+│   ├── PHASE1_REPORT.md
 │   ├── GITHUB_RELEASES.md
-│   ├── PHASE0_REPORT.md
-│   ├── PROJECT_BRIEF.txt
-│   ├── PHASE0_FILE_MANIFEST.txt
+│   ├── PHASE1_FILE_MANIFEST.txt
 │   └── REPOSITORY_TREE.md
-├── sawbot-common/
-│   ├── build.gradle
-│   └── src/main/java/dev/fivesaw/sawbot/common/
-│       ├── action/
-│       ├── observation/
-│       └── versioning/
-├── sawbot-forge-1.8.9/
-│   ├── build.gradle
-│   └── src/main/
-│       ├── java/dev/fivesaw/sawbot/forge/
-│       │   ├── client/
-│       │   ├── config/
-│       │   ├── hud/
-│       │   ├── performance/
-│       │   └── safety/
-│       └── resources/
-├── sawbot-trainer/
-├── sawbot-sim/
-├── sawbot-arenas/
-├── sawbot-tools/
+├── sawbot-common/src/main/java/dev/fivesaw/sawbot/common/
+│   ├── action/
+│   ├── events/
+│   ├── observation/
+│   ├── protocol/
+│   └── versioning/
+├── sawbot-forge-1.8.9/src/main/
+│   ├── java/dev/fivesaw/sawbot/forge/
+│   │   ├── client/
+│   │   ├── config/
+│   │   ├── hud/
+│   │   ├── map/
+│   │   ├── performance/
+│   │   ├── safety/
+│   │   ├── sensors/
+│   │   └── tracking/
+│   └── resources/
+├── sawbot-trainer/        # gated placeholder
+├── sawbot-sim/            # gated placeholder
+├── sawbot-arenas/         # gated placeholder
+├── sawbot-tools/          # gated placeholder
 ├── prototypes/control-center.html
 ├── verification-stubs/
 ├── verification-tests/
 └── tools/
-    ├── bootstrap-toolchain.ps1
-    ├── gradle-bootstrap.ps1
-    ├── preflight.ps1
     ├── offline-verify.sh
     ├── package-release.sh
-    └── verify-built-jar.py
+    ├── verify-built-jar.py
+    └── local bootstrap/preflight scripts
 ```
 
-The requested future module boundaries remain present. Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the Phase 0 Gradle build; trainer, simulator, arena, and inspection-tool directories remain documented placeholders until their gated phases begin.
+Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the Gradle build. The future trainer, simulator, arena, and tools boundaries remain present but are intentionally not presented as runnable implementations before their phase gates.

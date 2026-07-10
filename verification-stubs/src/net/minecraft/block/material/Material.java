@@ -1,0 +1,2 @@
+package net.minecraft.block.material;
+public class Material { public static final Material air=new Material(false,true); public static final Material rock=new Material(true,false); public static final Material water=new Material(false,true); public static final Material lava=new Material(false,true); private final boolean blocks,replaceable; public Material(boolean blocks,boolean replaceable){this.blocks=blocks;this.replaceable=replaceable;} public boolean blocksMovement(){return blocks;} public boolean isReplaceable(){return replaceable;} }

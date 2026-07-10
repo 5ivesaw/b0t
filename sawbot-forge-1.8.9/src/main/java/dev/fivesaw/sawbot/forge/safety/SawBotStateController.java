@@ -20,7 +20,7 @@ public final class SawBotStateController {
     public void toggleEnabled() {
         if (mode == SawBotMode.DISABLED) {
             mode = SawBotMode.ENABLED;
-            logger.warn("SawBotV1 enabled in Phase 0. No model or actuator loop exists yet.");
+            logger.warn("SawBotV1 enabled in Phase 1. Sensors run, but no model or actuator loop exists yet.");
         } else {
             disableAndRelease("toggle disable");
         }

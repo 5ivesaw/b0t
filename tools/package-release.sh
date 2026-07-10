@@ -16,31 +16,36 @@ python3 "$ROOT/tools/verify-built-jar.py" "$FINAL_JAR" --expected-version "$VERS
   echo "ERROR: sources JAR does not exist: $SOURCES_JAR" >&2
   exit 3
 }
+
 cp "$FINAL_JAR" "$DIST/"
 cp "$SOURCES_JAR" "$DIST/"
-cp "$ROOT/docs/PHASE0_REPORT.md" "$DIST/PHASE0_REPORT.md"
+cp "$ROOT/docs/PHASE1_REPORT.md" "$DIST/PHASE1_REPORT.md"
+cp "$ROOT/docs/PHASE0_ACCEPTANCE.md" "$DIST/PHASE0_ACCEPTANCE.md"
 cp "$ROOT/docs/GITHUB_RELEASES.md" "$DIST/GITHUB_RELEASES.md"
 
 (
   cd "$DIST"
-  sha256sum SawBotV1-* PHASE0_REPORT.md GITHUB_RELEASES.md > SHA256SUMS.txt
+  sha256sum SawBotV1-* PHASE1_REPORT.md PHASE0_ACCEPTANCE.md GITHUB_RELEASES.md > SHA256SUMS.txt
 )
 
 cat > "$DIST/release-notes.md" <<NOTES
 # SawBotV1 $VERSION
 
-Phase 0 Forge foundation for Minecraft 1.8.9.
+Phase 1 internal-eyes candidate for Minecraft Forge 1.8.9.
 
 ## Release assets
 
 - \`SawBotV1-$VERSION-mc1.8.9.jar\`: installable Forge mod.
 - \`SawBotV1-$VERSION-sources.jar\`: Java source archive.
 - \`SHA256SUMS.txt\`: integrity hashes.
-- \`PHASE0_REPORT.md\`: exact implementation and verification report.
+- \`PHASE1_REPORT.md\`: implementation, validation, limitations, and runtime checklist.
+- \`PHASE0_ACCEPTANCE.md\`: recorded Phase 0 runtime acceptance evidence.
 
 ## Scope
 
-This release contains the safe lifecycle, key bindings, compact HUD, versioned observation/action contracts, performance instrumentation, and project documentation. It intentionally contains no neural model, Bedwars automation, packet advantage, screenshot pipeline, aim assist, scaffold controller, or public-server automation.
+This release adds exact client-internal self state, a bounded 13x9x13 egocentric terrain tensor, an incrementally cached 33x33 mid-range map, loaded-entity tracking with explicit line-of-sight/occlusion/attackability, inventory encoding, bounded events, landmarks, server timing, immutable ObservationSnapshot v0.2, and an in-game inspector.
+
+It intentionally contains no neural model, autonomous actuator loop, Bedwars policy, screen capture, OCR, packet advantage, reach modification, aim assist, scaffold controller, or public-server automation.
 NOTES
 
 printf 'Packaged release assets in %s\n' "$DIST"

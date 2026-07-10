@@ -1,42 +1,46 @@
-# Upload SawBotV1 to GitHub
+# Update `5ivesaw/b0t` with SawBotV1 Phase 1
 
-The ZIP is arranged so its extracted contents are the repository root. The `.github` directory must be uploaded because it contains the build and release workflows.
+Extract the Phase 1 ZIP and copy/overwrite its contents into the root of your existing local `b0t` repository. Keep the hidden `.github` directory.
 
-## Recommended: GitHub Desktop
+From PowerShell inside that repository:
 
-1. Extract the ZIP into a folder named `SawBotV1`.
-2. In GitHub Desktop, choose **File → Add local repository**.
-3. Select the extracted `SawBotV1` folder.
-4. If prompted, choose **create a repository here**.
-5. Commit all files with the message `Initial SawBotV1 Phase 0 foundation`.
-6. Select **Publish repository**.
-7. Open the repository on GitHub and select **Actions**.
-8. Confirm the **CI** workflow runs.
-
-## Command-line alternative
-
-Create an empty GitHub repository first, then run these commands inside the extracted folder:
-
-```bash
-git init
+```powershell
+git status
 git add .
-git commit -m "Initial SawBotV1 Phase 0 foundation"
-git branch -M main
-git remote add origin https://github.com/YOUR-NAME/SawBotV1.git
-git push -u origin main
+git commit -m "Implement SawBotV1 Phase 1 internal eyes"
+git push origin main
 ```
 
-Replace `YOUR-NAME` with the GitHub account or organization.
+Open `https://github.com/5ivesaw/b0t/actions` and wait for both CI jobs:
 
-## Publish the first release
+- **Offline contracts and safety checks**
+- **Build Forge 1.8.9 mod**
 
-After CI succeeds:
+After both pass, publish the Phase 1 prerelease from the website:
 
-1. Open **Actions** on GitHub.
+1. Open **Actions**.
 2. Select **Release**.
 3. Select **Run workflow**.
-4. Enter `0.1.0-alpha.0`.
+4. Enter `0.2.0-alpha.0`.
 5. Keep **Publish as a prerelease** enabled.
-6. Run the workflow.
+6. Run it.
 
-The workflow creates tag `v0.1.0-alpha.0` and attaches the installable Minecraft Forge JAR, source JAR, checksums, and reports to the GitHub Release.
+Or create the release with a tag after CI passes:
+
+```powershell
+git tag -a v0.2.0-alpha.0 -m "SawBotV1 Phase 1 internal eyes"
+git push origin v0.2.0-alpha.0
+```
+
+The release should contain:
+
+```text
+SawBotV1-0.2.0-alpha.0-mc1.8.9.jar
+SawBotV1-0.2.0-alpha.0-sources.jar
+SHA256SUMS.txt
+PHASE1_REPORT.md
+PHASE0_ACCEPTANCE.md
+GITHUB_RELEASES.md
+```
+
+Install only the `-mc1.8.9.jar` file in the Forge 1.8.9 `mods` folder. Remove the old `0.1.0-alpha.0` JAR first so two SawBot versions do not load together.
