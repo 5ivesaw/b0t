@@ -9,6 +9,7 @@ import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.forge.inspection.SnapshotJsonWriter;
+import dev.fivesaw.sawbot.forge.map.LandmarkSensor;
 import java.io.StringWriter;
 import dev.fivesaw.sawbot.forge.safety.SawBotMode;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
@@ -45,10 +46,13 @@ public final class FoundationContractTest {
         midRangeUsesBoundedHintScans();
         midRangeHazardsAreNotSafeLanding();
         entityTeamClassificationIsConservative();
+        entityVisibilityUpdatesAcrossWallTransition();
+        worldSpawnLandmarkResolvesToStandableSurface();
         rollingWindowRemainsBounded();
         keyDefaultsAvoidVanillaFunctionConflicts();
         safetyControllerReleasesEveryHeldControl();
         observationFreezeIsIndependentOfEnableState();
+        tracerToggleIsIndependentOfEntityBoxes();
         phase1PipelineCreatesBoundedSnapshot();
         frozenPipelinePreservesSnapshot();
         egocentricInverseTransformsAreStable();
@@ -78,11 +82,50 @@ public final class FoundationContractTest {
     private static void midRangeUsesBoundedHintScans(){World world=new World();for(int x=-20;x<=20;x++)for(int z=-20;z<=20;z++)world.setBlockStateForTest(new BlockPos(x,63,z),Blocks.wool.getDefaultState());EntityPlayerSP player=new EntityPlayerSP();player.posX=0.5;player.posY=64;player.posZ=0.5;MidRangeMapSensor sensor=new MidRangeMapSensor();for(int tick=1;tick<=17;tick++)sensor.update(player,world,tick);world.resetGetBlockStateCallsForTest();sensor.update(player,world,18);require(world.getBlockStateCallsForTest()<800,"midrange hint scan stays bounded");}
     private static void midRangeHazardsAreNotSafeLanding(){World world=new World();world.setBlockStateForTest(new BlockPos(0,63,0),Blocks.cactus.getDefaultState());EntityPlayerSP player=new EntityPlayerSP();player.posX=0.5;player.posY=64;player.posZ=0.5;MidRangeMapSensor sensor=new MidRangeMapSensor();for(int tick=1;tick<=17;tick++)sensor.update(player,world,tick);short flags=sensor.snapshot().flags()[MidRangeMapSnapshot.index(0,0)];require((flags&MidRangeMapSnapshot.FLAG_VOID)==0,"cactus column is a surface");require((flags&MidRangeMapSnapshot.FLAG_SAFE_LANDING)==0,"cactus is not safe landing");}
     private static void entityTeamClassificationIsConservative(){World world=new World();EntityPlayerSP player=new EntityPlayerSP();player.posY=64;EntityPlayer other=new EntityPlayer();other.posX=2;other.posY=64;world.loadedEntityList.add(other);EntityTrackerSensor tracker=new EntityTrackerSensor();EntitySetSnapshot unknown=tracker.capture(player,world,1);require(unknown.entities().get(0).teamRelation()==TeamRelation.UNKNOWN,"players without teams remain unknown");Team a=new Team();Team b=new Team();player.setTeamForTest(a);other.setTeamForTest(a);require(tracker.capture(player,world,2).entities().get(0).teamRelation()==TeamRelation.TEAMMATE,"same scoreboard team");other.setTeamForTest(b);require(tracker.capture(player,world,3).entities().get(0).teamRelation()==TeamRelation.ENEMY,"different scoreboard teams");}
+    private static void entityVisibilityUpdatesAcrossWallTransition(){
+        World world=new World();
+        EntityPlayerSP player=new EntityPlayerSP();player.posX=0.5;player.posY=64;player.posZ=0.5;
+        EntityPlayer other=new EntityPlayer();other.posX=4.5;other.posY=64;other.posZ=0.5;world.loadedEntityList.add(other);
+        world.setBlockStateForTest(new BlockPos(2,64,0),Blocks.wool.getDefaultState());
+        world.setBlockStateForTest(new BlockPos(2,65,0),Blocks.wool.getDefaultState());
+        EntityTrackerSensor tracker=new EntityTrackerSensor();
+        EntityObservation blocked=tracker.capture(player,world,1).entities().get(0);
+        require(!blocked.lineOfSight()&&blocked.occluded(),"wall blocks entity LOS");
+        int trackingId=blocked.trackingId();
+        world.setBlockStateForTest(new BlockPos(2,64,0),Blocks.air.getDefaultState());
+        world.setBlockStateForTest(new BlockPos(2,65,0),Blocks.air.getDefaultState());
+        EntityObservation visible=tracker.capture(player,world,2).entities().get(0);
+        require(visible.lineOfSight()&&!visible.occluded(),"LOS updates after wall clears");
+        require(visible.trackingId()==trackingId,"LOS transition preserves tracking id");
+    }
+    private static void worldSpawnLandmarkResolvesToStandableSurface(){
+        World world=new World();world.setBlockStateForTest(new BlockPos(0,3,0),Blocks.wool.getDefaultState());
+        EntityPlayerSP player=new EntityPlayerSP();player.posX=0.5;player.posY=4;player.posZ=0.5;
+        LandmarkSensor sensor=new LandmarkSensor();
+        LandmarkObservation landmark=sensor.capture(player,world,1).landmarks().get(0);
+        require(Math.abs(landmark.up())<0.0001f,"spawn landmark uses top surface");
+        require(landmark.confidence()==1f,"resolved spawn landmark confidence");
+        world.resetGetBlockStateCallsForTest();
+        LandmarkObservation cached=sensor.capture(player,world,2).landmarks().get(0);
+        require(world.getBlockStateCallsForTest()==0,"spawn surface cache avoids repeated scans");
+        require(Math.abs(cached.up())<0.0001f,"cached spawn surface remains stable");
+    }
+
     private static void rollingWindowRemainsBounded(){RollingTimingWindow window=new RollingTimingWindow(3);window.add(10);window.add(20);window.add(30);window.add(40);require(window.count()==3,"bounded count");require(window.averageNanos()==30,"ring average");require(window.latestNanos()==40,"latest");require(window.maximumNanos()==40,"maximum");}
 
     private static void keyDefaultsAvoidVanillaFunctionConflicts(){SawBotKeyBindings keys=new SawBotKeyBindings();require(keys.toggleEnabled.getKeyCode()==org.lwjgl.input.Keyboard.KEY_F10,"enable defaults to F10");require(keys.toggleFreeze.getKeyCode()==org.lwjgl.input.Keyboard.KEY_P,"freeze defaults to P");require(keys.toggleTelemetry.getKeyCode()==org.lwjgl.input.Keyboard.KEY_NONE,"telemetry remains unbound");require(keys.toggleEnabled.getKeyCode()!=63&&keys.toggleEnabled.getKeyCode()!=64&&keys.toggleEnabled.getKeyCode()!=66,"enable avoids F5/F6/F8");require(keys.toggleFreeze.getKeyCode()!=63&&keys.toggleFreeze.getKeyCode()!=64&&keys.toggleFreeze.getKeyCode()!=66,"freeze avoids F5/F6/F8");}
     private static void safetyControllerReleasesEveryHeldControl(){Minecraft minecraft=Minecraft.getMinecraft();int[] keys={1,2,3,4,5,6,7,8,9,10,11};for(int key:keys)KeyBinding.setKeyBindState(key,true);SawBotStateController controller=new SawBotStateController(minecraft,new TestLogger());controller.toggleEnabled();require(controller.mode()==SawBotMode.ENABLED,"controller enabled");controller.emergencyStop();require(controller.mode()==SawBotMode.DISABLED,"controller disabled");require("emergency stop".equals(controller.lastStopReason()),"stop reason");for(int key:keys)require(!KeyBinding.isKeyDownForTest(key),"key released "+key);}
     private static void observationFreezeIsIndependentOfEnableState(){Minecraft minecraft=Minecraft.getMinecraft();SawBotStateController controller=new SawBotStateController(minecraft,new TestLogger());require(controller.mode()==SawBotMode.DISABLED,"freeze test starts disabled");require(!controller.observationsFrozen(),"freeze starts off");controller.toggleFrozen();require(controller.observationsFrozen(),"freeze works while disabled");require(controller.mode()==SawBotMode.DISABLED,"freeze does not enable control");require(!controller.mayApplyAutonomousActions(),"disabled frozen state cannot actuate");controller.toggleEnabled();require(controller.mode()==SawBotMode.ENABLED,"enable remains independent");require(controller.observationsFrozen(),"enable preserves frozen snapshot");require(!controller.mayApplyAutonomousActions(),"frozen enabled state cannot actuate");controller.toggleFrozen();require(!controller.observationsFrozen(),"unfreeze works");require(controller.mayApplyAutonomousActions(),"enabled unfrozen state may actuate later");}
+    private static void tracerToggleIsIndependentOfEntityBoxes(){
+        SawBotStateController controller=new SawBotStateController(Minecraft.getMinecraft(),new TestLogger());
+        require(controller.entityTracersVisible(),"entity tracers start visible");
+        require(!controller.entityOverlayVisible(),"entity boxes start hidden");
+        controller.toggleEntityOverlay();
+        controller.toggleEntityTracers();
+        require(controller.entityOverlayVisible(),"entity box toggle remains on");
+        require(!controller.entityTracersVisible(),"entity tracers can be disabled independently");
+    }
+
     private static ObservationSnapshot pipelineSnapshot;
     private static void phase1PipelineCreatesBoundedSnapshot(){Minecraft minecraft=Minecraft.getMinecraft();World world=new World();EntityPlayerSP player=new EntityPlayerSP();player.posX=0.5;player.posY=64;player.posZ=0.5;player.onGround=true;world.setBlockStateForTest(new BlockPos(0,63,0),Blocks.wool.getDefaultState());player.inventory.mainInventory[0]=new ItemStack(Items.iron_ingot,4);player.inventory.mainInventory[1]=new ItemStack(new ItemBlock(Blocks.wool),16);EntityPlayer enemy=new EntityPlayer();enemy.posX=3;enemy.posY=64;enemy.posZ=0.5;world.loadedEntityList.add(enemy);minecraft.theWorld=world;minecraft.thePlayer=player;ObservationPipeline pipeline=new ObservationPipeline(minecraft,2);pipeline.tick(1,false);pipeline.tick(2,false);pipelineSnapshot=pipeline.latest();require(pipelineSnapshot!=null,"pipeline snapshot");require(pipelineSnapshot.schemaVersion().equals(SchemaVersion.OBSERVATION_V0_2),"pipeline schema");require(pipelineSnapshot.localTerrain().blockStateIds().length==LocalTerrainSnapshot.CELL_COUNT,"terrain bounded");require(pipelineSnapshot.midRangeMap().relativeSurfaceY().length==MidRangeMapSnapshot.COLUMN_COUNT,"map bounded");require(pipelineSnapshot.entities().count()==1,"entity captured");require(pipelineSnapshot.inventory().iron()==4&&pipelineSnapshot.inventory().wool()==16,"resources captured");require((pipelineSnapshot.sensorValidityFlags()&SensorValidity.ALL_PHASE1)==SensorValidity.ALL_PHASE1,"validity flags");require(pipelineSnapshot.sensorTimings().totalNanos()>=0,"timing captured");}
     private static void frozenPipelinePreservesSnapshot(){Minecraft minecraft=Minecraft.getMinecraft();ObservationPipeline pipeline=new ObservationPipeline(minecraft,1);pipeline.tick(10,false);ObservationSnapshot before=pipeline.latest();require(before!=null,"freeze baseline");pipeline.tick(11,true);require(pipeline.latest().sequenceNumber()==before.sequenceNumber(),"frozen sequence stable");}
@@ -169,7 +212,7 @@ public final class FoundationContractTest {
     private static void phase2KeyDefaultsAreStable(){
         SawBotKeyBindings keys=new SawBotKeyBindings();
         Set<Integer> codes=new HashSet<Integer>();
-        int[] values={keys.stepObservation.getKeyCode(),keys.cycleInspectorPage.getKeyCode(),keys.toggleTerrainOverlay.getKeyCode(),keys.toggleCollisionOverlay.getKeyCode(),keys.toggleEntityOverlay.getKeyCode(),keys.toggleLandmarkOverlay.getKeyCode(),keys.previousEntity.getKeyCode(),keys.nextEntity.getKeyCode(),keys.exportSnapshot.getKeyCode()};
+        int[] values={keys.stepObservation.getKeyCode(),keys.cycleInspectorPage.getKeyCode(),keys.toggleTerrainOverlay.getKeyCode(),keys.toggleCollisionOverlay.getKeyCode(),keys.toggleEntityOverlay.getKeyCode(),keys.toggleEntityTracers.getKeyCode(),keys.toggleLandmarkOverlay.getKeyCode(),keys.previousEntity.getKeyCode(),keys.nextEntity.getKeyCode(),keys.exportSnapshot.getKeyCode()};
         for(int value:values){require(value!=org.lwjgl.input.Keyboard.KEY_NONE,"phase2 key is bound");require(codes.add(Integer.valueOf(value)),"phase2 key unique");}
     }
 

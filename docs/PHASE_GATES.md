@@ -63,9 +63,9 @@ Evidence: `docs/PHASE1_ACCEPTANCE.md`.
 
 ## Phase 2 — Sensor inspector
 
-Implemented in candidate `0.3.0-alpha.0`:
+Implemented in candidate `0.3.0-alpha.1`:
 
-- [x] Independently toggleable terrain, collision/support, entity/LOS, and landmark overlays.
+- [x] Independently toggleable terrain, collision/support, entity boxes, entity tracers, and landmark overlays.
 - [x] Selected block decoding from frozen snapshot coordinates.
 - [x] Stable entity selection and cycling.
 - [x] Compact body, terrain, entity, inventory, event, difference, and system pages.
@@ -82,8 +82,10 @@ Runtime acceptance required:
 - [ ] Updated JAR launches without repeated SawBot errors.
 - [ ] Every inspector page is usable at 1366×768.
 - [ ] Terrain and collision overlays correspond to selected model cells.
-- [ ] Entity boxes, IDs, LOS, and occlusion are correct.
-- [ ] Landmark marker is correct.
+- [ ] Entity boxes and IDs remain stable.
+- [ ] LOS/OCC updates in both directions when entities move around cover.
+- [ ] V toggles tracers independently and tracers remain anchored while walking.
+- [ ] World-spawn landmark resolves to the standable surface instead of underground.
 - [ ] One `.` press while frozen increments observation sequence exactly once.
 - [ ] O produces a valid bounded JSON export matching the HUD sequence.
 - [ ] Difference page responds to known changes.
@@ -92,6 +94,6 @@ Runtime acceptance required:
 - [ ] Individual overlay costs are measured without serious FPS collapse.
 - [ ] Five-minute inspector test has no repeated SawBot errors.
 
-**Gate: PENDING USER RUNTIME TEST.**
+**Gate: PENDING `0.3.0-alpha.1` CORRECTION RETEST.**
 
 No Phase 3 telemetry implementation begins before this checklist passes.

@@ -4,7 +4,7 @@ SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a 
 
 ## Current gate
 
-**Phase 0 and Phase 1 passed real runtime acceptance on the target machine.** This repository contains the **Phase 2 — Sensor Inspector candidate** (`0.3.0-alpha.0`). Phase 2 must pass its GitHub build and in-client checklist before Phase 3 telemetry begins.
+**Phase 0 and Phase 1 passed real runtime acceptance on the target machine.** This repository contains the **Phase 2 — Sensor Inspector runtime-correction candidate** (`0.3.0-alpha.1`). Phase 2 must pass its GitHub build and in-client checklist before Phase 3 telemetry begins.
 
 Implemented foundation:
 
@@ -47,11 +47,11 @@ Every push or pull request runs:
 To publish this candidate:
 
 1. Open **Actions → Release → Run workflow**.
-2. Enter `0.3.0-alpha.0`.
+2. Enter `0.3.0-alpha.1`.
 3. Keep prerelease enabled.
 4. Run the workflow.
 
-The workflow creates tag `v0.3.0-alpha.0` and publishes the installable JAR, sources, checksums, Phase 2 report, and earlier acceptance evidence.
+The workflow creates tag `v0.3.0-alpha.1` and publishes the installable JAR, sources, checksums, Phase 2 report, and earlier acceptance evidence.
 
 ## Toolchain
 
@@ -74,7 +74,7 @@ Install JDK 17 and JDK 8, then run:
 The final remapped mod is written to:
 
 ```text
-sawbot-forge-1.8.9/build/libs/SawBotV1-0.3.0-alpha.0-mc1.8.9.jar
+sawbot-forge-1.8.9/build/libs/SawBotV1-0.3.0-alpha.1-mc1.8.9.jar
 ```
 
 Launch a development client with:
@@ -89,7 +89,7 @@ Launch a development client with:
 bash tools/offline-verify.sh
 ```
 
-This verifies Java 8 source compatibility against narrow APIs, runs 508 assertions, emits and parses a complete debug snapshot, and validates repository/release structure. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
+This verifies Java 8 source compatibility against narrow APIs, runs 521 assertions, emits and parses a complete debug snapshot, and validates repository/release structure. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
 
 ## Controls
 
@@ -106,7 +106,8 @@ All bindings are configurable under **Options → Controls → SawBotV1**.
 | H | Next inspector page |
 | B | Toggle terrain-cell overlay |
 | C | Toggle collision/support overlay |
-| N | Toggle entity/LOS overlay |
+| N | Toggle entity boxes and LOS/OCC labels |
+| V | Toggle entity tracers independently |
 | M | Toggle landmark overlay |
 | [ / ] | Previous/next tracked entity |
 | O | Export current snapshot as JSON |

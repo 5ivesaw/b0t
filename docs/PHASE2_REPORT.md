@@ -1,7 +1,7 @@
 # PHASE REPORT — Phase 2 Sensor Inspector
 
 Date: 2026-07-10  
-Candidate version: `0.3.0-alpha.0`  
+Candidate version: `0.3.0-alpha.1`  
 Observation schema: unchanged at `sawbot.observation/0.2`  
 Debug export format: `sawbot.snapshot.debug/0.1`
 
@@ -11,9 +11,10 @@ Debug export format: `sawbot.snapshot.debug/0.1`
 - Added independently toggleable world overlays:
   - B — local terrain tensor and semantic cell outlines.
   - C — collision-height classes plus left/centre/right support probes.
-  - N — bounded entity boxes, tracking IDs, team/LOS/occlusion colours, and sight lines.
+  - N — bounded entity boxes, tracking IDs, and team/LOS/occlusion labels.
+  - V — independently toggleable sight-line tracers, capped at 16.
   - M — semantic landmark markers and labels.
-- Added selected-block inspection using the crosshair and the exact frozen snapshot basis.
+- Added selected-block inspection using the crosshair and the exact frozen snapshot basis; the yellow outline is the automatic current selection.
 - Added selected-entity inspection with stable tracking IDs and `[` / `]` cycling, including occluded loaded entities.
 - Added eight compact inspector pages selected with H:
   - Summary
@@ -33,6 +34,9 @@ Debug export format: `sawbot.snapshot.debug/0.1`
 - Drained queued lower-priority key presses after takeover/emergency actions so a simultaneous inspector or enable press cannot fire on the next tick.
 - Preserved the Phase 1 observation schema; no neural/model fields were silently changed.
 - Added world-render timing to the HUD.
+- After first target-machine testing, anchored tracers to the live interpolated eye position to eliminate movement jitter.
+- Replaced the single Minecraft visibility result with seven current bounding-box ray samples so LOS/OCC transitions refresh when an entity moves around a wall.
+- Resolved the world-spawn landmark to the nearest loaded standable surface rather than the raw underground save coordinate.
 - Updated GitHub CI, JAR validation, release packaging, version metadata, and reports for Phase 2.
 
 ## Files created
@@ -50,16 +54,20 @@ Inspector and export runtime:
 - `.../inspection/SnapshotJsonWriter.java`
 - `.../inspection/SnapshotExportService.java`
 - `sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.java`
+- `sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/tracking/VisibilitySampler.java`
 
 Evidence and report:
 
 - `docs/PHASE1_ACCEPTANCE.md`
 - `docs/PHASE2_REPORT.md`
+- `docs/PHASE2_RUNTIME_FEEDBACK.md`
 
 ## Materially changed
 
 - `EgocentricTransform.java`
 - `ObservationPipeline.java`
+- `LandmarkSensor.java`
+- `EntityTrackerSensor.java`
 - `ClientRuntime.java`
 - `SawBotKeyBindings.java`
 - `SawBotStateController.java`
@@ -88,7 +96,8 @@ P         Freeze/unfreeze observation
 H         Next inspector page
 B         Toggle terrain-cell overlay
 C         Toggle collision/support overlay
-N         Toggle entity/LOS overlay
+N         Toggle entity boxes and LOS/OCC labels
+V         Toggle entity tracers independently
 M         Toggle landmark overlay
 [ / ]     Previous/next tracked entity
 O         Export current immutable snapshot as JSON
@@ -126,7 +135,7 @@ clean ZIP extraction and manifest comparison
 
 ## Tests
 
-- PASS — `FoundationContractTest` — 508 assertions.
+- PASS — `FoundationContractTest` — 521 assertions.
 - PASS — Phase 0 and Phase 1 contract/safety regression tests.
 - PASS — cardinal and continuous inverse egocentric transforms.
 - PASS — deterministic observation difference counts.
@@ -151,6 +160,7 @@ clean ZIP extraction and manifest comparison
 - All world overlays are OFF by default.
 - Terrain and collision rendering are each capped at 256 boxes per frame.
 - Entities remain capped at 32 and landmarks at 64 by the observation contract.
+- Tracers are independently toggleable and capped at 16 even when more entities are tracked.
 - Debug export queue capacity is four immutable snapshots.
 - Export serialization and disk I/O run on one daemon worker, never the Minecraft client thread.
 - The worker receives immutable snapshots only and never accesses Minecraft world objects.
@@ -180,7 +190,7 @@ Occluded loaded entities may be rendered in the controlled private research envi
 - The one-step feature advances SawBot's observation system once; it does not pause the game world.
 - Collision rendering represents the model's collision-height classes, not every source AABB shape.
 - Terrain/collision overlays intentionally cap rendered cells to protect Intel HD 520 performance.
-- The only current semantic landmark is world spawn; Bedwars landmarks require the later task adapter.
+- The only current semantic landmark is world spawn; its marker is surface-resolved only while the spawn column is loaded. Bedwars landmarks require the later task adapter.
 - Snapshot export is human-readable debug JSON and is not the Phase 3 high-volume trajectory format.
 - Comparison is against the immediately previous published snapshot. A selectable arbitrary baseline can be added only if runtime testing demonstrates a concrete need.
 - No model, actuator, autonomous movement, Bedwars logic, or telemetry trajectory writer exists in this phase.
@@ -188,16 +198,18 @@ Occluded loaded entities may be rendered in the controlled private research envi
 ## USER CHECKLIST
 
 - [ ] GitHub CI passes offline verification and the real Loom/Forge build.
-- [ ] `SawBotV1-0.3.0-alpha.0-mc1.8.9.jar` launches with no repeated SawBot error.
+- [ ] `SawBotV1-0.3.0-alpha.1-mc1.8.9.jar` launches with no repeated SawBot error.
 - [ ] F7 opens and closes the Phase 2 panel.
 - [ ] H cycles through all eight pages without hiding Minecraft controls.
 - [ ] B shows the local tensor boundary and coloured non-air cells.
 - [ ] C shows collision-height boxes and three support probe lines.
 - [ ] N shows entity boxes and `#trackingId` labels.
+- [ ] V disables and re-enables tracers without hiding boxes or labels.
+- [ ] Tracers remain visually anchored while walking and strafing.
 - [ ] Moving an entity behind a wall visibly changes LOS to OCC while its ID remains stable.
 - [ ] `[` and `]` cycle tracked entities, including an occluded one.
-- [ ] M shows the world-spawn landmark marker.
-- [ ] Aiming at a block displays world coordinates, R/U/F offsets, tensor index, state ID, category, flags, and collision class.
+- [ ] M shows the world-spawn landmark marker on the standable surface rather than underground.
+- [ ] Aiming at a block automatically shows a yellow outline; Summary/Terrain pages display world coordinates, R/U/F offsets, tensor index, state ID, category, flags, and collision class.
 - [ ] P freezes the observation and all displayed model inputs.
 - [ ] While frozen, one `.` press increments Obs # exactly once; waiting does not increment it again.
 - [ ] O creates one valid JSON file under `.minecraft/sawbotv1/exports/`.
@@ -212,12 +224,12 @@ Occluded loaded entities may be rendered in the controlled private research envi
 ## How to test
 
 1. Push the repository and wait for GitHub Actions CI to pass.
-2. Publish or download `v0.3.0-alpha.0` and install only that SawBot JAR.
+2. Publish or download `v0.3.0-alpha.1` and install only that SawBot JAR.
 3. Join the same local test world used for Phase 1.
 4. Open F7 and cycle H through all pages.
-5. Toggle B, C, N, and M one at a time before combining them.
+5. Toggle B, C, N, V, and M one at a time before combining them.
 6. Aim at full blocks, slabs, stairs, fences, hazards, liquids, and air-adjacent edges.
-7. Spawn a cow or another entity, note its tracking ID, hide it behind a wall, and use `[` / `]`.
+7. Spawn two entities, note their tracking IDs, move each into and out of cover, toggle V while walking, and use `[` / `]`.
 8. Freeze with P, press `.` once, wait several seconds, then press `.` once more.
 9. Press O, close or pause the game, and inspect the newest JSON under `.minecraft/sawbotv1/exports/`.
 10. Re-run F10/F9/F12 and continue for five minutes while observing FPS and the System page.

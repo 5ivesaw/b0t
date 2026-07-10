@@ -24,6 +24,7 @@ docs/PHASE1_FILE_MANIFEST.txt
 docs/PHASE1_REPORT.md
 docs/PHASE2_FILE_MANIFEST.txt
 docs/PHASE2_REPORT.md
+docs/PHASE2_RUNTIME_FEEDBACK.md
 docs/PHASE_GATES.md
 docs/PROJECT_BRIEF.txt
 docs/REPOSITORY_TREE.md
@@ -112,6 +113,7 @@ sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/sensors/ServerTimingSe
 sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/telemetry/.gitkeep
 sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/tracking/.gitkeep
 sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/tracking/EntityTrackerSensor.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/tracking/VisibilitySampler.java
 sawbot-forge-1.8.9/src/main/resources/assets/sawbotv1/lang/en_US.lang
 sawbot-forge-1.8.9/src/main/resources/mcmod.info
 sawbot-sim/README.md
@@ -189,6 +191,7 @@ verification-stubs/src/net/minecraft/util/AxisAlignedBB.java
 verification-stubs/src/net/minecraft/util/BlockPos.java
 verification-stubs/src/net/minecraft/util/MathHelper.java
 verification-stubs/src/net/minecraft/util/MovingObjectPosition.java
+verification-stubs/src/net/minecraft/util/Vec3.java
 verification-stubs/src/net/minecraft/world/World.java
 verification-stubs/src/net/minecraft/world/WorldProvider.java
 verification-stubs/src/net/minecraft/world/storage/WorldInfo.java

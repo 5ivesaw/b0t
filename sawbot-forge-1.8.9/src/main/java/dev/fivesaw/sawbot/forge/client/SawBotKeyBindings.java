@@ -17,6 +17,7 @@ public final class SawBotKeyBindings {
     public final KeyBinding toggleTerrainOverlay = new KeyBinding("key.sawbotv1.terrain", Keyboard.KEY_B, CATEGORY);
     public final KeyBinding toggleCollisionOverlay = new KeyBinding("key.sawbotv1.collision", Keyboard.KEY_C, CATEGORY);
     public final KeyBinding toggleEntityOverlay = new KeyBinding("key.sawbotv1.entities", Keyboard.KEY_N, CATEGORY);
+    public final KeyBinding toggleEntityTracers = new KeyBinding("key.sawbotv1.tracers", Keyboard.KEY_V, CATEGORY);
     public final KeyBinding toggleLandmarkOverlay = new KeyBinding("key.sawbotv1.landmarks", Keyboard.KEY_M, CATEGORY);
     public final KeyBinding previousEntity = new KeyBinding("key.sawbotv1.previousEntity", Keyboard.KEY_LBRACKET, CATEGORY);
     public final KeyBinding nextEntity = new KeyBinding("key.sawbotv1.nextEntity", Keyboard.KEY_RBRACKET, CATEGORY);
@@ -34,6 +35,7 @@ public final class SawBotKeyBindings {
         ClientRegistry.registerKeyBinding(toggleTerrainOverlay);
         ClientRegistry.registerKeyBinding(toggleCollisionOverlay);
         ClientRegistry.registerKeyBinding(toggleEntityOverlay);
+        ClientRegistry.registerKeyBinding(toggleEntityTracers);
         ClientRegistry.registerKeyBinding(toggleLandmarkOverlay);
         ClientRegistry.registerKeyBinding(previousEntity);
         ClientRegistry.registerKeyBinding(nextEntity);

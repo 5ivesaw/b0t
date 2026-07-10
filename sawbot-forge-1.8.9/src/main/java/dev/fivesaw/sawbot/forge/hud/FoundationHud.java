@@ -58,14 +58,15 @@ public final class FoundationHud {
         }
         draw("Handler avg/max "+micros(tickTiming.averageNanos())+"/"+micros(tickTiming.maximumNanos())+" us  render "+micros(worldRenderer.averageRenderNanos())+"/"+micros(worldRenderer.maximumRenderNanos())+" us",x,y,MUTED); y+=10;
         draw("P freeze  . step  F7 panel  H page  O export",x,y,MUTED); y+=10;
-        draw("B terrain  C collision  N entities  M landmarks  [/] select",x,y,MUTED); y+=10;
+        draw("B terrain  C collision  N entities  V tracers  M landmarks",x,y,MUTED); y+=10;
+        draw("[/] select entity  aim block = yellow selection",x,y,MUTED); y+=10;
         draw("F10 toggle  F9 takeover  F12 emergency",x,y,MUTED);
 
         if(!state.inspectorNotice().isEmpty()){y+=10;draw(state.inspectorNotice(),x,y,INFO);}
         if(state.inspectorVisible()&&snapshot!=null){
             y+=12;
             draw("Inspector "+inspector.page()+"  validity 0x"+Long.toHexString(snapshot.sensorValidityFlags()),x,y,INFO); y+=10;
-            draw("Overlay T/C/E/L "+bit(state.terrainOverlayVisible())+"/"+bit(state.collisionOverlayVisible())+"/"+bit(state.entityOverlayVisible())+"/"+bit(state.landmarkOverlayVisible()),x,y,MUTED); y+=10;
+            draw("Overlay T/C/E/TR/L "+bit(state.terrainOverlayVisible())+"/"+bit(state.collisionOverlayVisible())+"/"+bit(state.entityOverlayVisible())+"/"+bit(state.entityTracersVisible())+"/"+bit(state.landmarkOverlayVisible()),x,y,MUTED); y+=10;
             y=renderPage(snapshot,x,y);
         }
         if(!"idle".equals(exports.status())){y+=10;draw("Export: "+exports.status()+"  queue "+exports.queueSize()+"/"+exports.queueCapacity(),x,y,exports.status().contains("failure")||exports.status().contains("rejected")?ERROR:INFO);}

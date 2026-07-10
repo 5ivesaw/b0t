@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version without the v prefix, for example 0.3.0-alpha.0'
+        description: 'Version without the v prefix, for example 0.3.0-alpha.1'
         required: true
         type: string
       prerelease:
@@ -112,6 +112,7 @@ jobs:
             dist/SawBotV1-${{ steps.release_meta.outputs.version }}-sources.jar
             dist/SHA256SUMS.txt
             dist/PHASE2_REPORT.md
+            dist/PHASE2_RUNTIME_FEEDBACK.md
             dist/PHASE1_ACCEPTANCE.md
             dist/PHASE0_ACCEPTANCE.md
             dist/GITHUB_RELEASES.md
@@ -140,6 +141,7 @@ jobs:
             "dist/SawBotV1-$VERSION-sources.jar" \
             "dist/SHA256SUMS.txt" \
             "dist/PHASE2_REPORT.md" \
+            "dist/PHASE2_RUNTIME_FEEDBACK.md" \
             "dist/PHASE1_ACCEPTANCE.md" \
             "dist/PHASE0_ACCEPTANCE.md" \
             "dist/GITHUB_RELEASES.md" \

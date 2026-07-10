@@ -37,6 +37,7 @@ public final class EntityTrackerSensor {
     private static final long GRACE_TICKS = 40L;
 
     private final Map<Integer, Track> tracks = new HashMap<Integer, Track>();
+    private final VisibilitySampler visibilitySampler = new VisibilitySampler();
     private int nextTrackingId = 1;
 
     public EntitySetSnapshot capture(EntityPlayerSP player, World world, long clientTick) {
@@ -75,11 +76,11 @@ public final class EntityTrackerSensor {
 
         int count = Math.min(EntitySetSnapshot.MAX_ENTITIES, candidates.size());
         List<EntityObservation> result = new ArrayList<EntityObservation>(count);
-        for (int index = 0; index < count; index++) result.add(observe(candidates.get(index), player));
+        for (int index = 0; index < count; index++) result.add(observe(candidates.get(index), player, world));
         return new EntitySetSnapshot(result, Math.max(0, candidates.size() - count));
     }
 
-    private static EntityObservation observe(Candidate candidate, EntityPlayerSP player) {
+    private EntityObservation observe(Candidate candidate, EntityPlayerSP player, World world) {
         Entity entity = candidate.entity;
         Track track = candidate.track;
         double dx = entity.posX - player.posX;
@@ -118,7 +119,7 @@ public final class EntityTrackerSensor {
             heldItem = ItemClassifier.category(stack).ordinal();
             if (entity instanceof EntityPlayer) armour = ((EntityPlayer)entity).getTotalArmorValue();
         }
-        boolean lineOfSight = player.canEntityBeSeen(entity);
+        boolean lineOfSight = visibilitySampler.hasLineOfSight(player, entity, world);
         boolean attackable = entity instanceof EntityLivingBase && !entity.isDead && lineOfSight
             && candidate.distance <= LEGITIMATE_ATTACK_DISTANCE;
         return new EntityObservation(track.trackingId, entity.getEntityId(), kind(entity), relation(entity, player),

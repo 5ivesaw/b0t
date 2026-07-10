@@ -21,22 +21,22 @@ After both pass, publish the prerelease from GitHub Actions:
 1. Open **Actions**.
 2. Select **Release**.
 3. Select **Run workflow**.
-4. Enter `0.3.0-alpha.0`.
+4. Enter `0.3.0-alpha.1`.
 5. Keep prerelease enabled.
 6. Run it.
 
 Or push the release tag after CI passes:
 
 ```powershell
-git tag -a v0.3.0-alpha.0 -m "SawBotV1 Phase 2 sensor inspector"
-git push origin v0.3.0-alpha.0
+git tag -a v0.3.0-alpha.1 -m "SawBotV1 Phase 2 sensor inspector"
+git push origin v0.3.0-alpha.1
 ```
 
 The release should contain:
 
 ```text
-SawBotV1-0.3.0-alpha.0-mc1.8.9.jar
-SawBotV1-0.3.0-alpha.0-sources.jar
+SawBotV1-0.3.0-alpha.1-mc1.8.9.jar
+SawBotV1-0.3.0-alpha.1-sources.jar
 SHA256SUMS.txt
 PHASE2_REPORT.md
 PHASE1_ACCEPTANCE.md

@@ -27,6 +27,7 @@ SawBotV1/
 │   ├── PHASE1_ACCEPTANCE.md
 │   ├── PHASE1_REPORT.md
 │   ├── PHASE2_REPORT.md
+│   ├── PHASE2_RUNTIME_FEEDBACK.md
 │   ├── GITHUB_RELEASES.md
 │   ├── PHASE2_FILE_MANIFEST.txt
 │   └── remaining design/audit documents
@@ -46,7 +47,7 @@ SawBotV1/
 │   │   ├── performance/
 │   │   ├── safety/
 │   │   ├── sensors/
-│   │   └── tracking/
+│   │   └── tracking/     # stable IDs + multi-sample visibility
 │   └── resources/
 ├── sawbot-trainer/        # gated placeholder
 ├── sawbot-sim/            # gated placeholder

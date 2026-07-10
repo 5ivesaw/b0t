@@ -25,6 +25,7 @@ import org.lwjgl.opengl.GL11;
 public final class WorldDebugRenderer {
     private static final int MAX_TERRAIN_BOXES = 256;
     private static final int MAX_COLLISION_BOXES = 256;
+    private static final int MAX_ENTITY_TRACERS = 16;
     private static final double EPSILON = 0.002D;
     private final Minecraft minecraft;
     private final SawBotStateController state;
@@ -54,7 +55,7 @@ public final class WorldDebugRenderer {
             GlStateManager.translate(-manager.viewerPosX, -manager.viewerPosY, -manager.viewerPosZ);
             if (state.terrainOverlayVisible()) renderTerrain(snapshot.localTerrain());
             if (state.collisionOverlayVisible()) renderCollision(snapshot);
-            if (state.entityOverlayVisible()) renderEntities(snapshot, manager);
+            if (state.entityOverlayVisible()) renderEntities(snapshot, manager, partialTicks);
             if (state.landmarkOverlayVisible()) renderLandmarks(snapshot, manager);
             renderSelectedBlock(inspector.selectedBlock());
         } finally {
@@ -134,10 +135,15 @@ public final class WorldDebugRenderer {
         }
     }
 
-    private void renderEntities(ObservationSnapshot snapshot, RenderManager manager) {
+    private void renderEntities(ObservationSnapshot snapshot, RenderManager manager, float partialTicks) {
         beginLines(true, 2.0F);
         SelfState self = snapshot.selfState();
         EntityObservation selected = inspector.selectedEntity(snapshot);
+        double eyeX = interpolate(minecraft.thePlayer.lastTickPosX, minecraft.thePlayer.posX, partialTicks);
+        double eyeY = interpolate(minecraft.thePlayer.lastTickPosY, minecraft.thePlayer.posY, partialTicks)
+            + minecraft.thePlayer.getEyeHeight();
+        double eyeZ = interpolate(minecraft.thePlayer.lastTickPosZ, minecraft.thePlayer.posZ, partialTicks);
+        int tracersDrawn = 0;
         for (EntityObservation entity : snapshot.entities().entities()) {
             double x = self.absoluteX() + EgocentricTransform.worldDx(entity.right(), entity.forward(), self.yawDegrees());
             double y = self.absoluteY() + entity.up();
@@ -146,8 +152,11 @@ public final class WorldDebugRenderer {
             int[] color = entityColor(entity, selected != null && selected.trackingId() == entity.trackingId());
             drawBox(new AxisAlignedBB(x - half, y, z - half, x + half, y + entity.height(), z + half),
                 color[0], color[1], color[2], entity.occluded() ? 145 : 230);
-            drawLine(self.absoluteX(), self.absoluteY() + 1.62D, self.absoluteZ(),
-                x, y + entity.height() * 0.5D, z, color[0], color[1], color[2], entity.lineOfSight() ? 180 : 80);
+            if (state.entityTracersVisible() && tracersDrawn < MAX_ENTITY_TRACERS) {
+                drawLine(eyeX, eyeY, eyeZ, x, y + entity.height() * 0.5D, z,
+                    color[0], color[1], color[2], entity.lineOfSight() ? 180 : 80);
+                tracersDrawn++;
+            }
         }
         endLines();
         for (EntityObservation entity : snapshot.entities().entities()) {
@@ -286,6 +295,11 @@ public final class WorldDebugRenderer {
         GlStateManager.enableTexture2D();
         GlStateManager.enableLighting();
         GlStateManager.disableBlend();
+    }
+
+    private static double interpolate(double previous, double current, float partialTicks) {
+        double t = Math.max(0D, Math.min(1D, partialTicks));
+        return previous + (current - previous) * t;
     }
 
     private static String one(float value) {

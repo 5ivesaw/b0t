@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0-alpha.1 — Phase 2 runtime correction
+
+- Recomputed entity line of sight every observation from seven current bounding-box ray samples.
+- Fixed stale LOS/OCC transitions when tracked entities move around walls.
+- Anchored tracers to the live interpolated player eye position to remove walking jitter.
+- Added an independent V tracer toggle while retaining N for entity boxes and labels.
+- Capped tracers at 16 even when more entities are tracked.
+- Resolved the world-spawn landmark to the nearest loaded standable surface instead of the raw underground save coordinate.
+- Clarified that crosshair block selection is automatic and the yellow outline is the selected block.
+- Added runtime-regression checks for wall transitions, tracking-ID continuity, surface landmark resolution, and tracer independence.
+
 ## 0.3.0-alpha.0 — Phase 2 sensor inspector
 
 - Added independently toggleable terrain, collision/support, entity/LOS, and landmark world overlays.

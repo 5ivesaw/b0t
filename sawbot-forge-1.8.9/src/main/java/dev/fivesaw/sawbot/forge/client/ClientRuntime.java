@@ -99,6 +99,7 @@ public final class ClientRuntime {
         if(keys.toggleTerrainOverlay.isPressed())state.toggleTerrainOverlay();
         if(keys.toggleCollisionOverlay.isPressed())state.toggleCollisionOverlay();
         if(keys.toggleEntityOverlay.isPressed())state.toggleEntityOverlay();
+        if(keys.toggleEntityTracers.isPressed())state.toggleEntityTracers();
         if(keys.toggleLandmarkOverlay.isPressed())state.toggleLandmarkOverlay();
         if(keys.toggleTelemetry.isPressed())state.toggleTelemetryRequest();
     }
@@ -113,6 +114,7 @@ public final class ClientRuntime {
         drain(keys.toggleTerrainOverlay);
         drain(keys.toggleCollisionOverlay);
         drain(keys.toggleEntityOverlay);
+        drain(keys.toggleEntityTracers);
         drain(keys.toggleLandmarkOverlay);
         drain(keys.previousEntity);
         drain(keys.nextEntity);

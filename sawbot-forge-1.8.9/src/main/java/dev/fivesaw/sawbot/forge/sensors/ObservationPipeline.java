@@ -61,7 +61,7 @@ public final class ObservationPipeline {
         start=System.nanoTime();MidRangeMapSnapshot midRange=midRangeSensor.snapshot();long midRangeNanos=elapsed(start);
         start=System.nanoTime();EntitySetSnapshot entities=entitySensor.capture(player,world,clientTick);long entitiesNanos=elapsed(start);
         start=System.nanoTime();InventorySnapshot inventory=inventorySensor.capture(minecraft,player);long inventoryNanos=elapsed(start);
-        start=System.nanoTime();LandmarkSetSnapshot landmarks=landmarkSensor.capture(player,world);long landmarksNanos=elapsed(start);
+        start=System.nanoTime();LandmarkSetSnapshot landmarks=landmarkSensor.capture(player,world,clientTick);long landmarksNanos=elapsed(start);
         start=System.nanoTime();EventHistorySnapshot events=eventSensor.capture(clientTick,self,inventory,entities,terrain);long eventsNanos=elapsed(start);
         start=System.nanoTime();ServerTimingSnapshot serverTiming=timingSensor.capture(minecraft,player,entities,events,clientTick);long serverTimingNanos=elapsed(start);
         long timestamp=System.nanoTime();long nextSequence=++sequenceNumber;ActionCommand previousAction=ActionCommand.zero(Math.max(0,nextSequence-1),timestamp,"none/0");long totalNanos=elapsed(totalStart);

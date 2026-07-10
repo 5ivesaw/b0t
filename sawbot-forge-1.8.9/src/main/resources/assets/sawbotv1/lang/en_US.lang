@@ -9,6 +9,7 @@ key.sawbotv1.page=Next Inspector Page
 key.sawbotv1.terrain=Toggle Terrain Cells
 key.sawbotv1.collision=Toggle Collision/Support Overlay
 key.sawbotv1.entities=Toggle Entity Boxes
+key.sawbotv1.tracers=Toggle Entity Tracers
 key.sawbotv1.landmarks=Toggle Landmark Overlay
 key.sawbotv1.previousEntity=Select Previous Tracked Entity
 key.sawbotv1.nextEntity=Select Next Tracked Entity

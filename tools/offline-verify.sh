@@ -28,7 +28,7 @@ from pathlib import Path
 import json, os
 root=Path(os.environ['ROOT_FOR_PY'])
 resource=root/'sawbot-forge-1.8.9/src/main/resources/mcmod.info'
-text=resource.read_text(encoding='utf-8').replace('${version}','0.3.0-alpha.0').replace('${mcversion}','1.8.9')
+text=resource.read_text(encoding='utf-8').replace('${version}','0.3.0-alpha.1').replace('${mcversion}','1.8.9')
 json.loads(text)
 print('PASS mcmod.info JSON expansion check')
 PYVALIDATEJSON
@@ -45,6 +45,7 @@ required = [
     root / 'docs/GITHUB_RELEASES.md',
     root / 'docs/PHASE0_ACCEPTANCE.md',
     root / 'docs/PHASE2_REPORT.md',
+    root / 'docs/PHASE2_RUNTIME_FEEDBACK.md',
     root / 'docs/PHASE1_ACCEPTANCE.md',
     root / 'GITHUB_UPLOAD_QUICKSTART.md',
 ]
@@ -64,7 +65,8 @@ verifier = (root / 'tools/verify-built-jar.py').read_text(encoding='utf-8')
 if ('dev/fivesaw/sawbot/forge/SawBotMod.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/sensors/ObservationPipeline.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class' not in verifier):
+    or 'dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class' not in verifier
+    or 'dev/fivesaw/sawbot/forge/tracking/VisibilitySampler.class' not in verifier):
     raise SystemExit('Release verifier does not check Phase 2 runtime classes')
 print('PASS GitHub repository packaging check')
 PYREPOCHECK

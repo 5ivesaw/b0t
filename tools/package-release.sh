@@ -20,13 +20,14 @@ python3 "$ROOT/tools/verify-built-jar.py" "$FINAL_JAR" --expected-version "$VERS
 cp "$FINAL_JAR" "$DIST/"
 cp "$SOURCES_JAR" "$DIST/"
 cp "$ROOT/docs/PHASE2_REPORT.md" "$DIST/PHASE2_REPORT.md"
+cp "$ROOT/docs/PHASE2_RUNTIME_FEEDBACK.md" "$DIST/PHASE2_RUNTIME_FEEDBACK.md"
 cp "$ROOT/docs/PHASE1_ACCEPTANCE.md" "$DIST/PHASE1_ACCEPTANCE.md"
 cp "$ROOT/docs/PHASE0_ACCEPTANCE.md" "$DIST/PHASE0_ACCEPTANCE.md"
 cp "$ROOT/docs/GITHUB_RELEASES.md" "$DIST/GITHUB_RELEASES.md"
 
 (
   cd "$DIST"
-  sha256sum SawBotV1-* PHASE2_REPORT.md PHASE1_ACCEPTANCE.md PHASE0_ACCEPTANCE.md GITHUB_RELEASES.md > SHA256SUMS.txt
+  sha256sum SawBotV1-* PHASE2_REPORT.md PHASE2_RUNTIME_FEEDBACK.md PHASE1_ACCEPTANCE.md PHASE0_ACCEPTANCE.md GITHUB_RELEASES.md > SHA256SUMS.txt
 )
 
 cat > "$DIST/release-notes.md" <<NOTES
@@ -45,7 +46,7 @@ Phase 2 sensor-inspector candidate for Minecraft Forge 1.8.9.
 
 ## Scope
 
-This release adds independently toggleable terrain, collision/support, entity/LOS, and landmark overlays; selected block and tracked-entity inspection; eight compact HUD pages; immutable current-versus-previous snapshot comparison; bounded asynchronous human-readable JSON export; and one-observation-tick stepping while frozen. It preserves Observation Contract v0.2 and the accepted Phase 1 sensors.
+This release adds independently toggleable terrain, collision/support, entity boxes, entity tracers, and landmark overlays; selected block and tracked-entity inspection; eight compact HUD pages; immutable current-versus-previous snapshot comparison; bounded asynchronous human-readable JSON export; and one-observation-tick stepping while frozen. It also corrects moving tracer anchoring, dynamic LOS/OCC transitions, and underground spawn-landmark placement. It preserves Observation Contract v0.2 and the accepted Phase 1 sensors.
 
 It intentionally contains no neural model, autonomous actuator loop, Bedwars policy, screen capture, OCR, packet advantage, reach modification, aim assist, scaffold controller, or public-server automation.
 NOTES

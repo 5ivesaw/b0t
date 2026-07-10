@@ -13,6 +13,7 @@ public final class SawBotStateController {
     private boolean terrainOverlayVisible;
     private boolean collisionOverlayVisible;
     private boolean entityOverlayVisible;
+    private boolean entityTracersVisible = true;
     private boolean landmarkOverlayVisible;
     private boolean telemetryRequested;
     private String lastStopReason = "startup";
@@ -85,6 +86,7 @@ public final class SawBotStateController {
     public void toggleTerrainOverlay() { terrainOverlayVisible = !terrainOverlayVisible; inspectorNotice = "terrain overlay " + onOff(terrainOverlayVisible); }
     public void toggleCollisionOverlay() { collisionOverlayVisible = !collisionOverlayVisible; inspectorNotice = "collision overlay " + onOff(collisionOverlayVisible); }
     public void toggleEntityOverlay() { entityOverlayVisible = !entityOverlayVisible; inspectorNotice = "entity overlay " + onOff(entityOverlayVisible); }
+    public void toggleEntityTracers() { entityTracersVisible = !entityTracersVisible; inspectorNotice = "entity tracers " + onOff(entityTracersVisible); }
     public void toggleLandmarkOverlay() { landmarkOverlayVisible = !landmarkOverlayVisible; inspectorNotice = "landmark overlay " + onOff(landmarkOverlayVisible); }
     public void toggleTelemetryRequest() { telemetryRequested = !telemetryRequested; }
     public void setInspectorNotice(String notice) { inspectorNotice = notice == null ? "" : notice; }
@@ -98,6 +100,7 @@ public final class SawBotStateController {
     public boolean terrainOverlayVisible() { return terrainOverlayVisible; }
     public boolean collisionOverlayVisible() { return collisionOverlayVisible; }
     public boolean entityOverlayVisible() { return entityOverlayVisible; }
+    public boolean entityTracersVisible() { return entityTracersVisible; }
     public boolean landmarkOverlayVisible() { return landmarkOverlayVisible; }
     public boolean telemetryRequested() { return telemetryRequested; }
     public String lastStopReason() { return lastStopReason; }
