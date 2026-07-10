@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-alpha.2 — Observation freeze state correction
+
+- Separated observation freezing from the autonomous enabled/disabled mode.
+- P now freezes snapshots even while SawBot is disabled, matching Phase 1's always-on sensor inspector.
+- Added an explicit `observationsFrozen` state and future-safe `mayApplyAutonomousActions()` guard.
+- Added a visible `FROZEN` marker beside the observation number.
+- Added regression checks for disabled freeze, enabled freeze, unfreeze, and action gating.
+
 ## 0.2.0-alpha.1 — Phase 1 key-conflict correction
 
 - Moved enable/disable from F8 to F10 because F8 toggles Minecraft 1.8.9 smooth camera.
@@ -8,7 +16,7 @@
 - Preserved F7 inspector, F9 manual takeover, and F12 emergency stop.
 - Added offline assertions that the shipped defaults do not reuse F5, F6, or F8.
 
-## 0.2.0-alpha.1 — Phase 1 internal eyes
+## 0.2.0-alpha.0 — Phase 1 internal eyes
 
 - Recorded successful real-client Phase 0 acceptance on the target machine.
 - Added immutable Observation Contract `sawbot.observation/0.2`.

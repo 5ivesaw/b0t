@@ -14,7 +14,7 @@ from pathlib import Path
 import json, os
 root=Path(os.environ['ROOT_FOR_PY'])
 resource=root/'sawbot-forge-1.8.9/src/main/resources/mcmod.info'
-text=resource.read_text(encoding='utf-8').replace('${version}','0.2.0-alpha.1').replace('${mcversion}','1.8.9')
+text=resource.read_text(encoding='utf-8').replace('${version}','0.2.0-alpha.2').replace('${mcversion}','1.8.9')
 json.loads(text)
 print('PASS mcmod.info JSON expansion check')
 PYVALIDATEJSON

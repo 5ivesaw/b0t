@@ -36,7 +36,7 @@ Evidence: `docs/PHASE0_ACCEPTANCE.md`.
 
 ## Phase 1 — Internal eyes
 
-Implemented in the `0.2.0-alpha.1` candidate:
+Implemented in the `0.2.0-alpha.2` candidate:
 
 - [x] Typed immutable Observation Contract v0.2.
 - [x] Self/body state.
@@ -49,8 +49,8 @@ Implemented in the `0.2.0-alpha.1` candidate:
 - [x] 41-slot inventory and Bedwars resource summaries.
 - [x] Universal landmark, bounded event history, server timing.
 - [x] Snapshot sequence/age and per-sensor timing HUD.
-- [x] F7 inspector and P immutable freeze.
-- [x] Offline Java 8 verification with 56 assertions.
+- [x] F7 inspector and P immutable freeze independent of control enable state.
+- [x] Offline Java 8 verification including freeze/control-state regression checks.
 
 Runtime acceptance still required:
 
@@ -63,7 +63,7 @@ Runtime acceptance still required:
 - [ ] Entity IDs remain stable and occlusion changes correctly.
 - [ ] Inventory/resource values update correctly.
 - [ ] Events occur on the expected snapshots without false damage attribution.
-- [ ] P freezes sequence and snapshot values; unfreeze resumes.
+- [ ] P freezes sequence and snapshot values while DISABLED and ENABLED; unfreeze resumes.
 - [ ] Sensor extraction times are measured on target hardware.
 - [ ] Five-minute movement test has no repeated errors or serious FPS collapse.
 

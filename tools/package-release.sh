@@ -31,7 +31,7 @@ cp "$ROOT/docs/GITHUB_RELEASES.md" "$DIST/GITHUB_RELEASES.md"
 cat > "$DIST/release-notes.md" <<NOTES
 # SawBotV1 $VERSION
 
-Phase 1 internal-eyes candidate for Minecraft Forge 1.8.9.
+Phase 1 internal-eyes candidate for Minecraft Forge 1.8.9, including the observation-freeze state correction.
 
 ## Release assets
 
@@ -43,7 +43,7 @@ Phase 1 internal-eyes candidate for Minecraft Forge 1.8.9.
 
 ## Scope
 
-This release adds exact client-internal self state, a bounded 13x9x13 egocentric terrain tensor, an incrementally cached 33x33 mid-range map, loaded-entity tracking with explicit line-of-sight/occlusion/attackability, inventory encoding, bounded events, landmarks, server timing, immutable ObservationSnapshot v0.2, and an in-game inspector.
+This release adds exact client-internal self state, a bounded 13x9x13 egocentric terrain tensor, an incrementally cached 33x33 mid-range map, loaded-entity tracking with explicit line-of-sight/occlusion/attackability, inventory encoding, bounded events, landmarks, server timing, immutable ObservationSnapshot v0.2, and an in-game inspector. Snapshot freeze is independent of the autonomous enable/disable state and is visibly marked in the HUD.
 
 It intentionally contains no neural model, autonomous actuator loop, Bedwars policy, screen capture, OCR, packet advantage, reach modification, aim assist, scaffold controller, or public-server automation.
 NOTES

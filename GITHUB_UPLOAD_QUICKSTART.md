@@ -21,22 +21,22 @@ After both pass, publish the Phase 1 prerelease from the website:
 1. Open **Actions**.
 2. Select **Release**.
 3. Select **Run workflow**.
-4. Enter `0.2.0-alpha.1`.
+4. Enter `0.2.0-alpha.2`.
 5. Keep **Publish as a prerelease** enabled.
 6. Run it.
 
 Or create the release with a tag after CI passes:
 
 ```powershell
-git tag -a v0.2.0-alpha.1 -m "SawBotV1 Phase 1 internal eyes"
-git push origin v0.2.0-alpha.1
+git tag -a v0.2.0-alpha.2 -m "SawBotV1 Phase 1 internal eyes"
+git push origin v0.2.0-alpha.2
 ```
 
 The release should contain:
 
 ```text
-SawBotV1-0.2.0-alpha.1-mc1.8.9.jar
-SawBotV1-0.2.0-alpha.1-sources.jar
+SawBotV1-0.2.0-alpha.2-mc1.8.9.jar
+SawBotV1-0.2.0-alpha.2-sources.jar
 SHA256SUMS.txt
 PHASE1_REPORT.md
 PHASE0_ACCEPTANCE.md

@@ -78,15 +78,15 @@ jobs:
         run: gradle --no-daemon --stacktrace clean ciBuild
 
       - name: Package CI artifact
-        run: bash tools/package-release.sh 0.2.0-alpha.1
+        run: bash tools/package-release.sh 0.2.0-alpha.2
 
       - name: Upload Forge artifact
         uses: actions/upload-artifact@v7
         with:
           name: SawBotV1-Phase1
           path: |
-            dist/SawBotV1-0.2.0-alpha.1-mc1.8.9.jar
-            dist/SawBotV1-0.2.0-alpha.1-sources.jar
+            dist/SawBotV1-0.2.0-alpha.2-mc1.8.9.jar
+            dist/SawBotV1-0.2.0-alpha.2-sources.jar
             dist/SHA256SUMS.txt
             dist/PHASE1_REPORT.md
             dist/PHASE0_ACCEPTANCE.md
