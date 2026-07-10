@@ -6,7 +6,7 @@ plugins {
 // Environment-first ordering prevents gradle.properties from masking SAWBOT_VERSION.
 def resolvedVersion = providers.environmentVariable('SAWBOT_VERSION')
     .orElse(providers.gradleProperty('sawbotVersion'))
-    .orElse('0.2.0-alpha.0')
+    .orElse('0.2.0-alpha.1')
     .get()
 
 allprojects {

@@ -1,8 +1,12 @@
 # PHASE REPORT — Phase 1 Internal Eyes
 
 Date: 2026-07-10  
-Candidate version: `0.2.0-alpha.0`  
+Candidate version: `0.2.0-alpha.1`  
 Observation schema: `sawbot.observation/0.2`
+
+## Runtime correction from target-machine testing
+
+The first Phase 1 runtime test exposed a real default-key collision: F6 opened Minecraft 1.8.9's Twitch broadcast dialog. Review also found F8 and F5 are owned by vanilla smooth-camera and perspective controls. Candidate `0.2.0-alpha.1` therefore uses F10 for enable/disable, P for freeze, leaves telemetry unbound, and keeps F7/F9/F12. Phase 1 remains at the acceptance gate until freeze/unfreeze is retested with the corrected mapping.
 
 ## Completed
 
@@ -17,9 +21,9 @@ Observation schema: `sawbot.observation/0.2`
 - Added universal spawn landmark, bounded event history, ping/jitter and timing ages.
 - Prevented target hurt-timer changes from being falsely labelled as SawBot damage; they are emitted as `ENTITY_HURT_OBSERVED` only.
 - Added immutable snapshot sequence, timestamps, episode/world identity, validity flags, and per-sensor timing.
-- Added F7 sensor inspector details and F6 snapshot freeze behavior.
-- Kept F8/F9/F12 safety behavior and input release intact.
-- Updated GitHub CI, JAR verification, artifacts, and release publishing for `0.2.0-alpha.0`.
+- Added F7 sensor inspector details and P snapshot freeze behavior.
+- Kept F10/F9/F12 safety behavior and input release intact.
+- Updated GitHub CI, JAR verification, artifacts, and release publishing for `0.2.0-alpha.1`.
 
 ## Files created
 
@@ -135,7 +139,7 @@ The in-game HUD exposes total and per-group sensor microseconds so the user test
 ## USER CHECKLIST
 
 - [ ] GitHub CI passes both offline verification and the real Forge build.
-- [ ] `SawBotV1-0.2.0-alpha.0-mc1.8.9.jar` launches.
+- [ ] `SawBotV1-0.2.0-alpha.1-mc1.8.9.jar` launches.
 - [ ] F7 opens/closes the Phase 1 inspector.
 - [ ] Observation sequence advances about 10 times per second.
 - [ ] Observation age normally remains below 300 ms.
@@ -148,22 +152,22 @@ The in-game HUD exposes total and per-group sensor microseconds so the user test
 - [ ] Entity tracking ID remains stable while it stays loaded.
 - [ ] Inventory iron/gold/diamond/emerald/wool counts update after changes.
 - [ ] Placing/breaking a nearby block creates a bounded event without repeated spam.
-- [ ] F6 freezes the observation sequence and values; pressing F6 again resumes updates.
-- [ ] F8, F9, and F12 still pass.
+- [ ] P freezes the observation sequence and values; pressing P again resumes updates.
+- [ ] F10, F9, and F12 still pass.
 - [ ] Five-minute movement test has no repeated SawBot error and no serious FPS collapse.
 - [ ] Sensor total and per-group timing values are recorded.
 
 ## How to test
 
 1. Push this repository update to GitHub and wait for **CI** to pass.
-2. Trigger the **Release** workflow with version `0.2.0-alpha.0`, or push tag `v0.2.0-alpha.0`.
+2. Trigger the **Release** workflow with version `0.2.0-alpha.1`, or push tag `v0.2.0-alpha.1`.
 3. Download the installable JAR from the release and replace the old SawBotV1 JAR in the Forge 1.8.9 `mods` folder.
 4. Join a local test world containing full blocks, slabs, stairs, fences, an edge/void, and a few item stacks.
 5. Press F7 and observe sequence, age, sensor timings, support distances, terrain change count, inventory, entities, and events.
 6. Move and turn for at least one minute. Place and break blocks near the player and change inventory resources.
 7. Put another player or mob in range when possible; move it behind a wall and back into view.
-8. Press F6, note the observation number, move/change the world, and verify the number remains fixed. Press F6 again and verify it resumes.
-9. Re-run F8, F9, and F12 safety checks.
+8. Press P, note the observation number, move/change the world, and verify the number remains fixed. Press P again and verify it resumes.
+9. Re-run F10, F9, and F12 safety checks.
 10. Continue moving for five minutes, close Minecraft, and inspect `logs/latest.log`.
 
 ## Expected result

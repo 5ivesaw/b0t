@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.2.0-alpha.0 — Phase 1 internal eyes
+## 0.2.0-alpha.1 — Phase 1 key-conflict correction
+
+- Moved enable/disable from F8 to F10 because F8 toggles Minecraft 1.8.9 smooth camera.
+- Moved snapshot freeze from F6 to P because F6 opens the obsolete Twitch broadcast dialog.
+- Left the future telemetry control unbound because F5 changes perspective.
+- Preserved F7 inspector, F9 manual takeover, and F12 emergency stop.
+- Added offline assertions that the shipped defaults do not reuse F5, F6, or F8.
+
+## 0.2.0-alpha.1 — Phase 1 internal eyes
 
 - Recorded successful real-client Phase 0 acceptance on the target machine.
 - Added immutable Observation Contract `sawbot.observation/0.2`.

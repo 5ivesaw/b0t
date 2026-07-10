@@ -13,10 +13,10 @@
 <section class="grid">
 <div>
 <article class="panel"><div class="head"><strong>Safety controls</strong><span class="muted" id="mode">DISABLED</span></div><div class="body"><div class="controls">
-<button class="button" data-action="toggle"><strong>Enable / Disable</strong><span>Equivalent: F8</span></button>
+<button class="button" data-action="toggle"><strong>Enable / Disable</strong><span>Equivalent: F10</span></button>
 <button class="button" data-action="takeover"><strong>Manual takeover</strong><span>Release all inputs · F9</span></button>
 <button class="button danger" data-action="emergency"><strong>Emergency stop</strong><span>Immediate release · F12</span></button>
-<button class="button" data-action="freeze"><strong>Freeze state</strong><span>No action progression · F6</span></button>
+<button class="button" data-action="freeze"><strong>Freeze state</strong><span>No action progression · P</span></button>
 <button class="button" data-action="step"><strong>Single tick</strong><span>Phase 2 gate; mock only</span></button>
 <button class="button" data-action="export"><strong>Export snapshot</strong><span>Human-readable mock</span></button>
 </div><div class="metrics"><div class="metric"><b id="tick">0</b><small>client tick</small></div><div class="metric"><b>pending</b><small>sensor cost</small></div><div class="metric"><b>0 ms</b><small>inference</small></div><div class="metric"><b>0 / 8</b><small>IPC queue</small></div></div></div></article>
@@ -24,7 +24,7 @@
 <article class="panel" style="margin-top:14px"><div class="head"><strong>Event log</strong><button class="pill" id="clear" style="background:none;color:var(--muted);cursor:pointer">Clear</button></div><div class="body"><div class="log" id="log"></div></div></article>
 </div>
 <aside><article class="panel"><div class="head"><strong>Phase 1 acceptance</strong><span class="warn">USER TEST</span></div><div class="body gate" id="gate">
-<label class="check"><input type="checkbox"> Updated JAR launches</label><label class="check"><input type="checkbox"> F7 inspector shows snapshot v0.2</label><label class="check"><input type="checkbox"> Terrain/support values react correctly</label><label class="check"><input type="checkbox"> Entities and occlusion update</label><label class="check"><input type="checkbox"> Inventory and events update</label><label class="check"><input type="checkbox"> F6 freezes snapshot sequence</label><label class="check"><input type="checkbox"> F8/F9/F12 still pass</label><label class="check"><input type="checkbox"> Sensor cost and FPS measured</label>
+<label class="check"><input type="checkbox"> Updated JAR launches</label><label class="check"><input type="checkbox"> F7 inspector shows snapshot v0.2</label><label class="check"><input type="checkbox"> Terrain/support values react correctly</label><label class="check"><input type="checkbox"> Entities and occlusion update</label><label class="check"><input type="checkbox"> Inventory and events update</label><label class="check"><input type="checkbox"> P freezes snapshot sequence</label><label class="check"><input type="checkbox"> F10/F9/F12 still pass</label><label class="check"><input type="checkbox"> Sensor cost and FPS measured</label>
 </div></article><article class="panel" style="margin-top:14px"><div class="head"><strong>Locked scope</strong></div><div class="body"><p class="muted">Private worlds and owned test servers only. No screen capture, anti-cheat bypass, packet advantage, model, actuator, runtime pathfinder, aim assist, scaffold, or Bedwars logic exists in this phase.</p></div></article></aside>
 </section><div class="footer">This page is a standalone engineering prototype. It does not claim a trainer connection or control a game client.</div>
 </main>

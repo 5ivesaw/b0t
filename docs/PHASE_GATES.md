@@ -24,7 +24,7 @@ Runtime acceptance on 2026-07-10:
 - [x] GitHub build and installable JAR worked.
 - [x] Client and local world launched.
 - [x] HUD and tick handler worked.
-- [x] F8 toggle worked repeatedly.
+- [x] F10 toggle worked repeatedly.
 - [x] F9 manual takeover released control.
 - [x] F12 emergency release worked.
 - [x] Five-minute idle test showed no repeated SawBot errors.
@@ -36,7 +36,7 @@ Evidence: `docs/PHASE0_ACCEPTANCE.md`.
 
 ## Phase 1 — Internal eyes
 
-Implemented in the `0.2.0-alpha.0` candidate:
+Implemented in the `0.2.0-alpha.1` candidate:
 
 - [x] Typed immutable Observation Contract v0.2.
 - [x] Self/body state.
@@ -49,7 +49,7 @@ Implemented in the `0.2.0-alpha.0` candidate:
 - [x] 41-slot inventory and Bedwars resource summaries.
 - [x] Universal landmark, bounded event history, server timing.
 - [x] Snapshot sequence/age and per-sensor timing HUD.
-- [x] F7 inspector and F6 immutable freeze.
+- [x] F7 inspector and P immutable freeze.
 - [x] Offline Java 8 verification with 56 assertions.
 
 Runtime acceptance still required:
@@ -63,7 +63,7 @@ Runtime acceptance still required:
 - [ ] Entity IDs remain stable and occlusion changes correctly.
 - [ ] Inventory/resource values update correctly.
 - [ ] Events occur on the expected snapshots without false damage attribution.
-- [ ] F6 freezes sequence and snapshot values; unfreeze resumes.
+- [ ] P freezes sequence and snapshot values; unfreeze resumes.
 - [ ] Sensor extraction times are measured on target hardware.
 - [ ] Five-minute movement test has no repeated errors or serious FPS collapse.
 

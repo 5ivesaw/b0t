@@ -4,7 +4,7 @@ SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a 
 
 ## Current gate
 
-**Phase 0 passed real runtime acceptance on the target machine.** The repository now contains the **Phase 1 — Internal Eyes candidate** (`0.2.0-alpha.0`). Phase 1 must pass its GitHub build and in-client sensor checklist before Phase 2 begins.
+**Phase 0 passed real runtime acceptance on the target machine.** The repository now contains the **Phase 1 — Internal Eyes candidate** (`0.2.0-alpha.1`). Phase 1 must pass its GitHub build and in-client sensor checklist before Phase 2 begins.
 
 Implemented Phase 1 state:
 
@@ -15,8 +15,8 @@ Implemented Phase 1 state:
 - Loaded-entity tracking with stable IDs, LOS, occlusion, attackability, and conservative team relation
 - Fixed inventory/resource encoding
 - Bounded landmarks, events, server timing, validity flags, and per-sensor timings
-- F7 textual sensor inspector and F6 immutable snapshot freeze
-- Existing F8/F9/F12 safety controls
+- F7 textual sensor inspector and P immutable snapshot freeze
+- Conflict-free F10/F9/F12 safety controls
 
 The repository still contains **no neural model, autonomous actuator loop, Bedwars policy, runtime pathfinder, aim assist, scaffold controller, packet advantage, screenshot/OCR pipeline, or public-server automation**.
 
@@ -35,11 +35,11 @@ Every push or pull request runs:
 To publish the Phase 1 candidate from GitHub:
 
 1. Open **Actions → Release → Run workflow**.
-2. Enter `0.2.0-alpha.0`.
+2. Enter `0.2.0-alpha.1`.
 3. Keep prerelease enabled.
 4. Run the workflow.
 
-The workflow creates tag `v0.2.0-alpha.0` and publishes the installable JAR, sources, checksums, Phase 1 report, Phase 0 acceptance evidence, and release guide.
+The workflow creates tag `v0.2.0-alpha.1` and publishes the installable JAR, sources, checksums, Phase 1 report, Phase 0 acceptance evidence, and release guide.
 
 ## Toolchain
 
@@ -50,6 +50,11 @@ The workflow creates tag `v0.2.0-alpha.0` and publishes the installable JAR, sou
 - Java 8 toolchain/bytecode for Minecraft
 - Minecraft Forge `1.8.9-11.15.1.2318-1.8.9`
 - MCP mappings `stable_22`
+
+
+### Key-conflict correction in 0.2.0-alpha.1
+
+Minecraft 1.8.9 already owns F5 for perspective, F6 for Twitch broadcast, and F8 for smooth camera. The Phase 1 defaults were moved so SawBot no longer triggers those vanilla actions. All keys remain rebindable under Options → Controls → SawBotV1.
 
 ## Local build
 
@@ -62,7 +67,7 @@ Install JDK 17 and JDK 8, then run:
 The final remapped mod is written to:
 
 ```text
-sawbot-forge-1.8.9/build/libs/SawBotV1-0.2.0-alpha.0-mc1.8.9.jar
+sawbot-forge-1.8.9/build/libs/SawBotV1-0.2.0-alpha.1-mc1.8.9.jar
 ```
 
 Launch a development client with:
@@ -81,10 +86,10 @@ This checks source-level Java 8 compatibility against narrow API stubs and runs 
 
 ## Keys
 
-- `F5`: telemetry intent placeholder; no writer until Phase 3
-- `F6`: freeze/unfreeze the immutable observation snapshot while SawBot is enabled
+- Telemetry intent is intentionally unbound until Phase 3
+- `P`: freeze/unfreeze the immutable observation snapshot while SawBot is enabled
 - `F7`: toggle the textual Phase 1 sensor inspector
-- `F8`: enable/disable SawBot state
+- `F10`: enable/disable SawBot state
 - `F9`: immediate manual takeover and release
 - `F12`: emergency release all controlled inputs
 
