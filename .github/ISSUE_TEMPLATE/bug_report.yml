@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible SawBotV1 Phase 0 problem.
+title: '[Bug] '
+labels: [bug]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Build or GitHub Actions
+        - Client launch
+        - HUD
+        - Key bindings or emergency stop
+        - Contracts or offline verifier
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: List exact commands and steps.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result and exact error
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Java versions, Minecraft/Forge version, commit SHA, and measured FPS when relevant.
+    validations:
+      required: true

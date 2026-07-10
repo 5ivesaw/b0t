@@ -1,0 +1,16 @@
+[
+  {
+    "modid": "sawbotv1",
+    "name": "SawBotV1",
+    "description": "Visible-client neural-agent research foundation for private Minecraft 1.8.9 testing.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "updateUrl": "",
+    "authorList": ["FiveSaw"],
+    "credits": "Clean-room Phase 0 foundation.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

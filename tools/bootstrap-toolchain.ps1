@@ -1,0 +1,5 @@
+$ErrorActionPreference = 'Stop'
+Write-Host 'SawBotV1 uses Gradle 8.8 with a checksum-verifying local bootstrap launcher.'
+Write-Host 'Install JDK 17 and JDK 8, set JAVA8_HOME to JDK 8, then run:'
+Write-Host '  powershell -ExecutionPolicy Bypass -File tools\preflight.ps1'
+Write-Host '  .\gradlew.bat clean ciBuild'

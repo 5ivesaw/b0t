@@ -1,0 +1,1 @@
+package net.minecraftforge.common.config; import java.io.File; public class Configuration { public Configuration(File f){} public void load(){} public boolean getBoolean(String n,String c,boolean d,String m){return d;} public int getInt(String n,String c,int d,int min,int max,String m){return d;} public boolean hasChanged(){return false;} public void save(){} }

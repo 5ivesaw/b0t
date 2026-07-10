@@ -1,0 +1,1 @@
+package net.minecraftforge.fml.common.event; import java.io.File; import org.apache.logging.log4j.Logger; public class FMLPreInitializationEvent { public Logger getModLog(){return null;} public File getSuggestedConfigurationFile(){return null;} }

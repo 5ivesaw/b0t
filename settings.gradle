@@ -1,0 +1,23 @@
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+        maven { url = 'https://repo.essential.gg/repository/maven-releases/' }
+        maven { url = 'https://oss.sonatype.org/content/repositories/snapshots' }
+        maven { url = 'https://maven.architectury.dev/' }
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://repo.spongepowered.org/maven/' }
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == 'gg.essential.loom') {
+                useModule("gg.essential:architectury-loom:${requested.version}")
+            }
+        }
+    }
+}
+
+rootProject.name = 'SawBotV1'
+include 'sawbot-common'
+include 'sawbot-forge-1.8.9'

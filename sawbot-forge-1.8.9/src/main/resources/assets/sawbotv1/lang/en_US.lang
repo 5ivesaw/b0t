@@ -1,0 +1,7 @@
+key.categories.sawbotv1=SawBotV1
+key.sawbotv1.toggle=Enable/Disable SawBot
+key.sawbotv1.takeover=Immediate Manual Takeover
+key.sawbotv1.emergency=Emergency Release All Inputs
+key.sawbotv1.inspector=Toggle Sensor Inspector
+key.sawbotv1.freeze=Freeze/Unfreeze SawBot
+key.sawbotv1.telemetry=Toggle Telemetry Intent

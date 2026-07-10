@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without the v prefix, for example 0.1.0-alpha.0'
+        required: true
+        type: string
+      prerelease:
+        description: 'Publish as a prerelease'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build and publish GitHub Release
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: release_meta
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PRERELEASE: ${{ inputs.prerelease }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            VERSION="$INPUT_VERSION"
+            TAG="v$VERSION"
+            PRERELEASE="$INPUT_PRERELEASE"
+          else
+            TAG="$REF_NAME"
+            VERSION="${TAG#v}"
+            if [[ "$VERSION" == *-* ]]; then PRERELEASE=true; else PRERELEASE=false; fi
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $VERSION" >&2
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+      - name: Install Java 8 toolchain
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Remember Java 8 path
+        shell: bash
+        run: echo "JAVA8_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+
+      - name: Set up Java 17 for Gradle
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configure Gradle 8.8
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.8'
+
+      - name: Register Java 8 toolchain
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.gradle"
+          echo "org.gradle.java.installations.paths=$JAVA8_HOME" >> "$HOME/.gradle/gradle.properties"
+
+      - name: Verify contracts and safety foundation
+        run: bash tools/offline-verify.sh
+
+      - name: Build release
+        env:
+          SAWBOT_VERSION: ${{ steps.release_meta.outputs.version }}
+        run: gradle --no-daemon --stacktrace clean ciBuild
+
+      - name: Package and verify release assets
+        env:
+          VERSION: ${{ steps.release_meta.outputs.version }}
+        run: bash tools/package-release.sh "$VERSION"
+
+      - name: Upload release build as workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: SawBotV1-${{ steps.release_meta.outputs.version }}
+          path: |
+            dist/SawBotV1-${{ steps.release_meta.outputs.version }}-mc1.8.9.jar
+            dist/SawBotV1-${{ steps.release_meta.outputs.version }}-sources.jar
+            dist/SHA256SUMS.txt
+            dist/PHASE0_REPORT.md
+            dist/GITHUB_RELEASES.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release_meta.outputs.tag }}
+          VERSION: ${{ steps.release_meta.outputs.version }}
+          PRERELEASE: ${{ steps.release_meta.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+
+          FLAGS=(--target "$GITHUB_SHA" --title "SawBotV1 $VERSION" --notes-file dist/release-notes.md)
+          if [[ "$PRERELEASE" == "true" ]]; then FLAGS+=(--prerelease); fi
+
+          gh release create "$TAG" \
+            "dist/SawBotV1-$VERSION-mc1.8.9.jar" \
+            "dist/SawBotV1-$VERSION-sources.jar" \
+            "dist/SHA256SUMS.txt" \
+            "dist/PHASE0_REPORT.md" \
+            "dist/GITHUB_RELEASES.md" \
+            "${FLAGS[@]}"

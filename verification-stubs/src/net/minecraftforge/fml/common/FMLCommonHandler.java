@@ -1,0 +1,1 @@
+package net.minecraftforge.fml.common; public final class FMLCommonHandler { private static final FMLCommonHandler I=new FMLCommonHandler(); private final Bus b=new Bus(); public static FMLCommonHandler instance(){return I;} public Bus bus(){return b;} public static final class Bus { public void register(Object o){} } }

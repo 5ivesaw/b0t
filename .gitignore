@@ -1,0 +1,16 @@
+.gradle/
+.gradle-bootstrap/
+.gradle-toolchains/
+build/
+dist/
+out/
+run/
+*.iml
+.idea/
+.vscode/
+*.log
+*.tmp
+*.part
+.DS_Store
+sawbot-forge-1.8.9/build/
+sawbot-common/build/

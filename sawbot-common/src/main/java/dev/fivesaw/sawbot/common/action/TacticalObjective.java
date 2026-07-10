@@ -1,0 +1,18 @@
+package dev.fivesaw.sawbot.common.action;
+
+public enum TacticalObjective {
+    NONE,
+    DEFEND_OWN_BED,
+    INTERCEPT_INCOMING_PLAYER,
+    RUSH_ENEMY_BED,
+    FINISH_BEDLESS_PLAYER,
+    COLLECT_IRON,
+    COLLECT_DIAMONDS,
+    COLLECT_EMERALDS,
+    BUY_EQUIPMENT,
+    REPAIR_OR_EXTEND_ROUTE,
+    RETREAT,
+    REGROUP,
+    HIDE,
+    CONTINUE_CURRENT_OBJECTIVE
+}

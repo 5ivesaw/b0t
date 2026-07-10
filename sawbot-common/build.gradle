@@ -1,0 +1,30 @@
+plugins {
+    id 'java-library'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-Xlint:all'])
+}
+
+tasks.named('jar', Jar) {
+    archiveBaseName.set('sawbot-common')
+    manifest {
+        attributes(
+            'Implementation-Title': 'SawBotV1 Common Contracts',
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'FiveSaw'
+        )
+    }
+}
+
+tasks.named('sourcesJar', Jar) {
+    archiveBaseName.set('sawbot-common')
+}

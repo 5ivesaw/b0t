@@ -1,0 +1,77 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'gg.essential.loom' version '0.10.0.5'
+    id 'dev.architectury.architectury-pack200' version '0.1.3'
+}
+
+base {
+    archivesName = 'SawBotV1'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+    withSourcesJar()
+}
+
+loom {
+    runConfigs {
+        remove(getByName('server'))
+    }
+    forge {
+        pack200Provider.set(new dev.architectury.pack200.java.Pack200Adapter())
+    }
+}
+
+dependencies {
+    minecraft 'com.mojang:minecraft:1.8.9'
+    mappings 'de.oceanlabs.mcp:mcp_stable:22-1.8.9'
+    forge 'net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9'
+    implementation project(':sawbot-common')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-Xlint:all'])
+}
+
+tasks.named('processResources', ProcessResources) {
+    inputs.property 'version', project.version
+    inputs.property 'mcversion', '1.8.9'
+    filesMatching('mcmod.info') {
+        expand(version: project.version, mcversion: '1.8.9')
+    }
+}
+
+tasks.named('jar', Jar) {
+    dependsOn ':sawbot-common:classes'
+    from project(':sawbot-common').sourceSets.main.output
+    archiveClassifier.set('dev')
+    manifest {
+        attributes(
+            'Implementation-Title': 'SawBotV1',
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'FiveSaw',
+            'Built-For-Minecraft': '1.8.9',
+            'Built-For-Forge': '11.15.1.2318'
+        )
+    }
+}
+
+tasks.named('remapJar') {
+    archiveClassifier.set('')
+    archiveFileName.set("SawBotV1-${project.version}-mc1.8.9.jar")
+}
+
+tasks.named('sourcesJar', Jar) {
+    dependsOn ':sawbot-common:classes'
+    from project(':sawbot-common').sourceSets.main.allSource
+    archiveFileName.set("SawBotV1-${project.version}-sources.jar")
+}
+
+tasks.named('assemble') {
+    dependsOn tasks.named('remapJar')
+    dependsOn tasks.named('sourcesJar')
+}
