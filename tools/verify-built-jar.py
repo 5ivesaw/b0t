@@ -31,6 +31,13 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/forge/telemetry/TelemetryFileFormat.class",
     "dev/fivesaw/sawbot/common/telemetry/TrajectoryStep.class",
     "dev/fivesaw/sawbot/common/telemetry/HumanInputSample.class",
+    "dev/fivesaw/sawbot/forge/model/ModelBridge.class",
+    "dev/fivesaw/sawbot/forge/model/ModelProtocol.class",
+    "dev/fivesaw/sawbot/forge/model/ModelActionEnvelope.class",
+    "dev/fivesaw/sawbot/forge/actuator/SafeActionActuator.class",
+    "dev/fivesaw/sawbot/forge/actuator/EnvironmentGuard.class",
+    "dev/fivesaw/sawbot/forge/actuator/PhysicalInputMonitor.class",
+    "dev/fivesaw/sawbot/forge/actuator/ActionContextValidator.class",
 }
 
 

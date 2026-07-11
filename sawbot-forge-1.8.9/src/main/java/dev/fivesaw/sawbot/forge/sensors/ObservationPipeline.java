@@ -37,6 +37,7 @@ public final class ObservationPipeline {
     private long sequenceNumber;
     private volatile ObservationSnapshot latest;
     private volatile ObservationSnapshot previous;
+    private ActionCommand previousAppliedAction = ActionCommand.zero(0L, 0L, "none/0");
 
     public ObservationPipeline(Minecraft minecraft,int intervalTicks){if(minecraft==null||intervalTicks<1||intervalTicks>20)throw new IllegalArgumentException("pipeline");this.minecraft=minecraft;this.intervalTicks=intervalTicks;resetSensors();}
 
@@ -64,14 +65,14 @@ public final class ObservationPipeline {
         start=System.nanoTime();LandmarkSetSnapshot landmarks=landmarkSensor.capture(player,world,clientTick);long landmarksNanos=elapsed(start);
         start=System.nanoTime();EventHistorySnapshot events=eventSensor.capture(clientTick,self,inventory,entities,terrain);long eventsNanos=elapsed(start);
         start=System.nanoTime();ServerTimingSnapshot serverTiming=timingSensor.capture(minecraft,player,entities,events,clientTick);long serverTimingNanos=elapsed(start);
-        long timestamp=System.nanoTime();long nextSequence=++sequenceNumber;ActionCommand previousAction=ActionCommand.zero(Math.max(0,nextSequence-1),timestamp,"none/0");long totalNanos=elapsed(totalStart);
+        long timestamp=System.nanoTime();long nextSequence=++sequenceNumber;ActionCommand previousAction=previousAppliedAction;long totalNanos=elapsed(totalStart);
         SensorTimings timings=new SensorTimings(selfNanos,terrainNanos,midRangeNanos,entitiesNanos,inventoryNanos,landmarksNanos,eventsNanos,serverTimingNanos,totalNanos);
         ObservationSnapshot next = new ObservationSnapshot(clientTick,timestamp,episodeId,nextSequence,worldIdentifier,"universal/0.1",self,terrain,midRange,entities,inventory,landmarks,events,serverTiming,TaskStateSnapshot.UNIVERSAL,previousAction,SensorValidity.ALL_PHASE1,timings);
         this.previous = latest;
         latest = next;
     }
 
-    private void resetSensors(){selfSensor=new SelfStateSensor();terrainSensor=new LocalTerrainSensor(classifier);midRangeSensor=new MidRangeMapSensor();entitySensor=new EntityTrackerSensor();eventSensor=new EventSensor();timingSensor=new ServerTimingSensor();previous=null;latest=null;}
+    private void resetSensors(){selfSensor=new SelfStateSensor();terrainSensor=new LocalTerrainSensor(classifier);midRangeSensor=new MidRangeMapSensor();entitySensor=new EntityTrackerSensor();eventSensor=new EventSensor();timingSensor=new ServerTimingSensor();previous=null;latest=null;previousAppliedAction=ActionCommand.zero(0L,0L,"none/0");}
     private void clearWorld(){if(!"none".equals(worldIdentifier)){worldIdentifier="none";episodeId=new UUID(0L,0L);sequenceNumber=0;resetSensors();}}
     private static long elapsed(long start){return Math.max(0,System.nanoTime()-start);}
     private static String worldIdentifier(World world){String name=world.getWorldInfo()==null?"unknown":world.getWorldInfo().getWorldName();if(name==null||name.isEmpty())name="unknown";name=name.replaceAll("[^A-Za-z0-9._-]","_");if(name.length()>64)name=name.substring(0,64);return "world:"+name+":dim:"+world.provider.getDimensionId();}
@@ -79,4 +80,5 @@ public final class ObservationPipeline {
     public ObservationSnapshot previous(){return previous;}
     public long snapshotAgeMillis(){ObservationSnapshot value=latest;if(value==null)return Long.MAX_VALUE;return Math.max(0,(System.nanoTime()-value.monotonicTimestampNanos())/1_000_000L);}
     public int intervalTicks(){return intervalTicks;}
+    public void setPreviousAppliedAction(ActionCommand action){if(action!=null)previousAppliedAction=action;}
 }

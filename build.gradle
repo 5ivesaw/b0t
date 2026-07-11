@@ -6,7 +6,7 @@ plugins {
 // Environment-first ordering prevents gradle.properties from masking SAWBOT_VERSION.
 def resolvedVersion = providers.environmentVariable('SAWBOT_VERSION')
     .orElse(providers.gradleProperty('sawbotVersion'))
-    .orElse('0.4.0-alpha.0')
+    .orElse('0.5.0-alpha.0')
     .get()
 
 allprojects {
@@ -23,11 +23,11 @@ subprojects {
     }
 }
 
-tasks.register('phase3Info') {
+tasks.register('phase4Info') {
     group = 'help'
     description = 'Print the current SawBotV1 phase and build lane.'
     doLast {
-        println 'SawBotV1 Phase 3: structured telemetry, recovery, validation, and replay inspection.'
+        println 'SawBotV1 Phase 4: local model bridge, safe actuator, deadlines, and dummy-model integration.'
         println "Version: ${project.version}"
         println 'Build lane: Gradle 8.8 + Architectury Loom + Java 8 bytecode.'
     }
@@ -35,7 +35,7 @@ tasks.register('phase3Info') {
 
 tasks.register('ciBuild') {
     group = 'build'
-    description = 'Build every Phase 3 module exactly as CI does.'
+    description = 'Build every Phase 4 module exactly as CI does.'
     dependsOn ':sawbot-common:check'
     dependsOn ':sawbot-forge-1.8.9:build'
 }

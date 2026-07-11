@@ -12,49 +12,48 @@ rm -rf "$DIST"
 mkdir -p "$DIST"
 
 python3 "$ROOT/tools/verify-built-jar.py" "$FINAL_JAR" --expected-version "$VERSION"
-[[ -f "$SOURCES_JAR" ]] || {
-  echo "ERROR: sources JAR does not exist: $SOURCES_JAR" >&2
-  exit 3
-}
+[[ -f "$SOURCES_JAR" ]] || { echo "ERROR: sources JAR does not exist: $SOURCES_JAR" >&2; exit 3; }
+
+assets=(
+  "docs/PHASE4_REPORT.md"
+  "docs/MODEL_BRIDGE_PROTOCOL.md"
+  "docs/PHASE3_RUNTIME_STATUS.md"
+  "docs/PHASE3_REPORT.md"
+  "docs/TELEMETRY_FORMAT.md"
+  "docs/PHASE2_ACCEPTANCE.md"
+  "docs/PHASE1_ACCEPTANCE.md"
+  "docs/PHASE0_ACCEPTANCE.md"
+  "docs/GITHUB_RELEASES.md"
+)
 
 cp "$FINAL_JAR" "$DIST/"
 cp "$SOURCES_JAR" "$DIST/"
-cp "$ROOT/docs/PHASE3_REPORT.md" "$DIST/PHASE3_REPORT.md"
-cp "$ROOT/docs/TELEMETRY_FORMAT.md" "$DIST/TELEMETRY_FORMAT.md"
-cp "$ROOT/docs/PHASE2_REPORT.md" "$DIST/PHASE2_REPORT.md"
-cp "$ROOT/docs/PHASE2_RUNTIME_FEEDBACK.md" "$DIST/PHASE2_RUNTIME_FEEDBACK.md"
-cp "$ROOT/docs/PHASE2_RUNTIME_VALIDATION.md" "$DIST/PHASE2_RUNTIME_VALIDATION.md"
-cp "$ROOT/docs/PHASE1_ACCEPTANCE.md" "$DIST/PHASE1_ACCEPTANCE.md"
-cp "$ROOT/docs/PHASE0_ACCEPTANCE.md" "$DIST/PHASE0_ACCEPTANCE.md"
-cp "$ROOT/docs/GITHUB_RELEASES.md" "$DIST/GITHUB_RELEASES.md"
-cp "$ROOT/docs/PHASE2_UI_REVERT.md" "$DIST/PHASE2_UI_REVERT.md"
+for asset in "${assets[@]}"; do cp "$ROOT/$asset" "$DIST/$(basename "$asset")"; done
 
 (
   cd "$DIST"
-  sha256sum SawBotV1-* PHASE3_REPORT.md TELEMETRY_FORMAT.md PHASE2_REPORT.md PHASE2_RUNTIME_FEEDBACK.md PHASE2_RUNTIME_VALIDATION.md PHASE1_ACCEPTANCE.md PHASE0_ACCEPTANCE.md GITHUB_RELEASES.md PHASE2_UI_REVERT.md > SHA256SUMS.txt
+  sha256sum SawBotV1-* PHASE4_REPORT.md MODEL_BRIDGE_PROTOCOL.md PHASE3_RUNTIME_STATUS.md PHASE3_REPORT.md TELEMETRY_FORMAT.md PHASE2_ACCEPTANCE.md PHASE1_ACCEPTANCE.md PHASE0_ACCEPTANCE.md GITHUB_RELEASES.md > SHA256SUMS.txt
 )
 
 cat > "$DIST/release-notes.md" <<NOTES
 # SawBotV1 $VERSION
 
-Phase 3 structured-telemetry candidate for Minecraft Forge 1.8.9.
-
-## Release assets
-
-- \`SawBotV1-$VERSION-mc1.8.9.jar\`: installable Forge mod.
-- \`SawBotV1-$VERSION-sources.jar\`: Java source archive.
-- \`SHA256SUMS.txt\`: integrity hashes.
-- \`PHASE2_REPORT.md\`: implementation, validation, limitations, and runtime checklist.
-- \`PHASE2_RUNTIME_VALIDATION.md\`: target-machine evidence, findings, and alpha.6 corrections.
-- \`PHASE1_ACCEPTANCE.md\`: recorded Phase 1 runtime acceptance evidence.
-- \`PHASE0_ACCEPTANCE.md\`: recorded Phase 0 runtime acceptance evidence.
-- \`PHASE2_UI_REVERT.md\`: target-machine rationale and exact scope of the text-HUD restoration.
+Phase 4 safe-actuator and local-model-bridge candidate for Minecraft Forge 1.8.9.
 
 ## Scope
 
-This release adds the Phase 3 structured trajectory pipeline: exact client-tick human key states, raw MouseHelper deltas, selected slot, GUI state, causal observation/action alignment, bounded asynchronous writing, little-endian binary framing, per-record DEFLATE compression, CRC32 checks, interrupted-write recovery, dataset validation, and replay inspection. It also removes explanatory prose from the in-game HUD, isolates selected-block rendering to the F7 inspector, and hardens OpenGL colour restoration after entity labels.
+This release adds the bounded CRC-protected \`sawbot.bridge/0.1\` loopback protocol, non-blocking model transport, strict action deadlines and reference validation, local/private environment guard, physical takeover, disconnect release, legitimate movement/camera/hotbar/attack/use/drop/inventory actuation, latency instrumentation, and a deterministic dummy model. It also bundles Phase 3 telemetry restart/error hardening and removes the raw OpenGL attribute-stack path associated with hotbar/held-item tint.
 
-It intentionally contains no neural model, autonomous actuator loop, Bedwars policy, screen capture, OCR, packet advantage, reach modification, aim assist, scaffold controller, or public-server automation.
+It intentionally contains no learned neural policy, Bedwars strategy, handcrafted runtime pathfinder, aim helper, scaffold controller, screenshot/OCR input, packet advantage, or public-server automation.
+
+## Primary assets
+
+- \`SawBotV1-$VERSION-mc1.8.9.jar\`: installable mod.
+- \`SawBotV1-$VERSION-sources.jar\`: source archive.
+- \`SHA256SUMS.txt\`: integrity hashes.
+- \`PHASE4_REPORT.md\`: implementation and focused runtime gate.
+- \`MODEL_BRIDGE_PROTOCOL.md\`: protocol, threading, and safety contract.
+- \`PHASE3_RUNTIME_STATUS.md\`: telemetry target-machine finding and bundled hardening.
 NOTES
 
 printf 'Packaged release assets in %s\n' "$DIST"

@@ -66,6 +66,8 @@ jobs:
           python3 -m py_compile tools/verify-built-jar.py
           python3 -m py_compile sawbot-tools/dataset-validator/validate_telemetry.py
           python3 -m py_compile sawbot-tools/replay-inspector/inspect_telemetry.py
+          python3 -m py_compile sawbot-tools/dummy-model/dummy_model.py
+          python3 sawbot-tools/dummy-model/dummy_model.py --self-test
 
   forge-build:
     name: Build Forge 1.8.9 mod
@@ -120,15 +122,15 @@ jobs:
             dist/SawBotV1-${{ needs.metadata.outputs.version }}-sources.jar
             dist/SHA256SUMS.txt
             dist/release-notes.md
+            dist/PHASE4_REPORT.md
+            dist/MODEL_BRIDGE_PROTOCOL.md
+            dist/PHASE3_RUNTIME_STATUS.md
             dist/PHASE3_REPORT.md
             dist/TELEMETRY_FORMAT.md
-            dist/PHASE2_REPORT.md
-            dist/PHASE2_RUNTIME_FEEDBACK.md
-            dist/PHASE2_RUNTIME_VALIDATION.md
+            dist/PHASE2_ACCEPTANCE.md
             dist/PHASE1_ACCEPTANCE.md
             dist/PHASE0_ACCEPTANCE.md
             dist/GITHUB_RELEASES.md
-            dist/PHASE2_UI_REVERT.md
           if-no-files-found: error
           retention-days: 30
 
@@ -195,15 +197,15 @@ jobs:
             "dist/SawBotV1-$VERSION-mc1.8.9.jar" \
             "dist/SawBotV1-$VERSION-sources.jar" \
             "dist/SHA256SUMS.txt" \
+            "dist/PHASE4_REPORT.md" \
+            "dist/MODEL_BRIDGE_PROTOCOL.md" \
+            "dist/PHASE3_RUNTIME_STATUS.md" \
             "dist/PHASE3_REPORT.md" \
             "dist/TELEMETRY_FORMAT.md" \
-            "dist/PHASE2_REPORT.md" \
-            "dist/PHASE2_RUNTIME_FEEDBACK.md" \
-            "dist/PHASE2_RUNTIME_VALIDATION.md" \
+            "dist/PHASE2_ACCEPTANCE.md" \
             "dist/PHASE1_ACCEPTANCE.md" \
             "dist/PHASE0_ACCEPTANCE.md" \
             "dist/GITHUB_RELEASES.md" \
-            "dist/PHASE2_UI_REVERT.md" \
             "${FLAGS[@]}"
 
           {

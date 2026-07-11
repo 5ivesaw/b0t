@@ -113,3 +113,11 @@ Pairing only the key/mouse state observed at snapshot time would misrepresent ac
 **Status:** Accepted
 
 The Phase 3 `.sbt` format is explicitly little-endian and versioned. Every independently compressed record stores lengths and CRC32; a clean footer stores step count, dropped-step count, terminal reason, and a rolling CRC across step payloads. This supports corruption detection, valid-prefix recovery, bounded memory, and future migration without exposing Java object graphs or relying on JSON as the sole training format.
+
+## Phase 4 bridge and actuator boundary
+
+`ModelBridge` owns all socket I/O on a daemon worker. The client thread publishes immutable `ObservationSnapshot` references with non-blocking bounded queue operations and polls the newest decoded `ModelActionEnvelope`. The worker never reads Minecraft world/entity objects.
+
+`SafeActionActuator` is client-thread-only. Its authority is limited to ordinary key bindings, hotbar selection, and bounded visible rotation changes. `EnvironmentGuard`, `ActionContextValidator`, `PhysicalInputMonitor`, and `SawBotStateController` form independent safety gates. Any disconnect, blocked environment, stale action, human input, F9/F12, GUI conflict, or world unload invokes complete input release.
+
+The dummy model is a protocol/actuator fixture. A future learned model must speak the same contract and receives no hidden actuator correction, runtime pathfinding, aim help, or task logic.

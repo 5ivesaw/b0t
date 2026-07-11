@@ -49,11 +49,9 @@ public final class WorldDebugRenderer {
             && !state.inspectorVisible()) return;
         long start = System.nanoTime();
         boolean matrixPushed = false;
-        boolean attributesPushed = false;
         try {
             RenderManager manager = minecraft.getRenderManager();
-            GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-            attributesPushed = true;
+            restoreState();
             GlStateManager.pushMatrix();
             matrixPushed = true;
             GlStateManager.translate(-manager.viewerPosX, -manager.viewerPosY, -manager.viewerPosZ);
@@ -65,7 +63,6 @@ public final class WorldDebugRenderer {
             if (state.observationsFrozen()) renderFrozenAnchor(snapshot, manager);
         } finally {
             if (matrixPushed) GlStateManager.popMatrix();
-            if (attributesPushed) GL11.glPopAttrib();
             restoreState();
             renderTiming.add(Math.max(0L, System.nanoTime() - start));
         }

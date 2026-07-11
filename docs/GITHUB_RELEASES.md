@@ -28,13 +28,13 @@ Pull requests and non-main branches run verification/builds but do not publish r
 The source of truth is:
 
 ```properties
-sawbotVersion=0.4.0-alpha.0
+sawbotVersion=0.5.0-alpha.0
 ```
 
 The automatic release is tagged:
 
 ```text
-v0.4.0-alpha.0
+v0.5.0-alpha.0
 ```
 
 Published versions are immutable. Reusing a version causes an explicit failure. This prevents a release tag from referring to different code at different times.
@@ -70,3 +70,5 @@ If repository policy blocks write access, enable **Read and write permissions** 
 `tools/package-release.sh` creates the release payload and hashes.
 
 `tools/verify-release-payload.sh` checks every required file, validates the installable JAR, and verifies `SHA256SUMS.txt` after artifact transfer.
+
+The Phase 4 release payload also contains `PHASE4_REPORT.md`, `MODEL_BRIDGE_PROTOCOL.md`, and `PHASE3_RUNTIME_STATUS.md`.

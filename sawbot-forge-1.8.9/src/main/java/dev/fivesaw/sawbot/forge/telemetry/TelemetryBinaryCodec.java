@@ -19,6 +19,7 @@ import dev.fivesaw.sawbot.common.telemetry.TrajectoryStep;
 public final class TelemetryBinaryCodec {
     public static final int STEP_PAYLOAD_MAGIC = 0x31505453; // STP1 in little endian bytes.
     public static final int FOOTER_PAYLOAD_MAGIC = 0x31525446; // FTR1.
+    public static final int OBSERVATION_PAYLOAD_MAGIC = 0x3153424F; // OBS1.
     public static final int PAYLOAD_VERSION = 1;
 
     private TelemetryBinaryCodec() { }
@@ -72,6 +73,19 @@ public final class TelemetryBinaryCodec {
         }
 
         for (ObservationEvent event : step.outcomeEvents()) writeEvent(out, event);
+        return out.toByteArray();
+    }
+
+    /** Full immutable observation payload for the local model bridge. */
+    public static byte[] encodeObservation(ObservationSnapshot observation) {
+        if (observation == null) throw new IllegalArgumentException("observation");
+        LittleEndianOutput out = new LittleEndianOutput(24576);
+        out.writeInt(OBSERVATION_PAYLOAD_MAGIC);
+        out.writeShort(PAYLOAD_VERSION);
+        out.writeShort(0);
+        out.writeLong(observation.sequenceNumber());
+        out.writeLong(observation.clientTick());
+        writeObservation(out, observation);
         return out.toByteArray();
     }
 

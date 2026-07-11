@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0-alpha.0 — Phase 4 safe actuator and local model bridge
+
+- Added versioned CRC-protected `sawbot.bridge/0.1` loopback protocol.
+- Added bounded background observation/action transport with reconnect and latency metrics.
+- Added strict local/private safe actuator for legitimate movement, camera, hotbar, attack/use/drop/inventory controls.
+- Added action age/sequence/reference validation, physical takeover, disconnect release, and MODEL inspector page.
+- Added deterministic interactive dummy model and automatic actuator demo.
+- Fed previous applied actions into subsequent observations.
+- Hardened Phase 3 telemetry failure recovery and visible diagnostics.
+- Removed raw OpenGL attribute-stack use that could tint the hotbar and held item.
+
 ## 0.4.0-alpha.0 — Phase 3 structured telemetry
 
 - Added exact client-tick human key-state capture and raw Minecraft `MouseHelper.deltaX/deltaY` capture.

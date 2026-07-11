@@ -32,8 +32,15 @@ final class LittleEndianOutput {
     void writeBytes(byte[] bytes) { output.write(bytes, 0, bytes.length); }
     void writeUtf8(String value, int maximumBytes) {
         if (value == null) throw new IllegalArgumentException("value");
+        if (maximumBytes < 0 || maximumBytes > 65535) throw new IllegalArgumentException("maximumBytes");
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-        if (bytes.length > maximumBytes || bytes.length > 65535) throw new IllegalArgumentException("string too long");
+        if (bytes.length > maximumBytes) {
+            int length = maximumBytes;
+            while (length > 0 && (bytes[length] & 0xC0) == 0x80) length--;
+            byte[] bounded = new byte[length];
+            System.arraycopy(bytes, 0, bounded, 0, length);
+            bytes = bounded;
+        }
         writeShort(bytes.length);
         writeBytes(bytes);
     }

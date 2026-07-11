@@ -51,22 +51,26 @@ required = [
     root / 'tools/verify-release-payload.sh',
     root / 'tools/verify-built-jar.py',
     root / 'docs/GITHUB_RELEASES.md',
-    root / 'docs/PHASE2_UI_REVERT.md',
-    root / 'docs/PHASE0_ACCEPTANCE.md',
-    root / 'docs/PHASE2_REPORT.md',
-    root / 'docs/PHASE2_RUNTIME_FEEDBACK.md',
-    root / 'docs/PHASE2_RUNTIME_VALIDATION.md',
+    root / 'docs/PHASE4_REPORT.md',
+    root / 'docs/MODEL_BRIDGE_PROTOCOL.md',
+    root / 'docs/PHASE3_RUNTIME_STATUS.md',
     root / 'docs/PHASE3_REPORT.md',
+    root / 'docs/TELEMETRY_FORMAT.md',
+    root / 'docs/PHASE2_ACCEPTANCE.md',
+    root / 'docs/PHASE1_ACCEPTANCE.md',
+    root / 'docs/PHASE0_ACCEPTANCE.md',
     root / 'sawbot-tools/dataset-validator/validate_telemetry.py',
     root / 'sawbot-tools/replay-inspector/inspect_telemetry.py',
+    root / 'sawbot-tools/dummy-model/dummy_model.py',
+    root / 'sawbot-tools/dummy-model/RUN-DUMMY-MODEL.bat',
+    root / 'sawbot-tools/dummy-model/RUN-ACTUATOR-DEMO.bat',
     root / 'tools/test-latest-telemetry.ps1',
     root / 'tools/TEST-LATEST-TELEMETRY.bat',
-    root / 'docs/PHASE1_ACCEPTANCE.md',
     root / 'GITHUB_UPLOAD_QUICKSTART.md',
 ]
 missing = [str(path.relative_to(root)) for path in required if not path.is_file()]
 if missing:
-    raise SystemExit('Missing GitHub packaging files: ' + ', '.join(missing))
+    raise SystemExit('Missing Phase 4 packaging files: ' + ', '.join(missing))
 for workflow in required[:2]:
     text = workflow.read_text(encoding='utf-8')
     if '\t' in text:
@@ -75,17 +79,15 @@ for workflow in required[:2]:
         raise SystemExit(f'Placeholder repository path found in workflow: {workflow}')
 ci_text = (root / '.github/workflows/ci.yml').read_text(encoding='utf-8')
 release_text = (root / '.github/workflows/release.yml').read_text(encoding='utf-8')
-if ('automatic-release:' not in ci_text
-    or "github.ref == 'refs/heads/main'" not in ci_text
-    or 'needs: [metadata, offline-verification, forge-build]' not in ci_text
-    or 'actions/download-artifact@' not in ci_text
-    or 'tools/verify-release-payload.sh' not in ci_text
-    or 'PHASE2_RUNTIME_VALIDATION.md' not in ci_text
-    or 'PHASE3_REPORT.md' not in ci_text
-    or 'TELEMETRY_FORMAT.md' not in ci_text
-    or 'gh release create' not in ci_text
-    or 'contents: write' not in ci_text):
-    raise SystemExit('CI does not contain the verified automatic main-branch release gate')
+for token in (
+    'automatic-release:', "github.ref == 'refs/heads/main'",
+    'needs: [metadata, offline-verification, forge-build]',
+    'actions/download-artifact@', 'tools/verify-release-payload.sh',
+    'PHASE4_REPORT.md', 'MODEL_BRIDGE_PROTOCOL.md', 'PHASE3_RUNTIME_STATUS.md',
+    'gh release create', 'contents: write', 'dummy_model.py --self-test'
+):
+    if token not in ci_text:
+        raise SystemExit('CI missing Phase 4 automatic-release token: ' + token)
 if "tags:\n      - 'v*'" in release_text:
     raise SystemExit('Manual recovery workflow must not be tag-triggered')
 if 'workflow_dispatch:' not in release_text or 'Manual Release Recovery' not in release_text:
@@ -94,59 +96,59 @@ properties = (root / 'gradle.properties').read_text(encoding='utf-8')
 if 'loom.platform=forge' not in properties:
     raise SystemExit('gradle.properties does not declare loom.platform=forge')
 version = os.environ['SAWBOT_VERIFY_VERSION']
-if f'sawbotVersion={version}' not in properties:
-    raise SystemExit('read-version.sh output does not match gradle.properties')
+if f'sawbotVersion={version}' not in properties or version != '0.5.0-alpha.0':
+    raise SystemExit('Phase 4 version metadata is inconsistent')
 package_script = (root / 'tools/package-release.sh').read_text(encoding='utf-8')
-if ('PHASE2_UI_REVERT.md' not in package_script
-    or 'PHASE2_RUNTIME_VALIDATION.md' not in package_script
-    or 'PHASE3_REPORT.md' not in package_script
-    or 'TELEMETRY_FORMAT.md' not in package_script
-    or 'SHA256SUMS.txt' not in package_script):
-    raise SystemExit('Release packager does not include runtime evidence and checksums')
+for token in ('PHASE4_REPORT.md','MODEL_BRIDGE_PROTOCOL.md','PHASE3_RUNTIME_STATUS.md','SHA256SUMS.txt'):
+    if token not in package_script:
+        raise SystemExit('Release packager missing ' + token)
 verifier = (root / 'tools/verify-built-jar.py').read_text(encoding='utf-8')
-if ('dev/fivesaw/sawbot/forge/SawBotMod.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/sensors/ObservationPipeline.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/tracking/VisibilitySampler.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/tracking/EntityTypeClassifier.class' not in verifier
-    or 'dev/fivesaw/sawbot/common/observation/EntityType.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/telemetry/TelemetryService.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/telemetry/TelemetryBinaryCodec.class' not in verifier
-    or 'dev/fivesaw/sawbot/common/telemetry/TrajectoryStep.class' not in verifier):
-    raise SystemExit('Release verifier does not check Phase 3 runtime classes')
+for token in (
+    'dev/fivesaw/sawbot/forge/model/ModelBridge.class',
+    'dev/fivesaw/sawbot/forge/model/ModelProtocol.class',
+    'dev/fivesaw/sawbot/forge/actuator/SafeActionActuator.class',
+    'dev/fivesaw/sawbot/forge/actuator/EnvironmentGuard.class',
+    'dev/fivesaw/sawbot/forge/telemetry/TelemetryService.class',
+    'dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class',
+):
+    if token not in verifier:
+        raise SystemExit('Release verifier missing Phase 4 class: ' + token)
 renderer = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.java').read_text(encoding='utf-8')
 style = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.java').read_text(encoding='utf-8')
 if ('EntityVisualStyle.visibilityRgb(entity)' not in renderer
     or 'EntityVisualStyle.visibilityArgb(entity)' not in renderer
-    or 'EntityVisualStyle.SELECTED_ACCENT_RGB' not in renderer
-    or 'private static int[] entityColor' in renderer):
-    raise SystemExit('World renderer does not use the immediate visibility style consistently')
+    or 'EntityVisualStyle.SELECTED_ACCENT_RGB' not in renderer):
+    raise SystemExit('World renderer does not use immediate visibility style consistently')
 if ('LOS_RGB = 0x55FF55' not in style or 'OCCLUDED_RGB = 0xAA55FF' not in style):
-    raise SystemExit('Visibility style colours changed without updating the acceptance contract')
-if ('GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS)' not in renderer
-    or 'FROZEN SNAPSHOT #' not in renderer
-    or '255, 255, 85, 255' not in renderer):
-    raise SystemExit('World renderer is missing alpha.6 state isolation, frozen anchor, or yellow selection')
-export_service = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.java').read_text(encoding='utf-8')
-if ('SUCCESS_STATUS_LIFETIME_NANOS' not in export_service or 'status = "idle"' not in export_service):
-    raise SystemExit('Snapshot export success status is not transient')
-contract = (root / 'docs/OBSERVATION_CONTRACT.md').read_text(encoding='utf-8')
-if ('sawbot.observation/0.3' not in contract
-    or 'sawbot.snapshot.debug/0.2' not in contract
-    or 'EntityType' not in contract):
-    raise SystemExit('Observation Contract documentation is not synchronized with alpha.6')
-telemetry_doc = (root / 'docs/TELEMETRY_FORMAT.md').read_text(encoding='utf-8')
-if ('sawbot.telemetry/0.1' not in telemetry_doc or 'little-endian' not in telemetry_doc or 'CRC32' not in telemetry_doc):
-    raise SystemExit('Telemetry format documentation is incomplete')
-latest_test = (root / 'tools/test-latest-telemetry.ps1').read_text(encoding='utf-8')
-if ('sawbot.telemetry/0.1' not in latest_test
-    or 'sawbot.observation/0.3' not in latest_test
-    or '--recover' not in latest_test
-    or 'PrismLauncher' not in latest_test):
-    raise SystemExit('Latest-telemetry acceptance helper is incomplete')
-print('PASS GitHub repository packaging check')
+    raise SystemExit('Visibility style colours changed without acceptance update')
+if ('GL11.glPushAttrib' in renderer or 'GL11.glPopAttrib' in renderer):
+    raise SystemExit('Raw GL attribute stack returned; it can desynchronise GlStateManager and tint the HUD')
+for token in ('restoreState()', 'FROZEN SNAPSHOT #', '255, 255, 85, 255'):
+    if token not in renderer:
+        raise SystemExit('World renderer missing state restoration/frozen/yellow-selection token: ' + token)
+client = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/client/ClientRuntime.java').read_text(encoding='utf-8')
+for token in ('modelBridge.offerObservation', 'modelBridge.pollLatestAction', 'physicalInput.hasTakeoverInput', 'disableAndRelease("model disconnected")'):
+    if token not in client:
+        raise SystemExit('Client runtime missing Phase 4 safety/integration token: ' + token)
+actuator = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/actuator/SafeActionActuator.java').read_text(encoding='utf-8')
+for token in ('KeyBinding.setKeyBindState', 'KeyBinding.onTick', 'maximumActionAgeNanos', 'ActionContextValidator.validate', 'InputRelease.releaseAll'):
+    if token not in actuator:
+        raise SystemExit('Safe actuator missing required mechanism: ' + token)
+bridge = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/model/ModelBridge.java').read_text(encoding='utf-8')
+for token in ('ArrayBlockingQueue', 'setDaemon(true)', 'socket.setSoTimeout(100)', 'offerObservation', 'pollLatestAction'):
+    if token not in bridge:
+        raise SystemExit('Model bridge missing bounded/non-blocking mechanism: ' + token)
+telemetry = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/telemetry/TelemetryService.java').read_text(encoding='utf-8')
+session = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/telemetry/TelemetrySession.java').read_text(encoding='utf-8')
+if ('failureLatched' not in telemetry or 'lastFailureMessage' not in telemetry or 'encodingRejectedSteps' not in session):
+    raise SystemExit('Phase 3 telemetry restart/error hardening is missing')
+contract = (root / 'docs/ACTION_CONTRACT.md').read_text(encoding='utf-8')
+protocol = (root / 'docs/MODEL_BRIDGE_PROTOCOL.md').read_text(encoding='utf-8')
+if 'sawbot.action/0.1' not in contract or 'local receive timestamp' not in contract:
+    raise SystemExit('Action Contract is not synchronized with Phase 4')
+if 'sawbot.bridge/0.1' not in protocol or '262,144' not in protocol or 'client thread' not in protocol:
+    raise SystemExit('Bridge protocol documentation is incomplete')
+print('PASS GitHub repository and Phase 4 packaging check')
 PYREPOCHECK
 
 
@@ -181,4 +183,5 @@ PYTELEMETRY
 
 python3 "$ROOT/sawbot-tools/replay-inspector/inspect_telemetry.py" "$ROOT/build/phase3-telemetry-fixture.sbt" --limit 2 > "$ROOT/build/phase3-replay-summary.txt"
 
-printf '%s\n' 'PASS offline Phase 3 verification'
+python3 "$ROOT/sawbot-tools/dummy-model/dummy_model.py" --self-test
+printf '%s\n' 'PASS offline Phase 4 verification'

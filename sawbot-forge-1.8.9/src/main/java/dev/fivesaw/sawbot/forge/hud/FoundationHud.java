@@ -1,5 +1,6 @@
 package dev.fivesaw.sawbot.forge.hud;
 
+import dev.fivesaw.sawbot.common.action.ActionCommand;
 import dev.fivesaw.sawbot.common.events.ObservationEvent;
 import dev.fivesaw.sawbot.common.observation.BlockSemanticCategory;
 import dev.fivesaw.sawbot.common.observation.EntityObservation;
@@ -14,6 +15,8 @@ import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.forge.inspection.InspectorPage;
 import dev.fivesaw.sawbot.forge.inspection.SnapshotExportService;
+import dev.fivesaw.sawbot.forge.model.ModelBridge;
+import dev.fivesaw.sawbot.forge.actuator.SafeActionActuator;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
 import dev.fivesaw.sawbot.forge.sensors.ObservationPipeline;
@@ -23,7 +26,7 @@ import net.minecraft.client.Minecraft;
 
 /** Compact engineering HUD. Long explanations belong in documentation, not over gameplay. */
 public final class FoundationHud {
-    private static final int WHITE=0xFFFFFF,MUTED=0xA0A0A0,SAFE=0x55FF55,WARNING=0xFFAA00,INFO=0x55FFFF,ERROR=0xFF5555;
+    private static final int WHITE=0xFFFFFF,MUTED=0xA0A0A0,SAFE=0x55FF55,WARNING=0xFFAA00,INFO=0x55FFFF,ERROR=0xFF5555,MODEL=0xFF77FF,ACTION=0xFFCC55;
     private final Minecraft minecraft;
     private final SawBotStateController state;
     private final RollingTimingWindow tickTiming;
@@ -31,22 +34,26 @@ public final class FoundationHud {
     private final InspectorController inspector;
     private final SnapshotExportService exports;
     private final TelemetryService telemetry;
+    private final ModelBridge modelBridge;
+    private final SafeActionActuator actuator;
     private final WorldDebugRenderer worldRenderer;
 
     public FoundationHud(Minecraft minecraft, SawBotStateController state,
                          RollingTimingWindow tickTiming, ObservationPipeline observations,
                          InspectorController inspector, SnapshotExportService exports,
-                         TelemetryService telemetry, WorldDebugRenderer worldRenderer) {
+                         TelemetryService telemetry, ModelBridge modelBridge,
+                         SafeActionActuator actuator, WorldDebugRenderer worldRenderer) {
         this.minecraft=minecraft; this.state=state; this.tickTiming=tickTiming; this.observations=observations;
-        this.inspector=inspector; this.exports=exports; this.telemetry=telemetry; this.worldRenderer=worldRenderer;
+        this.inspector=inspector; this.exports=exports; this.telemetry=telemetry; this.modelBridge=modelBridge;
+        this.actuator=actuator; this.worldRenderer=worldRenderer;
     }
 
     public void render(long clientTick) {
         if(minecraft.fontRendererObj==null)return;
         int x=6,y=6;
         int statusColour=state.isEnabled()?WARNING:SAFE;
-        draw("SawBotV1  Phase 3",x,y,WHITE); y+=10;
-        draw("State: "+state.mode(),x,y,statusColour); y+=10;
+        draw("SawBotV1  Phase 4",x,y,WHITE); y+=10;
+        draw("State: "+state.mode()+"  scope "+actuator.environmentDescription(),x,y,statusColour); y+=10;
         ObservationSnapshot snapshot=observations.latest();
         if(snapshot==null){draw("Eyes: waiting",x,y,WARNING);y+=10;}
         else{
@@ -62,14 +69,20 @@ public final class FoundationHud {
             draw("HP "+one(snapshot.selfState().health())+"  wool "+snapshot.inventory().wool()+"  ping "+(snapshot.serverTiming().pingValid()?snapshot.serverTiming().estimatedPingMillis()+" ms":"unknown"),x,y,MUTED); y+=10;
         }
         draw("Handler "+micros(tickTiming.averageNanos())+"/"+micros(tickTiming.maximumNanos())+" us  render "+micros(worldRenderer.averageRenderNanos())+"/"+micros(worldRenderer.maximumRenderNanos())+" us",x,y,MUTED); y+=10;
+        draw("Model "+modelBridge.state()+"  "+modelBridge.modelVersion()+"  rtt "+millis(modelBridge.latestRoundTripNanos())+" ms  rx "+modelBridge.receivedActions(),x,y,modelBridge.isReady()?MODEL:MUTED); y+=10;
+        if(state.isEnabled()||actuator.activeAction()!=null||actuator.rejectedActions()>0){
+            draw("Actuator "+actuator.status()+"  "+actionCompact(actuator.activeAction())+"  "+tail(actuator.lastReason(),42),x,y,"APPLY".equals(actuator.status())?ACTION:MUTED); y+=10;
+        }
         draw("P freeze  . step  F7 panel  H page  O export  K telemetry",x,y,MUTED); y+=10;
         draw("B terrain  C collision  N entities  V tracers  M landmarks",x,y,MUTED); y+=10;
         draw("[/] entity  F10 toggle  F9 takeover  F12 emergency",x,y,MUTED);
 
-        if(!"idle".equals(telemetry.status())){
+        String telemetryStatus=telemetry.status();
+        if(!"idle".equals(telemetryStatus)){
             y+=10;
-            int colour="error".equals(telemetry.status())?ERROR:(telemetry.isRecording()?SAFE:INFO);
-            draw("Telemetry "+telemetry.status()+"  steps "+telemetry.writtenSteps()+"  q "+telemetry.queueSize()+"/"+telemetry.queueCapacity()+"  drop "+telemetry.droppedSteps(),x,y,colour);
+            int colour="error".equals(telemetryStatus)?ERROR:MODEL;
+            String suffix="error".equals(telemetryStatus)?"  "+tail(telemetry.failureMessage(),58):"  steps "+telemetry.writtenSteps()+"  q "+telemetry.queueSize()+"/"+telemetry.queueCapacity()+"  drop "+telemetry.droppedSteps();
+            draw("Telemetry "+telemetryStatus+suffix,x,y,colour);
         }
         String notice=state.inspectorNotice();
         if(!notice.isEmpty()){y+=10;draw(notice,x,y,INFO);}
@@ -90,6 +103,7 @@ public final class FoundationHud {
             case INVENTORY:return renderInventory(snapshot,x,y);
             case EVENTS:return renderEvents(snapshot,x,y);
             case DIFFERENCE:return renderDifference(snapshot,x,y);
+            case MODEL:return renderModel(snapshot,x,y);
             case SYSTEM:return renderSystem(snapshot,x,y);
             case SUMMARY:
             default:return renderSummary(snapshot,x,y);
@@ -193,6 +207,21 @@ public final class FoundationHud {
         return y;
     }
 
+    private int renderModel(ObservationSnapshot snapshot,int x,int y){
+        ActionCommand action=actuator.activeAction();
+        if(action==null)action=actuator.previousAppliedAction();
+        draw("bridge "+modelBridge.state()+" endpoint "+modelBridge.endpoint()+" model "+modelBridge.modelVersion(),x,y,modelBridge.isReady()?MODEL:MUTED);y+=10;
+        draw("tx/rx "+modelBridge.sentObservations()+"/"+modelBridge.receivedActions()+" q "+modelBridge.observationQueueSize()+"/2 "+modelBridge.actionQueueSize()+"/8 rtt "+millis(modelBridge.latestRoundTripNanos())+" ms",x,y,WHITE);y+=10;
+        draw("bridge drop obs/action "+modelBridge.droppedObservations()+"/"+modelBridge.droppedActions()+" reconnect "+modelBridge.reconnects()+" invalid "+modelBridge.invalidFrames(),x,y,WHITE);y+=10;
+        draw("actuator "+actuator.status()+" accepted/rejected/expired "+actuator.acceptedActions()+"/"+actuator.rejectedActions()+"/"+actuator.expiredActions()+" remain "+actuator.remainingTicks(),x,y,ACTION);y+=10;
+        draw("action #"+action.observationSequenceNumber()+" model "+action.modelVersion()+" confidence "+one(action.confidence()),x,y,WHITE);y+=10;
+        draw("move F/S "+one(action.forward())+"/"+one(action.strafe())+" camera Y/P "+one(action.yawDeltaDegrees())+"/"+one(action.pitchDeltaDegrees()),x,y,WHITE);y+=10;
+        draw("p J/Sp/Sn/A/U/D/I "+one(action.jumpProbability())+"/"+one(action.sprintProbability())+"/"+one(action.sneakProbability())+"/"+one(action.attackProbability())+"/"+one(action.useOrPlaceProbability())+"/"+one(action.dropProbability())+"/"+one(action.inventoryToggleProbability()),x,y,WHITE);y+=10;
+        draw("slot "+action.hotbarSlot()+" skill "+action.selectedSkill()+" target "+action.selectedTargetTrackingId()+" waypoint "+action.selectedWaypointId(),x,y,WHITE);y+=10;
+        draw("objective "+action.tacticalObjective()+" abort "+action.abortCondition()+" reason "+tail(actuator.lastReason(),50),x,y,MUTED);y+=10;
+        return y;
+    }
+
     private int renderSystem(ObservationSnapshot snapshot,int x,int y){
         SensorTimings t=snapshot.sensorTimings();
         draw("schema "+snapshot.schemaVersion()+" task "+snapshot.taskAdapterIdentifier()+" episode "+shortId(snapshot.episodeId().toString()),x,y,WHITE);y+=10;
@@ -200,7 +229,8 @@ public final class FoundationHud {
         draw("us inv "+micros(t.inventoryNanos())+" landmark "+micros(t.landmarksNanos())+" events "+micros(t.eventsNanos())+" timing "+micros(t.serverTimingNanos()),x,y,WHITE);y+=10;
         draw("total "+micros(t.totalNanos())+" us interval "+observations.intervalTicks()+" age "+observations.snapshotAgeMillis()+" ms",x,y,WHITE);y+=10;
         draw("handler "+micros(tickTiming.averageNanos())+"/"+micros(tickTiming.maximumNanos())+" us  render "+micros(worldRenderer.averageRenderNanos())+"/"+micros(worldRenderer.maximumRenderNanos())+" us",x,y,WHITE);y+=10;
-        draw("telemetry "+telemetry.status()+" steps "+telemetry.writtenSteps()+" q "+telemetry.queueSize()+"/"+telemetry.queueCapacity()+" drop "+telemetry.droppedSteps(),x,y,telemetry.isRecording()?SAFE:WHITE);y+=10;
+        draw("telemetry "+telemetry.status()+" steps "+telemetry.writtenSteps()+" q "+telemetry.queueSize()+"/"+telemetry.queueCapacity()+" drop/enc "+telemetry.droppedSteps()+"/"+telemetry.encodingRejectedSteps(),x,y,telemetry.isRecording()?MODEL:("error".equals(telemetry.status())?ERROR:WHITE));y+=10;
+        if(!telemetry.failureMessage().isEmpty()){draw("telemetry error "+tail(telemetry.failureMessage(),100),x,y,ERROR);y+=10;}
         draw("input buffered/dropped "+telemetry.bufferedInputSamples()+"/"+telemetry.droppedInputSamples(),x,y,WHITE);y+=10;
         if(!telemetry.latestFile().isEmpty()){draw("trajectory "+tail(telemetry.latestFile(),100),x,y,MUTED);y+=10;}
         String exportStatus=exports.status();
@@ -216,6 +246,19 @@ public final class FoundationHud {
         double dz=minecraft.thePlayer.posZ-snapshot.selfState().absoluteZ();
         return (float)Math.sqrt(dx*dx+dy*dy+dz*dz);
     }
+
+    private static String actionCompact(ActionCommand action){
+        if(action==null)return"none";
+        StringBuilder bits=new StringBuilder();
+        if(action.jumpProbability()>=0.5F)bits.append('J');
+        if(action.sprintProbability()>=0.5F)bits.append('S');
+        if(action.sneakProbability()>=0.5F)bits.append('N');
+        if(action.attackProbability()>=0.5F)bits.append('A');
+        if(action.useOrPlaceProbability()>=0.5F)bits.append('U');
+        if(action.dropProbability()>=0.5F)bits.append('D');
+        return "#"+action.observationSequenceNumber()+" f"+one(action.forward())+" s"+one(action.strafe())+" y"+one(action.yawDeltaDegrees())+" "+(bits.length()==0?"-":bits.toString());
+    }
+    private static long millis(long nanos){return nanos<=0L?0L:nanos/1_000_000L;}
 
     private static String itemCategoryName(int ordinal){
         dev.fivesaw.sawbot.common.observation.ItemCategory[] values=dev.fivesaw.sawbot.common.observation.ItemCategory.values();

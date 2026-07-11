@@ -8,6 +8,7 @@ public enum InspectorPage {
     INVENTORY,
     EVENTS,
     DIFFERENCE,
+    MODEL,
     SYSTEM;
 
     public InspectorPage next() {

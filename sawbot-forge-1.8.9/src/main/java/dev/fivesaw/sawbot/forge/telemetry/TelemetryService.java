@@ -27,6 +27,9 @@ public final class TelemetryService implements AutoCloseable {
     private String latestFile = "";
     private long lastWrittenSteps;
     private long lastSessionDroppedSteps;
+    private long lastEncodingRejectedSteps;
+    private String lastFailureMessage = "";
+    private boolean failureLatched;
     private long statusTimestampNanos;
     private long lastObservedSequence = -1L;
     private static final long SAVED_STATUS_LIFETIME_NANOS = 3_000_000_000L;
@@ -51,10 +54,11 @@ public final class TelemetryService implements AutoCloseable {
 
     /** Synchronizes the key-requested state without blocking the client thread. */
     public void synchronizeRequested(boolean shouldRecord, ObservationSnapshot current) {
-        requested = shouldRecord;
         refreshStatus();
+        requested = shouldRecord;
+        if (!shouldRecord) failureLatched = false;
         if (shouldRecord) {
-            if (session == null && current != null) start(current);
+            if (!failureLatched && session == null && current != null) start(current);
         } else if (session != null && !session.isClosing()) {
             stop("user stop");
         }
@@ -106,6 +110,10 @@ public final class TelemetryService implements AutoCloseable {
         Path complete = telemetryDirectory.resolve(base + ".sbt");
         session = new TelemetrySession(partial, complete, initial, queueCapacity,
             compressionLevel, logger);
+        lastWrittenSteps = 0L;
+        lastSessionDroppedSteps = 0L;
+        lastEncodingRejectedSteps = 0L;
+        lastFailureMessage = "";
         baseline = initial;
         lastObservedSequence = initial.sequenceNumber();
         inputAccumulator.clear();
@@ -136,19 +144,34 @@ public final class TelemetryService implements AutoCloseable {
     private void refreshStatus() {
         TelemetrySession current = session;
         if (current == null) {
-            if (!requested && "saved".equals(status)
+            if (!requested && ("saved".equals(status) || "error".equals(status))
                 && System.nanoTime() - statusTimestampNanos > SAVED_STATUS_LIFETIME_NANOS) {
                 setStatus("idle");
             }
             return;
         }
-        if (current.isFailed()) setStatus("error");
-        else if (current.isClosed()) {
+        if (current.isFailed() && current.isClosed()) {
+            latestFile = current.partialPath().toAbsolutePath().toString();
+            lastWrittenSteps = current.writtenSteps();
+            lastSessionDroppedSteps = current.droppedSteps();
+            lastEncodingRejectedSteps = current.encodingRejectedSteps();
+            lastFailureMessage = current.failureMessage();
+            failureLatched = true;
+            session = null;
+            requested = false;
+            baseline = null;
+            inputAccumulator.clear();
+            lastObservedSequence = -1L;
+            setStatus("error");
+        } else if (current.isClosed()) {
             latestFile = current.finalPath().toAbsolutePath().toString();
             lastWrittenSteps = current.writtenSteps();
             lastSessionDroppedSteps = current.droppedSteps();
+            lastEncodingRejectedSteps = current.encodingRejectedSteps();
             session = null;
             setStatus("saved");
+        } else if (current.isFailed()) {
+            setStatus("error");
         } else if (current.isClosing()) setStatus("finalizing");
         else setStatus("recording");
     }
@@ -179,11 +202,26 @@ public final class TelemetryService implements AutoCloseable {
     public int queueSize() { return session == null ? 0 : session.queueSize(); }
     public int queueCapacity() { return queueCapacity; }
     public long writtenSteps() { return session == null ? lastWrittenSteps : session.writtenSteps(); }
-    public long droppedSteps() { return lastSessionDroppedSteps + (session == null ? 0L : session.droppedSteps()); }
+    public long droppedSteps() { return session == null ? lastSessionDroppedSteps : session.droppedSteps(); }
+    public long encodingRejectedSteps() { return session == null ? lastEncodingRejectedSteps : session.encodingRejectedSteps(); }
     public int bufferedInputSamples() { return inputAccumulator.size(); }
     public int droppedInputSamples() { return inputAccumulator.dropped(); }
     public String latestFile() { return latestFile; }
-    public String failureMessage() { return session == null ? "" : session.failureMessage(); }
+    public String failureMessage() { return session == null ? lastFailureMessage : session.failureMessage(); }
+    public boolean failureLatched() { refreshStatus(); return failureLatched; }
+
+    /** Clears a completed failure so the next K press can start a fresh bounded session. */
+    public boolean prepareRetry() {
+        refreshStatus();
+        if (session != null && !session.isClosed()) return false;
+        refreshStatus();
+        if (session != null) return false;
+        failureLatched = false;
+        lastFailureMessage = "";
+        requested = false;
+        setStatus("idle");
+        return true;
+    }
 
     @Override public void close() {
         TelemetrySession current = session;

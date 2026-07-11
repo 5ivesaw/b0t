@@ -10,7 +10,7 @@ An `ActionCommand` is generated for one observation sequence. The actuator valid
 |---|---|---|
 | `schemaVersion` | UTF-8 enum | `sawbot.action/0.1` |
 | `observationSequenceNumber` | `i64` nonnegative | exact source snapshot |
-| `generatedTimestampNanos` | `i64` | model monotonic clock translated/validated by bridge |
+| `generatedTimestampNanos` | `i64` | local receive timestamp assigned by the bridge; model clock is not trusted |
 | `modelVersion` | UTF-8 max 64 | checkpoint/export identifier |
 | `forward` | `f32` | `[-1,+1]` |
 | `strafe` | `f32` | `[-1,+1]`, +1 right |
@@ -50,3 +50,11 @@ Default stale policy:
 Allowed: legitimate movement keys, smooth mouse-equivalent camera deltas, jump/sprint/sneak, attack/use, hotbar selection, GUI toggle when explicitly safe, and complete input release.
 
 Forbidden: teleport, reach changes, impossible placement, server-only rotation, packet advantage, strategic target correction, runtime pathfinding/aiming/scaffold, or silently rescuing a bad neural action.
+
+## Phase 4 execution semantics
+
+The socket worker decodes actions but never touches Minecraft state. The client thread validates and applies accepted actions. Continuous controls use `KeyBinding.setKeyBindState`; attack, use/place, drop, and inventory use ordinary one-shot key ticks; hotbar selection updates the player inventory and controller; yaw/pitch deltas are divided across `actionDurationTicks`.
+
+A command is rejected or released when SawBot is disabled, the snapshot is frozen, the environment is blocked, the model disconnects, a GUI blocks the command, the command is stale, a referenced target/waypoint is missing, or a physical human input is detected.
+
+The bridge assigns `generatedTimestampNanos` at local receipt. Therefore the age deadline is a deterministic local queue/actuation deadline, while observation sequence lag measures policy staleness relative to the world snapshot.

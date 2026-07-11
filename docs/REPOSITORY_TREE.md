@@ -1,4 +1,4 @@
-# Repository tree — Phase 3 GitHub-ready candidate
+# Repository tree — Phase 4 GitHub-ready candidate
 
 ```text
 SawBotV1/
@@ -71,4 +71,8 @@ SawBotV1/
     └── local bootstrap/preflight scripts
 ```
 
-Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the Gradle mod build. The Phase 3 validator and replay inspector are Python development tools and are shipped as repository/release documentation assets rather than inside the Minecraft JAR. Neural training, simulator, and arena implementations remain gated.
+Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the Gradle mod build. Telemetry tools and the Phase 4 dummy model are development/runtime test tools and are not packed into the Minecraft JAR. Neural training, simulator, arena, and Bedwars policy implementations remain gated.
+
+- `sawbot-tools/dummy-model/`: Phase 4 local bridge server and deterministic actuator demo.
+- `sawbot-forge-1.8.9/.../model/`: bounded local transport.
+- `sawbot-forge-1.8.9/.../actuator/`: environment guard, physical takeover, validation, and legitimate-control actuator.

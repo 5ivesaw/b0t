@@ -1,50 +1,20 @@
-# Update `5ivesaw/b0t` and publish automatically
+# GitHub upload quick start
 
-SawBotV1 updates are delivered as **patch-only ZIPs**. The permanent Downloads automation can apply them without extraction, commit them, push `main`, and clean old SawBot patch downloads.
+Repository: `https://github.com/5ivesaw/b0t`
 
-Repository:
+Current version: `0.5.0-alpha.0`
 
-```text
-C:\Users\fivesaw\Desktop\SawBotV1-GitHub-Ready
-```
+## Patch workflow
 
-For this repository state, the expected automatic release is:
+Apply `SawBotV1-0.5.0-alpha.0-PATCH.zip` over the existing `0.4.0-alpha.0` repository using its `apply-patch.ps1`, or use the user's local patch automation.
 
-```text
-v0.4.0-alpha.0
-```
-
-## Automatic local update
-
-1. Download `SawBotV1-0.4.0-alpha.0-PATCH.zip` into Downloads.
-2. The installed SawBotV1 Downloads Automation validates and applies it.
-3. It commits using `AUTO_UPDATE.json` and pushes `main`.
-4. GitHub Actions verifies, builds, tags, and publishes the release.
-5. Downloading the validated release JAR automatically replaces the older SawBot JAR in the configured PrismLauncher instance.
-
-Do not create or push a tag manually.
-
-## Manual fallback
-
-Extract the patch ZIP and run:
+Then:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\apply-patch.ps1 -RepositoryPath "C:\Users\fivesaw\Desktop\SawBotV1-GitHub-Ready"
 cd "C:\Users\fivesaw\Desktop\SawBotV1-GitHub-Ready"
 git add -A
-git commit -m "Implement Phase 3 structured telemetry"
+git commit -m "Implement Phase 4 actuator and model bridge"
 git push origin main
 ```
 
-## GitHub pipeline
-
-The `CI and automatic release` workflow:
-
-1. reads `sawbotVersion` from `gradle.properties`;
-2. runs offline contract, sensor, safety, and telemetry verification;
-3. builds the remapped Forge 1.8.9 JAR;
-4. validates the exact JAR and transferred release payload;
-5. creates tag `v<sawbotVersion>`;
-6. publishes the GitHub Release and all required assets.
-
-Published versions are immutable. A reused version fails rather than overwriting a release.
+The `main` push automatically runs verification, builds the Forge JAR, creates tag `v0.5.0-alpha.0`, and publishes the release. Do not create a tag manually.

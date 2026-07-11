@@ -105,34 +105,52 @@ The `0.3.0-alpha.4` card interface was rejected on the target machine. SawBot us
 
 ## Phase 3 — Structured telemetry
 
-Implemented in candidate `0.4.0-alpha.0`:
+Implemented in `0.4.0-alpha.0` and hardened in the Phase 4 candidate:
 
 - [x] Versioned `sawbot.telemetry/0.1` binary contract.
 - [x] No frames, screenshots, OCR, or pixel data.
-- [x] Exact client-tick human key-state capture.
-- [x] Raw Minecraft mouse deltas and selected slot capture.
-- [x] Observation/action/outcome alignment across snapshot intervals.
-- [x] Bounded asynchronous queue and worker shutdown handling.
-- [x] Little-endian records with explicit lengths and DEFLATE compression.
-- [x] Per-record CRC32 and footer rolling CRC32.
-- [x] `.partial` interrupted-write detection and separate recovery output.
-- [x] Dataset validator and replay inspector.
-- [x] Queue, step, drop, and status instrumentation in the compact HUD.
-- [x] Offline fixture validates complete write, mouse/key persistence, truncation detection, and recovery.
+- [x] Exact client-tick human key-state and raw mouse-delta capture.
+- [x] Observation/input/outcome alignment.
+- [x] Bounded asynchronous writer, per-record compression, CRC32, footer, validation, replay, and recovery.
+- [x] Offline complete-write and damaged-prefix recovery fixtures pass.
+- [x] Phase 4 adds restartable failure state, per-step encoding rejection, visible error reason, and independent status colours.
+
+Target-machine result: recording reached 117 steps, then entered an error state before the resulting file could be validated. The exact exception was not captured, so the gate remains open. See `docs/PHASE3_RUNTIME_STATUS.md`.
+
+**Gate: PARTIAL — FORMAT/OFFLINE PASS, TARGET WRITER RETEST REQUIRED.**
+
+## Phase 4 — Safe actuator and model bridge
+
+Implemented in candidate `0.5.0-alpha.0`:
+
+- [x] Versioned `sawbot.bridge/0.1` local protocol.
+- [x] Non-blocking client-thread publication and background socket worker.
+- [x] Bounded observation/action queues and CRC-protected frames.
+- [x] Handshake, model identity, nonce, reconnect, and disconnect handling.
+- [x] Dummy model plus deterministic actuator demo.
+- [x] Strict Action Contract and snapshot-reference validation.
+- [x] Configurable age and observation-sequence deadlines.
+- [x] Local/private environment guard.
+- [x] Legitimate W/A/S/D, jump, sprint, sneak, smooth camera, hotbar, attack, use, drop, and inventory controls.
+- [x] Previous applied action inserted into subsequent observations.
+- [x] Physical keyboard/mouse takeover.
+- [x] F9/F12/world-unload/model-disconnect complete release.
+- [x] Compact MODEL inspector page with latency, queue, drop, reconnect, and actuator counters.
+- [x] Loopback protocol and actuator behavior covered by offline integration tests.
 
 Runtime acceptance required:
 
-- [ ] K starts and stops recording.
-- [ ] A clean stop produces `.sbt` and removes `.sbt.partial`.
-- [ ] Validator reports `COMPLETE` and all checksums pass.
-- [ ] Replay inspector reports input samples, mouse deltas, key bits, and outcome boundaries.
-- [ ] Movement, mouse, attack/use, slot changes, and GUI state are represented.
-- [ ] Writer queue remains bounded and normally near zero.
-- [ ] Logging produces no severe stutter on the target machine.
-- [ ] Forced/interrupted copy is detected and recoverable.
-- [ ] No image/video files are produced.
-- [ ] F9/F12 remain immediate while telemetry continues independently.
-- [ ] World unload finalizes or preserves a recoverable partial file.
-- [ ] Five-minute recording test has no repeated SawBot errors.
+- [ ] Dummy model connects and HUD reaches `READY`.
+- [ ] F10 refuses blocked/offline scope and enables only when ready.
+- [ ] Every legitimate test command actuates correctly.
+- [ ] Camera motion is smooth and bounded.
+- [ ] Hotbar changes and one-shot attack/use/drop/inventory actions fire once.
+- [ ] Physical input causes immediate manual takeover.
+- [ ] Closing the dummy model immediately disables and releases controls.
+- [ ] Client thread remains responsive while model is absent/reconnecting.
+- [ ] MODEL page latency and counters update.
+- [ ] Telemetry restarts and produces a validator-clean `.sbt` file.
+- [ ] Overlay rendering no longer tints the hotbar/held item.
+- [ ] Focused five-minute test has no repeated SawBot errors.
 
-**Gate: PENDING TARGET-MACHINE TELEMETRY TEST.**
+**Gate: PENDING TARGET-MACHINE PHASE 4 TEST.**

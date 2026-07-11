@@ -29,12 +29,14 @@ public final class SawBotStateController {
     }
 
     public void toggleEnabled() {
-        if (mode == SawBotMode.DISABLED) {
-            mode = SawBotMode.ENABLED;
-            logger.warn("SawBotV1 enabled in Phase 3. Sensors, inspectors, and telemetry run, but no model or actuator loop exists yet.");
-        } else {
-            disableAndRelease("toggle disable");
-        }
+        if (mode == SawBotMode.DISABLED) enable();
+        else disableAndRelease("toggle disable");
+    }
+
+    public void enable() {
+        mode = SawBotMode.ENABLED;
+        lastStopReason = "enabled";
+        logger.warn("SawBotV1 Phase 4 actuator enabled for the configured private/local scope.");
     }
 
     /** Snapshot freezing remains independent from autonomous enable/disable state. */

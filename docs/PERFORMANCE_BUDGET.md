@@ -79,3 +79,18 @@ The user-confirmed Phase 0 runtime screenshot on 2026-07-10 showed approximately
 | Debug JSON | One snapshot/file | Bounded by observation contract | Never used as Phase 3 trajectory format |
 
 The System inspector page reports world-render average/maximum time. Runtime acceptance must compare overlay-off FPS with Phase 1 and measure each overlay separately before combined use.
+
+## Phase 4 bridge and actuator budgets
+
+| Component | Bound | Client-thread rule |
+|---|---:|---|
+| Observation publication | queue capacity 2 | `offer` only; never wait for socket/model |
+| Action reception | queue capacity 8 | poll newest; discard superseded actions |
+| Bridge payload | 262,144 bytes | encode bounded immutable snapshot only |
+| Connect/read timeout | 500 ms / 100 ms defaults | worker thread only |
+| Action age | 250 ms default | reject and release after deadline |
+| Source lag | 3 observations default | reject stale policy output |
+| Action duration | 1–4 ticks | bounded camera/key authority |
+| Sent timestamp cache | 32 entries | bounded latency bookkeeping |
+
+The target client-thread actuator budget is below 100 microseconds per tick excluding ordinary Minecraft key handling. Socket and model inference time are not part of the client-thread critical path.

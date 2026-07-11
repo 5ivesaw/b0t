@@ -6,6 +6,8 @@ import dev.fivesaw.sawbot.common.observation.*;
 import dev.fivesaw.sawbot.common.versioning.SchemaVersion;
 import dev.fivesaw.sawbot.common.telemetry.*;
 import dev.fivesaw.sawbot.forge.client.SawBotKeyBindings;
+import dev.fivesaw.sawbot.forge.actuator.*;
+import dev.fivesaw.sawbot.forge.model.*;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
@@ -14,6 +16,15 @@ import dev.fivesaw.sawbot.forge.hud.EntityVisualStyle;
 import dev.fivesaw.sawbot.forge.map.LandmarkSensor;
 import java.io.File;
 import java.io.StringWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import dev.fivesaw.sawbot.forge.safety.SawBotMode;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
 import dev.fivesaw.sawbot.forge.sensors.ObservationPipeline;
@@ -24,6 +35,7 @@ import dev.fivesaw.sawbot.forge.telemetry.TelemetryBinaryCodec;
 import dev.fivesaw.sawbot.forge.telemetry.TelemetryService;
 import java.util.*;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayer;
@@ -76,7 +88,15 @@ public final class FoundationContractTest {
         phase2KeyDefaultsAreStable();
         telemetrySchemaAndInputWindowAreStable();
         telemetryBinaryCodecIsDeterministic();
+        telemetryObservationPayloadIsVersioned();
         telemetryServiceWritesCompleteTrajectory();
+        telemetryFailureCanBeRetried();
+        modelProtocolFrameRoundTripIsBounded();
+        modelProtocolActionDecodeIsDeterministic();
+        modelBridgeConnectsWithoutBlockingClientThread();
+        actionContextRejectsMissingReferences();
+        environmentGuardBlocksPublicServers();
+        safeActuatorUsesLegitimateControlsAndReleases();
         System.out.println("PASS FoundationContractTest (" + checks + " checks)");
     }
 
@@ -330,6 +350,211 @@ public final class FoundationContractTest {
             String fixture=System.getProperty("sawbot.telemetry.fixture");
             if(fixture!=null&&!fixture.isEmpty())java.nio.file.Files.copy(complete[0].toPath(),java.nio.file.Paths.get(fixture),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         }catch(Exception exception){throw new AssertionError("telemetry service",exception);}
+    }
+
+
+    private static void telemetryObservationPayloadIsVersioned(){
+        byte[] payload=TelemetryBinaryCodec.encodeObservation(richSnapshot());
+        require(payload.length>1000&&payload.length<ModelProtocol.MAX_PAYLOAD_BYTES,"bridge observation payload bounded");
+        require((payload[0]&255)==0x4F&&(payload[1]&255)==0x42&&(payload[2]&255)==0x53&&(payload[3]&255)==0x31,"bridge observation payload magic OBS1");
+    }
+
+    private static void modelProtocolFrameRoundTripIsBounded(){
+        try{
+            byte[] payload=new byte[]{1,2,3,4,5};
+            ByteArrayOutputStream bytes=new ByteArrayOutputStream();
+            ModelProtocol.writeFrame(new DataOutputStream(bytes),ModelProtocol.TYPE_PING,payload);
+            ModelProtocol.Frame frame=ModelProtocol.readFrame(new DataInputStream(new ByteArrayInputStream(bytes.toByteArray())));
+            require(frame.type()==ModelProtocol.TYPE_PING,"bridge frame type round trip");
+            require(Arrays.equals(payload,frame.payload()),"bridge frame payload round trip");
+            byte[] corrupt=bytes.toByteArray();corrupt[corrupt.length-1]^=1;
+            boolean rejected=false;try{ModelProtocol.readFrame(new DataInputStream(new ByteArrayInputStream(corrupt)));}catch(java.io.IOException expected){rejected=true;}
+            require(rejected,"bridge CRC rejects corruption");
+            boolean oversize=false;try{ModelProtocol.writeFrame(new DataOutputStream(new ByteArrayOutputStream()),ModelProtocol.TYPE_ACTION,new byte[ModelProtocol.MAX_PAYLOAD_BYTES+1]);}catch(IllegalArgumentException expected){oversize=true;}
+            require(oversize,"bridge payload bound enforced");
+        }catch(Exception exception){throw new AssertionError("bridge frame",exception);}
+    }
+
+    private static void modelProtocolActionDecodeIsDeterministic(){
+        try{
+            ByteArrayOutputStream bytes=new ByteArrayOutputStream();
+            DataOutputStream out=new DataOutputStream(bytes);
+            out.writeLong(7L);
+            out.writeFloat(1F);out.writeFloat(-0.5F);out.writeFloat(12F);out.writeFloat(-6F);
+            out.writeFloat(1F);out.writeFloat(1F);out.writeFloat(0F);out.writeFloat(1F);
+            out.writeFloat(0F);out.writeFloat(0F);out.writeFloat(0F);
+            out.writeByte(4);out.writeByte(Skill.NONE.ordinal());out.writeInt(4);out.writeInt(3);
+            out.writeFloat(0.75F);out.writeByte(3);out.writeByte(TacticalObjective.NONE.ordinal());out.writeByte(AbortCondition.NONE.ordinal());out.flush();
+            ActionCommand command=ModelProtocol.decodeAction(bytes.toByteArray(),"dummy/phase4",5000L);
+            require(command.observationSequenceNumber()==7L&&command.generatedTimestampNanos()==5000L,"decoded action identity");
+            require(command.forward()==1F&&command.strafe()==-0.5F,"decoded movement axes");
+            require(command.yawDeltaDegrees()==12F&&command.pitchDeltaDegrees()==-6F,"decoded camera axes");
+            require(command.jumpProbability()==1F&&command.sprintProbability()==1F&&command.attackProbability()==1F,"decoded buttons");
+            require(command.hotbarSlot()==4&&command.selectedTargetTrackingId()==4&&command.selectedWaypointId()==3,"decoded references");
+            require(command.actionDurationTicks()==3&&"dummy/phase4".equals(command.modelVersion()),"decoded duration/model");
+        }catch(Exception exception){throw new AssertionError("bridge action decode",exception);}
+    }
+
+
+    private static void modelBridgeConnectsWithoutBlockingClientThread(){
+        ServerSocket server=null;ModelBridge bridge=null;
+        try{
+            server=new ServerSocket(0);final ServerSocket acceptedServer=server;
+            final Throwable[] failure=new Throwable[1];
+            Thread model=new Thread(new Runnable(){@Override public void run(){
+                try{
+                    Socket socket=acceptedServer.accept();
+                    socket.setSoTimeout(3000);
+                    DataInputStream input=new DataInputStream(socket.getInputStream());
+                    DataOutputStream output=new DataOutputStream(socket.getOutputStream());
+                    ModelProtocol.Frame hello=ModelProtocol.readFrame(input);
+                    if(hello.type()!=ModelProtocol.TYPE_HELLO)throw new AssertionError("hello frame type");
+                    DataInputStream helloIn=new DataInputStream(new ByteArrayInputStream(hello.payload()));
+                    readBoundedUtf8ForTest(helloIn);readBoundedUtf8ForTest(helloIn);readBoundedUtf8ForTest(helloIn);readBoundedUtf8ForTest(helloIn);
+                    long nonce=helloIn.readLong();helloIn.readUnsignedShort();
+                    ByteArrayOutputStream ackBytes=new ByteArrayOutputStream();DataOutputStream ack=new DataOutputStream(ackBytes);
+                    writeBoundedUtf8ForTest(ack,ModelProtocol.IDENTIFIER);writeBoundedUtf8ForTest(ack,"dummy/integration");ack.writeLong(nonce);ack.writeInt(1);ack.flush();
+                    ModelProtocol.writeFrame(output,ModelProtocol.TYPE_HELLO_ACK,ackBytes.toByteArray());
+                    ModelProtocol.Frame observation=ModelProtocol.readFrame(input);
+                    if(observation.type()!=ModelProtocol.TYPE_OBSERVATION)throw new AssertionError("observation frame type");
+                    ByteBuffer obs=ByteBuffer.wrap(observation.payload()).order(ByteOrder.LITTLE_ENDIAN);
+                    if(obs.getInt()!=0x3153424F)throw new AssertionError("observation magic");
+                    obs.getShort();obs.getShort();long sequence=obs.getLong();
+                    ByteArrayOutputStream actionBytes=new ByteArrayOutputStream();DataOutputStream action=new DataOutputStream(actionBytes);
+                    action.writeLong(sequence);action.writeFloat(0.5F);action.writeFloat(0F);action.writeFloat(5F);action.writeFloat(0F);
+                    for(int i=0;i<7;i++)action.writeFloat(0F);
+                    action.writeByte(-1);action.writeByte(Skill.NONE.ordinal());action.writeInt(-1);action.writeInt(-1);action.writeFloat(1F);action.writeByte(1);action.writeByte(TacticalObjective.NONE.ordinal());action.writeByte(AbortCondition.NONE.ordinal());action.flush();
+                    ModelProtocol.writeFrame(output,ModelProtocol.TYPE_ACTION,actionBytes.toByteArray());
+                    Thread.sleep(100L);socket.close();
+                }catch(Throwable throwable){failure[0]=throwable;}
+            }},"SawBot-ModelBridge-Test");
+            model.setDaemon(true);model.start();
+            bridge=new ModelBridge("127.0.0.1",server.getLocalPort(),500,100,"test/mod",10,new TestLogger());
+            long readyDeadline=System.currentTimeMillis()+3000L;
+            while(!bridge.isReady()&&System.currentTimeMillis()<readyDeadline)Thread.sleep(10L);
+            require(bridge.isReady(),"model bridge reaches READY");
+            long offerStart=System.nanoTime();bridge.offerObservation(richSnapshot());long offerElapsed=System.nanoTime()-offerStart;
+            require(offerElapsed<20_000_000L,"client observation publication non-blocking");
+            ModelActionEnvelope envelope=null;long actionDeadline=System.currentTimeMillis()+3000L;
+            while(envelope==null&&System.currentTimeMillis()<actionDeadline){envelope=bridge.pollLatestAction();if(envelope==null)Thread.sleep(10L);}
+            require(envelope!=null,"model bridge receives action");
+            require(envelope.command().observationSequenceNumber()==richSnapshot().sequenceNumber(),"bridge action aligns observation sequence");
+            require("dummy/integration".equals(envelope.command().modelVersion()),"bridge model identity");
+            require(bridge.sentObservations()>=1&&bridge.receivedActions()>=1,"bridge transport counters");
+            model.join(3000L);if(failure[0]!=null)throw new AssertionError("model server",failure[0]);
+        }catch(Exception exception){throw new AssertionError("model bridge integration",exception);}
+        finally{if(bridge!=null)bridge.close();if(server!=null)try{server.close();}catch(Exception ignored){}}
+    }
+
+    private static String readBoundedUtf8ForTest(DataInputStream input)throws Exception{int length=input.readUnsignedShort();byte[] bytes=new byte[length];input.readFully(bytes);return new String(bytes,StandardCharsets.UTF_8);}
+    private static void writeBoundedUtf8ForTest(DataOutputStream output,String value)throws Exception{byte[] bytes=value.getBytes(StandardCharsets.UTF_8);output.writeShort(bytes.length);output.write(bytes);}
+
+
+    private static void actionContextRejectsMissingReferences(){
+        ObservationSnapshot snapshot=richSnapshot();
+        long now=10_000_000L;
+        ActionCommand valid=new ActionCommand(snapshot.sequenceNumber(),now,"test/0",0,0,0,0,0,0,0,0,0,0,0,-1,Skill.NONE,4,3,1,1,TacticalObjective.NONE,AbortCondition.NONE);
+        require(ActionContextValidator.validate(valid,snapshot,now,1_000_000L,3).isValid(),"available target and waypoint accepted");
+        ActionCommand missingTarget=new ActionCommand(snapshot.sequenceNumber(),now,"test/0",0,0,0,0,0,0,0,0,0,0,0,-1,Skill.NONE,999,3,1,1,TacticalObjective.NONE,AbortCondition.NONE);
+        require(!ActionContextValidator.validate(missingTarget,snapshot,now,1_000_000L,3).isValid(),"missing target rejected");
+        ActionCommand missingWaypoint=new ActionCommand(snapshot.sequenceNumber(),now,"test/0",0,0,0,0,0,0,0,0,0,0,0,-1,Skill.NONE,4,999,1,1,TacticalObjective.NONE,AbortCondition.NONE);
+        require(!ActionContextValidator.validate(missingWaypoint,snapshot,now,1_000_000L,3).isValid(),"missing waypoint rejected");
+    }
+
+    private static void environmentGuardBlocksPublicServers(){
+        Minecraft minecraft=Minecraft.getMinecraft();
+        minecraft.theWorld=new World();minecraft.thePlayer=new EntityPlayerSP();
+        minecraft.setSingleplayerForTest(true);
+        EnvironmentGuard guard=new EnvironmentGuard(minecraft,true,"127.0.0.1,localhost,192.168.1.20");
+        require(guard.isAllowed()&&"SINGLEPLAYER".equals(guard.description()),"singleplayer allowed");
+        minecraft.setSingleplayerForTest(false);minecraft.setServerDataForTest(new ServerData("Hypixel","mc.hypixel.net",false));
+        require(!guard.isAllowed()&&guard.description().startsWith("BLOCKED:"),"public server blocked");
+        minecraft.setServerDataForTest(new ServerData("LAN","192.168.1.20:25565",false));
+        require(guard.isAllowed()&&guard.description().startsWith("PRIVATE:"),"explicit private host allowed");
+        minecraft.setSingleplayerForTest(true);minecraft.setServerDataForTest(null);
+    }
+
+    private static void safeActuatorUsesLegitimateControlsAndReleases(){
+        Minecraft minecraft=Minecraft.getMinecraft();
+        minecraft.theWorld=new World();minecraft.thePlayer=new EntityPlayerSP();minecraft.thePlayer.posY=64;
+        minecraft.setSingleplayerForTest(true);minecraft.currentScreen=null;
+        KeyBinding.clearForTest();
+        SawBotStateController controller=new SawBotStateController(minecraft,new TestLogger());
+        EnvironmentGuard guard=new EnvironmentGuard(minecraft,true,"localhost");
+        SafeActionActuator actuator=new SafeActionActuator(minecraft,controller,guard,500,3,new TestLogger());
+        controller.enable();
+        ObservationSnapshot snapshot=richSnapshot();
+        long now=System.nanoTime();
+        ActionCommand command=new ActionCommand(snapshot.sequenceNumber(),now,"dummy/phase4",1F,-1F,20F,10F,1F,1F,1F,1F,1F,1F,1F,2,Skill.NONE,4,3,1F,2,TacticalObjective.NONE,AbortCondition.NONE);
+        actuator.tick(snapshot,new ModelActionEnvelope(command,now,12_000_000L));
+        require(KeyBinding.isKeyDownForTest(minecraft.gameSettings.keyBindForward.getKeyCode()),"actuator forward key");
+        require(KeyBinding.isKeyDownForTest(minecraft.gameSettings.keyBindLeft.getKeyCode()),"actuator left key");
+        require(KeyBinding.isKeyDownForTest(minecraft.gameSettings.keyBindJump.getKeyCode()),"actuator jump key");
+        require(KeyBinding.pulseCountForTest(minecraft.gameSettings.keyBindAttack.getKeyCode())==1,"actuator attack pulse");
+        require(KeyBinding.pulseCountForTest(minecraft.gameSettings.keyBindUseItem.getKeyCode())==1,"actuator use pulse");
+        require(KeyBinding.pulseCountForTest(minecraft.gameSettings.keyBindDrop.getKeyCode())==1,"actuator drop pulse");
+        require(KeyBinding.pulseCountForTest(minecraft.gameSettings.keyBindInventory.getKeyCode())==1,"actuator inventory pulse");
+        require(minecraft.thePlayer.inventory.currentItem==2,"actuator hotbar slot");
+        require(Math.abs(minecraft.thePlayer.rotationYaw-10F)<0.001F&&Math.abs(minecraft.thePlayer.rotationPitch-5F)<0.001F,"camera smoothing first tick");
+        actuator.tick(snapshot,null);
+        require(Math.abs(minecraft.thePlayer.rotationYaw-20F)<0.001F&&Math.abs(minecraft.thePlayer.rotationPitch-10F)<0.001F,"camera smoothing completes");
+        require(!KeyBinding.isKeyDownForTest(minecraft.gameSettings.keyBindForward.getKeyCode()),"duration releases movement");
+        controller.emergencyStop();actuator.release("emergency test");
+        require(!KeyBinding.anyKeyDownForTest(),"emergency releases every binding");
+        require(actuator.acceptedActions()==1&&actuator.rejectedActions()==0,"actuator counters");
+        require(actuator.lastActionRoundTripNanos()==12_000_000L,"actuator latency retained");
+
+        KeyBinding.clearForTest();minecraft.currentScreen=new net.minecraft.client.gui.GuiScreen();controller.enable();
+        long guiNow=System.nanoTime();
+        ActionCommand guiToggle=new ActionCommand(snapshot.sequenceNumber(),guiNow,"dummy/phase4",0,0,0,0,0,0,0,0,0,0,1F,-1,Skill.NONE,-1,-1,1F,1,TacticalObjective.NONE,AbortCondition.NONE);
+        actuator.tick(snapshot,new ModelActionEnvelope(guiToggle,guiNow,1L));
+        require(KeyBinding.pulseCountForTest(minecraft.gameSettings.keyBindInventory.getKeyCode())==1,"safe GUI inventory toggle");
+        minecraft.currentScreen=null;
+
+        KeyBinding.clearForTest();controller.enable();
+        SafeActionActuator expiring=new SafeActionActuator(minecraft,controller,guard,50,3,new TestLogger());
+        long expiryNow=System.nanoTime();
+        ActionCommand longAction=new ActionCommand(snapshot.sequenceNumber(),expiryNow,"dummy/phase4",1F,0,0,0,0,0,0,0,0,0,0,-1,Skill.NONE,-1,-1,1F,4,TacticalObjective.NONE,AbortCondition.NONE);
+        expiring.tick(snapshot,new ModelActionEnvelope(longAction,expiryNow,1L));
+        try{Thread.sleep(70L);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new AssertionError(interrupted);}
+        expiring.tick(snapshot,null);
+        require(expiring.expiredActions()==1,"actuator deadline expires active action");
+        require(!KeyBinding.anyKeyDownForTest(),"expired action releases bindings");
+    }
+
+
+    private static void telemetryFailureCanBeRetried(){
+        TelemetryService service=null;
+        try{
+            File root=new File(System.getProperty("java.io.tmpdir"),"sawbot-telemetry-retry-"+System.nanoTime());
+            require(root.mkdirs(),"telemetry retry root created");
+            File blocker=new File(root,"sawbotv1");
+            java.nio.file.Files.write(blocker.toPath(),new byte[]{1});
+            Minecraft minecraft=Minecraft.getMinecraft();minecraft.mcDataDir=root;
+            minecraft.theWorld=new World();minecraft.thePlayer=new EntityPlayerSP();
+            service=new TelemetryService(root,minecraft,8,8,1,new TestLogger());
+            ObservationSnapshot first=snapshotAt(40,20,0,64,0,terrain(),inventory());
+            ObservationSnapshot second=snapshotAt(42,21,1,64,0,terrain(),inventory());
+            service.synchronizeRequested(true,first);
+            long errorDeadline=System.currentTimeMillis()+3000L;
+            while(!"error".equals(service.status())&&System.currentTimeMillis()<errorDeadline)Thread.sleep(20L);
+            require("error".equals(service.status())&&service.failureLatched(),"telemetry I/O failure becomes visible and latched");
+            require(!service.failureMessage().isEmpty(),"telemetry failure reason retained");
+            service.synchronizeRequested(false,first);
+            require(service.prepareRetry(),"telemetry completed failure can reset");
+            require(blocker.delete(),"telemetry blocker removed");
+            service.synchronizeRequested(true,first);
+            require(service.isRecording(),"telemetry restarts after failure reset");
+            minecraft.mouseHelper.deltaX=2;minecraft.mouseHelper.deltaY=1;service.captureHumanInput(41);service.onObservation(second);
+            service.synchronizeRequested(false,second);
+            long saveDeadline=System.currentTimeMillis()+3000L;
+            while("finalizing".equals(service.status())&&System.currentTimeMillis()<saveDeadline)Thread.sleep(20L);
+            require("saved".equals(service.status()),"telemetry retry saves clean session");
+            File directory=new File(root,"sawbotv1/telemetry");
+            File[] complete=directory.listFiles(new java.io.FilenameFilter(){public boolean accept(File dir,String name){return name.endsWith(".sbt");}});
+            require(complete!=null&&complete.length==1,"telemetry retry complete file exists");
+        }catch(Exception exception){throw new AssertionError("telemetry retry",exception);}
+        finally{if(service!=null)service.close();}
     }
 
 
