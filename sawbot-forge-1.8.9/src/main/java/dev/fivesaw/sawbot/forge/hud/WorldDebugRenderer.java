@@ -61,7 +61,7 @@ public final class WorldDebugRenderer {
             if (state.collisionOverlayVisible()) renderCollision(snapshot);
             if (state.entityOverlayVisible()) renderEntities(snapshot, manager, partialTicks);
             if (state.landmarkOverlayVisible()) renderLandmarks(snapshot, manager);
-            renderSelectedBlock(inspector.selectedBlock());
+            if (state.inspectorVisible()) renderSelectedBlock(inspector.selectedBlock());
             if (state.observationsFrozen()) renderFrozenAnchor(snapshot, manager);
         } finally {
             if (matrixPushed) GlStateManager.popMatrix();
@@ -318,7 +318,11 @@ public final class WorldDebugRenderer {
         GlStateManager.disableDepth();
         GlStateManager.enableBlend();
         GlStateManager.enableTexture2D();
+        GlStateManager.resetColor();
+        GL11.glColor4f(1F, 1F, 1F, 1F);
         font.drawStringWithShadow(text, -font.getStringWidth(text) / 2, 0, color);
+        GlStateManager.resetColor();
+        GL11.glColor4f(1F, 1F, 1F, 1F);
         GlStateManager.popMatrix();
     }
 
@@ -331,6 +335,8 @@ public final class WorldDebugRenderer {
         GlStateManager.disableBlend();
         GlStateManager.enableAlpha();
         GlStateManager.enableCull();
+        GlStateManager.resetColor();
+        GL11.glColor4f(1F, 1F, 1F, 1F);
         GlStateManager.color(1F, 1F, 1F, 1F);
     }
 

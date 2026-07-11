@@ -31,7 +31,7 @@ public final class SawBotStateController {
     public void toggleEnabled() {
         if (mode == SawBotMode.DISABLED) {
             mode = SawBotMode.ENABLED;
-            logger.warn("SawBotV1 enabled in Phase 2. Sensors and inspectors run, but no model or actuator loop exists yet.");
+            logger.warn("SawBotV1 enabled in Phase 3. Sensors, inspectors, and telemetry run, but no model or actuator loop exists yet.");
         } else {
             disableAndRelease("toggle disable");
         }
@@ -88,7 +88,6 @@ public final class SawBotStateController {
 
     public void disableAndRelease(String reason) {
         mode = SawBotMode.DISABLED;
-        telemetryRequested = false;
         observationStepRequested = false;
         lastStopReason = reason == null ? "unspecified" : reason;
         InputRelease.releaseAll(minecraft);
@@ -101,7 +100,8 @@ public final class SawBotStateController {
     public void toggleEntityOverlay() { entityOverlayVisible = !entityOverlayVisible; setInspectorNotice("entity overlay " + onOff(entityOverlayVisible)); }
     public void toggleEntityTracers() { entityTracersVisible = !entityTracersVisible; setInspectorNotice("entity tracers " + onOff(entityTracersVisible)); }
     public void toggleLandmarkOverlay() { landmarkOverlayVisible = !landmarkOverlayVisible; setInspectorNotice("landmark overlay " + onOff(landmarkOverlayVisible)); }
-    public void toggleTelemetryRequest() { telemetryRequested = !telemetryRequested; }
+    public void toggleTelemetryRequest() { telemetryRequested = !telemetryRequested; setInspectorNotice("telemetry " + (telemetryRequested ? "START" : "STOP")); }
+    public void clearTelemetryRequest() { telemetryRequested = false; }
     public void setInspectorNotice(String notice) {
         inspectorNotice = notice == null ? "" : notice;
         inspectorNoticeTimestampNanos = System.nanoTime();

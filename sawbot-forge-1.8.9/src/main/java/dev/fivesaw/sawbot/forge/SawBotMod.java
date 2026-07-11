@@ -21,13 +21,13 @@ public final class SawBotMod {
         logger = event.getModLog();
         SawBotConfig config = SawBotConfig.load(event.getSuggestedConfigurationFile(), logger);
         clientRuntime = new ClientRuntime(config, logger);
-        logger.info("SawBotV1 Phase 2 pre-initialized; autonomous control is disabled by default.");
+        logger.info("SawBotV1 Phase 3 pre-initialized; autonomous control is disabled by default.");
     }
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         if (clientRuntime == null) throw new IllegalStateException("preInit did not create ClientRuntime");
         clientRuntime.register();
-        logger.info("SawBotV1 Phase 2 event handlers registered.");
+        logger.info("SawBotV1 Phase 3 event handlers registered.");
     }
 }

@@ -4,6 +4,7 @@ import dev.fivesaw.sawbot.common.action.*;
 import dev.fivesaw.sawbot.common.events.*;
 import dev.fivesaw.sawbot.common.observation.*;
 import dev.fivesaw.sawbot.common.versioning.SchemaVersion;
+import dev.fivesaw.sawbot.common.telemetry.*;
 import dev.fivesaw.sawbot.forge.client.SawBotKeyBindings;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
@@ -11,6 +12,7 @@ import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.forge.inspection.SnapshotJsonWriter;
 import dev.fivesaw.sawbot.forge.hud.EntityVisualStyle;
 import dev.fivesaw.sawbot.forge.map.LandmarkSensor;
+import java.io.File;
 import java.io.StringWriter;
 import dev.fivesaw.sawbot.forge.safety.SawBotMode;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
@@ -18,6 +20,8 @@ import dev.fivesaw.sawbot.forge.sensors.ObservationPipeline;
 import dev.fivesaw.sawbot.forge.sensors.MidRangeMapSensor;
 import dev.fivesaw.sawbot.forge.tracking.EntityTrackerSensor;
 import dev.fivesaw.sawbot.forge.tracking.EntityTypeClassifier;
+import dev.fivesaw.sawbot.forge.telemetry.TelemetryBinaryCodec;
+import dev.fivesaw.sawbot.forge.telemetry.TelemetryService;
 import java.util.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -70,6 +74,9 @@ public final class FoundationContractTest {
         singleStepRequiresFreezeAndCapturesExactlyOnce();
         snapshotDebugJsonContainsBoundedInputs();
         phase2KeyDefaultsAreStable();
+        telemetrySchemaAndInputWindowAreStable();
+        telemetryBinaryCodecIsDeterministic();
+        telemetryServiceWritesCompleteTrajectory();
         System.out.println("PASS FoundationContractTest (" + checks + " checks)");
     }
 
@@ -78,6 +85,7 @@ public final class FoundationContractTest {
         require("sawbot.observation/0.2".equals(SchemaVersion.OBSERVATION_V0_2.identifier()), "phase1 observation schema");
         require("sawbot.observation/0.3".equals(SchemaVersion.OBSERVATION_V0_3.identifier()), "specific entity type schema");
         require("sawbot.action/0.1".equals(SchemaVersion.ACTION_V0_1.identifier()), "action schema");
+        require("sawbot.telemetry/0.1".equals(SchemaVersion.TELEMETRY_V0_1.identifier()), "telemetry schema");
     }
     private static void actionValidationAcceptsCanonicalZero() { long now=1_000_000_000L;ActionCommand valid=ActionCommand.zero(10L,now-10_000_000L,"dummy/0");require(ActionValidator.validate(valid,10L,now,ActionValidator.DEFAULT_MAX_AGE_NANOS,3L).isValid(),"valid zero action"); }
     private static void actionValidationRejectsStaleAndNonFiniteCommands() { long now=1_000_000_000L;ActionCommand valid=ActionCommand.zero(10L,now-10_000_000L,"dummy/0");require(!ActionValidator.validate(valid,14L,now,ActionValidator.DEFAULT_MAX_AGE_NANOS,3L).isValid(),"stale sequence");ActionCommand bad=new ActionCommand(10L,now,"dummy/0",Float.NaN,0f,0f,0f,0f,0f,0f,0f,0f,0f,0f,-1,Skill.NONE,-1,-1,1f,1,TacticalObjective.NONE,AbortCondition.NONE);require(!ActionValidator.validate(bad,10L,now,ActionValidator.DEFAULT_MAX_AGE_NANOS,3L).isValid(),"NaN rejected"); }
@@ -142,7 +150,7 @@ public final class FoundationContractTest {
 
     private static void rollingWindowRemainsBounded(){RollingTimingWindow window=new RollingTimingWindow(3);window.add(10);window.add(20);window.add(30);window.add(40);require(window.count()==3,"bounded count");require(window.averageNanos()==30,"ring average");require(window.latestNanos()==40,"latest");require(window.maximumNanos()==40,"maximum");}
 
-    private static void keyDefaultsAvoidVanillaFunctionConflicts(){SawBotKeyBindings keys=new SawBotKeyBindings();require(keys.toggleEnabled.getKeyCode()==org.lwjgl.input.Keyboard.KEY_F10,"enable defaults to F10");require(keys.toggleFreeze.getKeyCode()==org.lwjgl.input.Keyboard.KEY_P,"freeze defaults to P");require(keys.toggleTelemetry.getKeyCode()==org.lwjgl.input.Keyboard.KEY_NONE,"telemetry remains unbound");require(keys.toggleEnabled.getKeyCode()!=63&&keys.toggleEnabled.getKeyCode()!=64&&keys.toggleEnabled.getKeyCode()!=66,"enable avoids F5/F6/F8");require(keys.toggleFreeze.getKeyCode()!=63&&keys.toggleFreeze.getKeyCode()!=64&&keys.toggleFreeze.getKeyCode()!=66,"freeze avoids F5/F6/F8");}
+    private static void keyDefaultsAvoidVanillaFunctionConflicts(){SawBotKeyBindings keys=new SawBotKeyBindings();require(keys.toggleEnabled.getKeyCode()==org.lwjgl.input.Keyboard.KEY_F10,"enable defaults to F10");require(keys.toggleFreeze.getKeyCode()==org.lwjgl.input.Keyboard.KEY_P,"freeze defaults to P");require(keys.toggleTelemetry.getKeyCode()==org.lwjgl.input.Keyboard.KEY_K,"telemetry defaults to K");require(keys.toggleEnabled.getKeyCode()!=63&&keys.toggleEnabled.getKeyCode()!=64&&keys.toggleEnabled.getKeyCode()!=66,"enable avoids F5/F6/F8");require(keys.toggleFreeze.getKeyCode()!=63&&keys.toggleFreeze.getKeyCode()!=64&&keys.toggleFreeze.getKeyCode()!=66,"freeze avoids F5/F6/F8");}
     private static void safetyControllerReleasesEveryHeldControl(){Minecraft minecraft=Minecraft.getMinecraft();int[] keys={1,2,3,4,5,6,7,8,9,10,11};for(int key:keys)KeyBinding.setKeyBindState(key,true);SawBotStateController controller=new SawBotStateController(minecraft,new TestLogger());controller.toggleEnabled();require(controller.mode()==SawBotMode.ENABLED,"controller enabled");controller.emergencyStop();require(controller.mode()==SawBotMode.DISABLED,"controller disabled");require("emergency stop".equals(controller.lastStopReason()),"stop reason");for(int key:keys)require(!KeyBinding.isKeyDownForTest(key),"key released "+key);}
     private static void observationFreezeIsIndependentOfEnableState(){Minecraft minecraft=Minecraft.getMinecraft();SawBotStateController controller=new SawBotStateController(minecraft,new TestLogger());require(controller.mode()==SawBotMode.DISABLED,"freeze test starts disabled");require(!controller.observationsFrozen(),"freeze starts off");controller.toggleFrozen();require(controller.observationsFrozen(),"freeze works while disabled");require(controller.mode()==SawBotMode.DISABLED,"freeze does not enable control");require(!controller.mayApplyAutonomousActions(),"disabled frozen state cannot actuate");controller.toggleEnabled();require(controller.mode()==SawBotMode.ENABLED,"enable remains independent");require(controller.observationsFrozen(),"enable preserves frozen snapshot");require(!controller.mayApplyAutonomousActions(),"frozen enabled state cannot actuate");controller.toggleFrozen();require(!controller.observationsFrozen(),"unfreeze works");require(controller.mayApplyAutonomousActions(),"enabled unfrozen state may actuate later");}
     private static void unfreezeRequestsImmediateRefresh(){
@@ -267,6 +275,61 @@ public final class FoundationContractTest {
         Set<Integer> codes=new HashSet<Integer>();
         int[] values={keys.stepObservation.getKeyCode(),keys.cycleInspectorPage.getKeyCode(),keys.toggleTerrainOverlay.getKeyCode(),keys.toggleCollisionOverlay.getKeyCode(),keys.toggleEntityOverlay.getKeyCode(),keys.toggleEntityTracers.getKeyCode(),keys.toggleLandmarkOverlay.getKeyCode(),keys.previousEntity.getKeyCode(),keys.nextEntity.getKeyCode(),keys.exportSnapshot.getKeyCode()};
         for(int value:values){require(value!=org.lwjgl.input.Keyboard.KEY_NONE,"phase2 key is bound");require(codes.add(Integer.valueOf(value)),"phase2 key unique");}
+    }
+
+    private static void telemetrySchemaAndInputWindowAreStable(){
+        HumanInputSample sample=new HumanInputSample(40,5000,HumanInputSample.FORWARD|HumanInputSample.ATTACK,7,-3,2,false);
+        require(sample.keyDown(HumanInputSample.FORWARD)&&sample.keyDown(HumanInputSample.ATTACK),"telemetry key bits");
+        require(sample.mouseDeltaX()==7&&sample.mouseDeltaY()==-3,"telemetry mouse deltas");
+        List<HumanInputSample> source=new ArrayList<HumanInputSample>();source.add(sample);
+        HumanInputWindow window=new HumanInputWindow(source,2);source.clear();
+        require(window.count()==1&&window.droppedSamples()==2,"input window copy and drop count");
+        boolean immutable=false;try{window.samples().clear();}catch(UnsupportedOperationException expected){immutable=true;}
+        require(immutable,"input window immutable");
+    }
+
+    private static void telemetryBinaryCodecIsDeterministic(){
+        ObservationSnapshot observation=richSnapshot();
+        HumanInputSample sample=new HumanInputSample(21,2000,HumanInputSample.FORWARD|HumanInputSample.JUMP,4,-2,3,false);
+        HumanInputWindow input=new HumanInputWindow(Collections.singletonList(sample),0);
+        TrajectoryStep step=new TrajectoryStep(observation,ActionSource.HUMAN,input,8,22,Collections.<ObservationEvent>emptyList(),false);
+        byte[] first=TelemetryBinaryCodec.encodeStep(step);
+        byte[] second=TelemetryBinaryCodec.encodeStep(step);
+        require(Arrays.equals(first,second),"telemetry codec deterministic");
+        require(first.length>1000&&first.length<100000,"telemetry payload bounded");
+        require((first[0]&255)==0x53&&(first[1]&255)==0x54&&(first[2]&255)==0x50&&(first[3]&255)==0x31,"telemetry payload magic");
+    }
+
+    private static void telemetryServiceWritesCompleteTrajectory(){
+        try{
+            File root=new File(System.getProperty("java.io.tmpdir"),"sawbot-telemetry-test-"+System.nanoTime());
+            Minecraft minecraft=Minecraft.getMinecraft();
+            minecraft.mcDataDir=root;
+            if(minecraft.theWorld==null)minecraft.theWorld=new World();
+            if(minecraft.thePlayer==null)minecraft.thePlayer=new EntityPlayerSP();
+            minecraft.thePlayer.inventory.currentItem=2;
+            TelemetryService service=new TelemetryService(root,minecraft,8,8,1,new TestLogger());
+            ObservationSnapshot first=snapshotAt(30,10,0,64,0,terrain(),inventory());
+            ObservationSnapshot second=snapshotAt(32,11,1,64,0,terrain(),inventory());
+            service.synchronizeRequested(true,first);
+            KeyBinding.setKeyBindState(minecraft.gameSettings.keyBindForward.getKeyCode(),true);
+            minecraft.mouseHelper.deltaX=6;minecraft.mouseHelper.deltaY=-4;
+            service.captureHumanInput(31);
+            KeyBinding.setKeyBindState(minecraft.gameSettings.keyBindForward.getKeyCode(),false);
+            service.onObservation(second);
+            service.synchronizeRequested(false,second);
+            long deadline=System.currentTimeMillis()+3000L;
+            while("finalizing".equals(service.status())&&System.currentTimeMillis()<deadline)Thread.sleep(20L);
+            service.close();
+            File directory=new File(root,"sawbotv1/telemetry");
+            File[] complete=directory.listFiles(new java.io.FilenameFilter(){public boolean accept(File dir,String name){return name.endsWith(".sbt");}});
+            require(complete!=null&&complete.length==1,"telemetry complete file written");
+            byte[] bytes=java.nio.file.Files.readAllBytes(complete[0].toPath());
+            require(bytes.length>100&&bytes[0]=='S'&&bytes[1]=='B'&&bytes[2]=='T',"telemetry file magic");
+            require(!new File(complete[0].getAbsolutePath()+".partial").exists(),"telemetry partial renamed");
+            String fixture=System.getProperty("sawbot.telemetry.fixture");
+            if(fixture!=null&&!fixture.isEmpty())java.nio.file.Files.copy(complete[0].toPath(),java.nio.file.Paths.get(fixture),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }catch(Exception exception){throw new AssertionError("telemetry service",exception);}
     }
 
 

@@ -22,7 +22,7 @@ public final class SawBotKeyBindings {
     public final KeyBinding previousEntity = new KeyBinding("key.sawbotv1.previousEntity", Keyboard.KEY_LBRACKET, CATEGORY);
     public final KeyBinding nextEntity = new KeyBinding("key.sawbotv1.nextEntity", Keyboard.KEY_RBRACKET, CATEGORY);
     public final KeyBinding exportSnapshot = new KeyBinding("key.sawbotv1.export", Keyboard.KEY_O, CATEGORY);
-    public final KeyBinding toggleTelemetry = new KeyBinding("key.sawbotv1.telemetry", Keyboard.KEY_NONE, CATEGORY);
+    public final KeyBinding toggleTelemetry = new KeyBinding("key.sawbotv1.telemetry", Keyboard.KEY_K, CATEGORY);
 
     public void register() {
         ClientRegistry.registerKeyBinding(toggleEnabled);

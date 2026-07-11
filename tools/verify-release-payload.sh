@@ -10,6 +10,8 @@ required=(
   "SawBotV1-$VERSION-sources.jar"
   "SHA256SUMS.txt"
   "release-notes.md"
+  "PHASE3_REPORT.md"
+  "TELEMETRY_FORMAT.md"
   "PHASE2_REPORT.md"
   "PHASE2_RUNTIME_FEEDBACK.md"
   "PHASE2_RUNTIME_VALIDATION.md"

@@ -25,6 +25,12 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.class",
     "dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class",
     "dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.class",
+    "dev/fivesaw/sawbot/forge/telemetry/TelemetryService.class",
+    "dev/fivesaw/sawbot/forge/telemetry/TelemetrySession.class",
+    "dev/fivesaw/sawbot/forge/telemetry/TelemetryBinaryCodec.class",
+    "dev/fivesaw/sawbot/forge/telemetry/TelemetryFileFormat.class",
+    "dev/fivesaw/sawbot/common/telemetry/TrajectoryStep.class",
+    "dev/fivesaw/sawbot/common/telemetry/HumanInputSample.class",
 }
 
 

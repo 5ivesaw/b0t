@@ -93,3 +93,23 @@ Snapshot debug export uses one bounded background worker and a four-item queue. 
 **Reason:** The Phase 0–2 text HUD proved the sensor architecture but is not an acceptable long-term product interface. A unified system is needed to achieve high information density, stable hierarchy, immediate state synchronization, and premium interaction quality while remaining viable on Intel HD 520.
 
 **Boundaries:** This decision does not alter observation/action contracts and does not permit visual interpolation to modify measured values. Emergency controls remain immediate. Blur, custom fonts, shadows, and animation are optional effects gated by benchmark results.
+
+## Phase 3 telemetry lifecycle
+
+Structured telemetry is deliberately downstream of immutable observation publication. `ClientRuntime` captures legitimate human key state and raw `MouseHelper` deltas at client-tick END, then associates those samples with the observation that preceded them. When the next observation arrives, `TelemetryService` closes the causal window as `observation -> following input ticks -> next observed outcome boundary`.
+
+`TelemetrySession` owns one bounded `ArrayBlockingQueue` and one daemon writer thread. The client thread performs a non-blocking `offer` only. The worker receives immutable `TrajectoryStep` objects, performs deterministic binary encoding and per-record DEFLATE compression, writes through a 64 KiB buffer, appends CRC-protected framing, and finalizes `.sbt.partial` to `.sbt` only after a clean footer. No worker touches Minecraft world objects.
+
+Manual takeover and emergency release remain control-safety operations and do not silently stop human telemetry. World unload changes the world contract and therefore requests a bounded session close. A crash or interrupted write leaves the `.partial` file intact for offline validation/recovery.
+
+### ADR-0010: Causal input windows instead of same-instant labels
+
+**Status:** Accepted
+
+Pairing only the key/mouse state observed at snapshot time would misrepresent actions between 10 Hz observations and worsen human reaction-delay alignment. Each trajectory step therefore stores all bounded client-tick input samples captured after observation `O_n` and before `O_(n+1)`, then records `O_(n+1)` and its bounded events as the outcome boundary.
+
+### ADR-0011: Recoverable record framing rather than Java serialization or high-volume JSON
+
+**Status:** Accepted
+
+The Phase 3 `.sbt` format is explicitly little-endian and versioned. Every independently compressed record stores lengths and CRC32; a clean footer stores step count, dropped-step count, terminal reason, and a rolling CRC across step payloads. This supports corruption detection, valid-prefix recovery, bounded memory, and future migration without exposing Java object graphs or relying on JSON as the sole training format.

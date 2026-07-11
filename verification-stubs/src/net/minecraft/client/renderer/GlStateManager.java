@@ -19,4 +19,5 @@ public final class GlStateManager {
     public static void enableAlpha(){}
     public static void enableCull(){}
     public static void color(float red,float green,float blue,float alpha){}
+    public static void resetColor(){}
 }

@@ -9,6 +9,7 @@ import dev.fivesaw.sawbot.forge.inspection.SnapshotExportService;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
 import dev.fivesaw.sawbot.forge.sensors.ObservationPipeline;
+import dev.fivesaw.sawbot.forge.telemetry.TelemetryService;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
@@ -28,6 +29,7 @@ public final class ClientRuntime {
     private final ObservationPipeline observations;
     private final InspectorController inspector;
     private final SnapshotExportService exports;
+    private final TelemetryService telemetry;
     private final WorldDebugRenderer worldRenderer;
     private final FoundationHud hud;
     private long clientTick;
@@ -44,8 +46,11 @@ public final class ClientRuntime {
         this.observations=new ObservationPipeline(minecraft,config.sensorIntervalTicks());
         this.inspector=new InspectorController(minecraft);
         this.exports=new SnapshotExportService(minecraft.mcDataDir,logger);
+        this.telemetry=new TelemetryService(minecraft.mcDataDir,minecraft,
+            config.telemetryQueueCapacity(),config.telemetryInputWindowCapacity(),
+            config.telemetryCompressionLevel(),logger);
         this.worldRenderer=new WorldDebugRenderer(minecraft,state,inspector,config.timingWindowSize());
-        this.hud=new FoundationHud(minecraft,state,tickTiming,observations,inspector,exports,worldRenderer);
+        this.hud=new FoundationHud(minecraft,state,tickTiming,observations,inspector,exports,telemetry,worldRenderer);
     }
 
     public void register() {
@@ -57,12 +62,18 @@ public final class ClientRuntime {
     }
 
     @SubscribeEvent public void onClientTick(TickEvent.ClientTickEvent event) {
+        if(event.phase==TickEvent.Phase.END){
+            telemetry.captureHumanInput(clientTick);
+            return;
+        }
         if(event.phase!=TickEvent.Phase.START)return;
         long start=System.nanoTime();
         try {
             processSafetyKeysFirst();
             if(minecraft.theWorld==null||minecraft.thePlayer==null){
                 if(state.isEnabled())state.onWorldUnavailable();
+                state.clearTelemetryRequest();
+                telemetry.onWorldUnavailable();
                 observations.tick(clientTick,false);
                 inspector.update(null,null);
                 return;
@@ -71,10 +82,15 @@ public final class ClientRuntime {
             boolean singleStep=state.consumeObservationStepRequest();
             boolean immediateRefresh=state.consumeObservationRefreshRequest();
             observations.tick(clientTick,state.observationsFrozen(),singleStep||immediateRefresh);
-            inspector.update(observations.latest(),observations.previous());
+            ObservationSnapshot latest=observations.latest();
+            inspector.update(latest,observations.previous());
+            telemetry.synchronizeRequested(state.telemetryRequested(),latest);
+            telemetry.onObservation(latest);
             processInspectorActions();
         } catch(RuntimeException exception) {
             state.emergencyStop();
+            state.clearTelemetryRequest();
+            telemetry.onWorldUnavailable();
             logger.error("Unhandled SawBotV1 client tick error; emergency stop applied.",exception);
         } finally {
             tickTiming.add(System.nanoTime()-start);
@@ -104,7 +120,6 @@ public final class ClientRuntime {
         if(keys.toggleLandmarkOverlay.isPressed())state.toggleLandmarkOverlay();
         if(keys.toggleTelemetry.isPressed())state.toggleTelemetryRequest();
     }
-
 
     private void drainNonSafetyKeyPresses() {
         drain(keys.toggleEnabled);

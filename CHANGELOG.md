@@ -1,16 +1,17 @@
 # Changelog
 
-## 0.3.0-alpha.6 — Phase 2 runtime hardening and inspector truthfulness
+## 0.4.0-alpha.0 — Phase 3 structured telemetry
 
-- Clarified immutable freeze semantics: frozen world overlays stay at the captured world coordinates while Minecraft and the player continue moving.
-- Added frozen capture coordinates, distance-from-capture, and a `FROZEN SNAPSHOT` world anchor; `.` explicitly recaptures at the current location.
-- Forced an immediate observation capture when unfreezing to remove the brief stale/orange transition.
-- Bumped the observation schema to `sawbot.observation/0.3` and debug export to `sawbot.snapshot.debug/0.2`.
-- Added a bounded specific `EntityType` vocabulary and dropped-item payload category, replacing vague `LIVING / UNKNOWN` labels for ordinary mobs.
-- Made selected-block outlines consistently yellow; tensor membership is now expressed in text rather than by changing the selection colour.
-- Made successful export and inspector notices transient while preserving longer error visibility.
-- Added complete OpenGL attribute push/restore to prevent overlays from dimming or contaminating the vanilla hotbar/HUD state.
-- Added target-machine runtime validation documentation and expanded offline verification to 539 checks.
+- Added exact client-tick human key-state capture and raw Minecraft `MouseHelper.deltaX/deltaY` capture.
+- Added causal observation → input-window → outcome alignment instead of naive same-instant pairing.
+- Added bounded asynchronous trajectory writing with no client-thread disk blocking.
+- Added little-endian `sawbot.telemetry/0.1` binary framing, independent DEFLATE records, per-record CRC32, and footer rolling CRC32.
+- Added `.sbt.partial` interrupted-write preservation and separate recovered-file generation.
+- Added dataset validator, replay inspector, and a one-click Windows latest-trajectory acceptance test.
+- Added K as the rebindable telemetry start/stop key and compact queue/drop/status HUD fields.
+- Kept telemetry independent from F9/F12 control takeover while stopping safely on world unload.
+- Bundled Phase 2 presentation fixes: N no longer owns selected-block rendering, explanatory tutorial prose was removed from the HUD, and OpenGL colour caches are reset after labels.
+- Preserved the no-screen/no-OCR/private-research safety boundary.
 
 ## 0.3.0-alpha.5 — Immediate debug HUD restoration
 

@@ -1,4 +1,4 @@
-# Repository tree — Phase 2 GitHub-ready candidate
+# Repository tree — Phase 3 GitHub-ready candidate
 
 ```text
 SawBotV1/
@@ -22,37 +22,42 @@ SawBotV1/
 │   ├── PERFORMANCE_BUDGET.md
 │   ├── OBSERVATION_CONTRACT.md
 │   ├── ACTION_CONTRACT.md
+│   ├── TELEMETRY_FORMAT.md
 │   ├── PHASE_GATES.md
 │   ├── PHASE0_ACCEPTANCE.md
 │   ├── PHASE1_ACCEPTANCE.md
-│   ├── PHASE1_REPORT.md
-│   ├── PHASE2_REPORT.md
-│   ├── PHASE2_RUNTIME_FEEDBACK.md
+│   ├── PHASE2_ACCEPTANCE.md
+│   ├── PHASE3_REPORT.md
 │   ├── GITHUB_RELEASES.md
-│   ├── PHASE2_FILE_MANIFEST.txt
-│   └── remaining design/audit documents
+│   └── remaining reports, design, audit, and historical evidence
 ├── sawbot-common/src/main/java/dev/fivesaw/sawbot/common/
 │   ├── action/
 │   ├── events/
-│   ├── observation/       # includes ObservationDiff + calculator
+│   ├── observation/
+│   ├── telemetry/        # immutable input windows and trajectory steps
 │   ├── protocol/
 │   └── versioning/
 ├── sawbot-forge-1.8.9/src/main/
 │   ├── java/dev/fivesaw/sawbot/forge/
 │   │   ├── client/
 │   │   ├── config/
-│   │   ├── hud/           # text HUD + world debug renderer
-│   │   ├── inspection/    # selection, pages, JSON export
+│   │   ├── hud/          # compact text HUD + world debug renderer
+│   │   ├── inspection/   # selection, pages, JSON export
 │   │   ├── map/
 │   │   ├── performance/
 │   │   ├── safety/
 │   │   ├── sensors/
-│   │   └── tracking/     # stable IDs + multi-sample visibility
+│   │   ├── telemetry/    # bounded async structured trajectory writer
+│   │   └── tracking/
 │   └── resources/
-├── sawbot-trainer/        # gated placeholder
-├── sawbot-sim/            # gated placeholder
-├── sawbot-arenas/         # gated placeholder
-├── sawbot-tools/          # gated placeholder
+├── sawbot-tools/
+│   ├── dataset-validator/validate_telemetry.py
+│   ├── replay-inspector/inspect_telemetry.py
+│   ├── telemetry-inspector/   # later interactive tooling
+│   └── benchmark/
+├── sawbot-trainer/       # gated until telemetry runtime acceptance
+├── sawbot-sim/           # gated placeholder
+├── sawbot-arenas/        # gated placeholder
 ├── prototypes/control-center.html
 ├── verification-stubs/
 ├── verification-tests/
@@ -60,7 +65,10 @@ SawBotV1/
     ├── offline-verify.sh
     ├── package-release.sh
     ├── verify-built-jar.py
+    ├── verify-release-payload.sh
+    ├── TEST-LATEST-TELEMETRY.bat
+    ├── test-latest-telemetry.ps1
     └── local bootstrap/preflight scripts
 ```
 
-Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the Gradle build. Trainer, simulator, arena, and high-volume telemetry implementations remain gated.
+Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the Gradle mod build. The Phase 3 validator and replay inspector are Python development tools and are shipped as repository/release documentation assets rather than inside the Minecraft JAR. Neural training, simulator, and arena implementations remain gated.

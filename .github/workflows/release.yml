@@ -76,7 +76,7 @@ jobs:
           mkdir -p "$HOME/.gradle"
           echo "org.gradle.java.installations.paths=$JAVA8_HOME" >> "$HOME/.gradle/gradle.properties"
 
-      - name: Verify contracts, safety, and Phase 2 inspector
+      - name: Verify contracts, safety, inspector, and Phase 3 telemetry
         run: bash tools/offline-verify.sh
 
       - name: Build release
@@ -112,6 +112,8 @@ jobs:
             "dist/SawBotV1-$VERSION-mc1.8.9.jar" \
             "dist/SawBotV1-$VERSION-sources.jar" \
             "dist/SHA256SUMS.txt" \
+            "dist/PHASE3_REPORT.md" \
+            "dist/TELEMETRY_FORMAT.md" \
             "dist/PHASE2_REPORT.md" \
             "dist/PHASE2_RUNTIME_FEEDBACK.md" \
             "dist/PHASE2_RUNTIME_VALIDATION.md" \
