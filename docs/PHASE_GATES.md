@@ -63,7 +63,7 @@ Evidence: `docs/PHASE1_ACCEPTANCE.md`.
 
 ## Phase 2 — Sensor inspector
 
-Implemented through candidate `0.3.0-alpha.2`:
+Implemented through candidate `0.3.0-alpha.5`:
 
 - [x] Independently toggleable terrain, collision/support, entity boxes, entity tracers, and landmark overlays.
 - [x] Selected block decoding from frozen snapshot coordinates.
@@ -95,8 +95,11 @@ Runtime acceptance required:
 - [ ] Individual overlay costs are measured without serious FPS collapse.
 - [x] Five-minute inspector test has no repeated SawBot errors.
 
-**Core Phase 2 gate: ACCEPTED on the target machine.**
+**Gate: PENDING FINAL `0.3.0-alpha.5` TEXT-HUD RESTORATION SMOKE TEST.**
 
-The user confirmed terrain, collision, entity tracking, LOS/OCC transitions, stable tracking IDs, landmark placement, block selection, freeze, single-step, export, snapshot difference, safety controls, and performance. `0.3.0-alpha.4` adds a presentation-layer refresh and has its own visual acceptance checklist in `docs/PHASE2_UI_REFRESH.md`; sensor semantics remain accepted.
+No Phase 3 telemetry implementation begins before this checklist passes.
 
-No Phase 3 telemetry implementation begins before the `0.3.0-alpha.4` interface checklist is visually accepted on the target machine.
+
+### Runtime presentation decision
+
+The `0.3.0-alpha.4` card interface was rejected on the target machine. Phase 2 returns to the compact text HUD in `0.3.0-alpha.5`; future presentation changes must not obscure gameplay or make sensor verification harder.

@@ -256,6 +256,6 @@ The mod remains non-autonomous. It renders and exports exactly the bounded infor
 - Normal FPS, each individual overlay FPS, combined-overlay FPS, and System-page render avg/max.
 
 
-## Post-gate interface addendum (`0.3.0-alpha.4`)
+## 0.3.0-alpha.5 runtime-interface correction
 
-The core Phase 2 runtime checklist was completed successfully on the target machine after the LOS/OCC, tracer, and landmark corrections. Version `0.3.0-alpha.4` does not change sensor semantics; it replaces the debug-text presentation with the compact status island and premium inspector workspace documented in `PHASE2_UI_REFRESH.md`.
+The `0.3.0-alpha.4` card-based HUD was rejected during target-machine testing because it covered too much of the game and slowed manual inspection. `0.3.0-alpha.5` restores the pre-existing compact text HUD and text inspector. Phase 2 sensor behavior, LOS/OCC colour semantics, export, freeze/step, overlay toggles, and safety controls remain unchanged.

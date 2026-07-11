@@ -12,11 +12,10 @@ required=(
   "release-notes.md"
   "PHASE2_REPORT.md"
   "PHASE2_RUNTIME_FEEDBACK.md"
-  "PHASE2_UI_REFRESH.md"
   "PHASE1_ACCEPTANCE.md"
   "PHASE0_ACCEPTANCE.md"
   "GITHUB_RELEASES.md"
-  "INTERFACE_DESIGN_SYSTEM.md"
+  "PHASE2_UI_REVERT.md"
 )
 
 for file in "${required[@]}"; do

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0-alpha.5 — Immediate debug HUD restoration
+
+- Reverted the `0.3.0-alpha.4` glass/card interface completely after target-machine testing showed that it obscured gameplay and made Phase 2 checks harder.
+- Restored the compact, readable Phase 2 text HUD and text inspector exactly as used before the UI experiment.
+- Restored the original low-cost world-debug labels while preserving the accepted `alpha.2` immediate green LOS / purple OCC state changes, stable tracking IDs, independent tracer toggle, and landmark fix.
+- Removed the decorative UI renderer, motion helpers, theme classes, UI-specific stubs, and the unused interface-design charter.
+- Preserved single-push automatic GitHub releases from `alpha.3`.
+- No sensor, observation-contract, export, stepping, safety, or autonomous-control behavior was expanded in this release.
+
 ## 0.3.0-alpha.4 — Premium compact HUD and inspector workspace
 
 - Replaced the always-visible Phase 2 debug-text wall with a compact glass status island.

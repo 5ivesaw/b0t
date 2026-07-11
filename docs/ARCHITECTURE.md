@@ -88,7 +88,7 @@ Snapshot debug export uses one bounded background worker and a four-item queue. 
 
 **Status:** Accepted
 
-**Decision:** All future SawBotV1 HUD, inspector, world-overlay, control-centre, and trainer-interface work follows `docs/INTERFACE_DESIGN_SYSTEM.md`. Runtime UI will be built from centralized semantic tokens and reusable components rather than phase-specific text drawing and scattered color constants.
+**Decision:** The in-game engineering HUD remains a compact text inspector until a future interface change proves that it improves inspection without obscuring gameplay. Decorative UI is not an architectural requirement.
 
 **Reason:** The Phase 0–2 text HUD proved the sensor architecture but is not an acceptable long-term product interface. A unified system is needed to achieve high information density, stable hierarchy, immediate state synchronization, and premium interaction quality while remaining viable on Intel HD 520.
 

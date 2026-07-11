@@ -7,7 +7,7 @@ After applying the patch, the normal release process is only:
 ```powershell
 git status
 git add -A
-git commit -m "Add premium SawBot runtime interface"
+git commit -m "Automate verified GitHub releases"
 git push origin main
 ```
 
@@ -25,7 +25,7 @@ The `CI and automatic release` workflow will:
 For this patch the expected automatic tag is:
 
 ```text
-v0.3.0-alpha.4
+v0.3.0-alpha.5
 ```
 
 A version is immutable. If the tag or release already exists, the workflow deliberately fails instead of silently overwriting it. Every future patch supplied for SawBotV1 will include a version bump.

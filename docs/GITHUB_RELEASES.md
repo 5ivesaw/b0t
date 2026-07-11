@@ -28,13 +28,13 @@ Pull requests and non-main branches run verification/builds but do not publish r
 The source of truth is:
 
 ```properties
-sawbotVersion=0.3.0-alpha.4
+sawbotVersion=0.3.0-alpha.5
 ```
 
 The automatic release is tagged:
 
 ```text
-v0.3.0-alpha.4
+v0.3.0-alpha.5
 ```
 
 Published versions are immutable. Reusing a version causes an explicit failure. This prevents a release tag from referring to different code at different times.
@@ -59,7 +59,7 @@ If repository policy blocks write access, enable **Read and write permissions** 
 - `PHASE1_ACCEPTANCE.md`
 - `PHASE0_ACCEPTANCE.md`
 - `GITHUB_RELEASES.md`
-- `INTERFACE_DESIGN_SYSTEM.md`
+- `PHASE2_UI_REVERT.md`
 
 ## Integrity checks
 

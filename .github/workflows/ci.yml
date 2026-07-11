@@ -120,11 +120,10 @@ jobs:
             dist/release-notes.md
             dist/PHASE2_REPORT.md
             dist/PHASE2_RUNTIME_FEEDBACK.md
-            dist/PHASE2_UI_REFRESH.md
             dist/PHASE1_ACCEPTANCE.md
             dist/PHASE0_ACCEPTANCE.md
             dist/GITHUB_RELEASES.md
-            dist/INTERFACE_DESIGN_SYSTEM.md
+            dist/PHASE2_UI_REVERT.md
           if-no-files-found: error
           retention-days: 30
 
@@ -193,11 +192,10 @@ jobs:
             "dist/SHA256SUMS.txt" \
             "dist/PHASE2_REPORT.md" \
             "dist/PHASE2_RUNTIME_FEEDBACK.md" \
-            "dist/PHASE2_UI_REFRESH.md" \
             "dist/PHASE1_ACCEPTANCE.md" \
             "dist/PHASE0_ACCEPTANCE.md" \
             "dist/GITHUB_RELEASES.md" \
-            "dist/INTERFACE_DESIGN_SYSTEM.md" \
+            "dist/PHASE2_UI_REVERT.md" \
             "${FLAGS[@]}"
 
           {

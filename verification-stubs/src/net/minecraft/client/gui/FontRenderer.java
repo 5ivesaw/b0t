@@ -1,1 +1,1 @@
-package net.minecraft.client.gui; public class FontRenderer { public int FONT_HEIGHT=9; public int drawStringWithShadow(String s,float x,float y,int c){return 0;} public int getStringWidth(String s){return s==null?0:s.length()*6;} }
+package net.minecraft.client.gui; public class FontRenderer { public int drawStringWithShadow(String s,float x,float y,int c){return 0;} public int getStringWidth(String s){return s==null?0:s.length()*6;} }

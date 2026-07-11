@@ -13,7 +13,6 @@ import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.WorldRenderer;
@@ -58,7 +57,7 @@ public final class WorldDebugRenderer {
             if (state.collisionOverlayVisible()) renderCollision(snapshot);
             if (state.entityOverlayVisible()) renderEntities(snapshot, manager, partialTicks);
             if (state.landmarkOverlayVisible()) renderLandmarks(snapshot, manager);
-            renderSelectedBlock(inspector.selectedBlock(), manager);
+            renderSelectedBlock(inspector.selectedBlock());
         } finally {
             if (matrixPushed) GlStateManager.popMatrix();
             restoreState();
@@ -204,18 +203,13 @@ public final class WorldDebugRenderer {
         }
     }
 
-    private void renderSelectedBlock(BlockInspection block, RenderManager manager) {
+    private void renderSelectedBlock(BlockInspection block) {
         if (block == null) return;
         beginLines(true, 3.0F);
         drawBox(new AxisAlignedBB(block.worldX() - 0.01D, block.worldY() - 0.01D, block.worldZ() - 0.01D,
             block.worldX() + 1.01D, block.worldY() + 1.01D, block.worldZ() + 1.01D),
-            255, block.insideTensor() ? 218 : 111, 106, 255);
+            block.insideTensor() ? 255 : 255, block.insideTensor() ? 255 : 85, 85, 255);
         endLines();
-        if (state.inspectorVisible()) {
-            String label = block.category() + "  " + block.worldX() + "," + block.worldY() + "," + block.worldZ();
-            renderLabel(label, block.worldX() + 0.5D, block.worldY() + 1.28D,
-                block.worldZ() + 0.5D, manager, UiTheme.YELLOW);
-        }
     }
 
     private static int[] categoryColor(BlockSemanticCategory category) {
@@ -295,13 +289,7 @@ public final class WorldDebugRenderer {
         GlStateManager.disableDepth();
         GlStateManager.enableBlend();
         GlStateManager.enableTexture2D();
-        int textWidth = font.getStringWidth(text);
-        int left = -textWidth / 2 - 5;
-        int right = left + textWidth + 10;
-        Gui.drawRect(left - 1, -4, right + 1, font.FONT_HEIGHT + 4, 0x4AFFFFFF);
-        Gui.drawRect(left, -3, right, font.FONT_HEIGHT + 3, 0xD91A1D25);
-        Gui.drawRect(left, -3, left + 2, font.FONT_HEIGHT + 3, 0xFF000000 | (color & 0x00FFFFFF));
-        font.drawStringWithShadow(text, -textWidth / 2, 0, color);
+        font.drawStringWithShadow(text, -font.getStringWidth(text) / 2, 0, color);
         GlStateManager.popMatrix();
     }
 

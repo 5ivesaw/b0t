@@ -16,8 +16,6 @@ public class Minecraft {
     public FontRenderer fontRendererObj=new FontRenderer();
     public GuiScreen currentScreen;
     public MovingObjectPosition objectMouseOver;
-    public int displayWidth=1366;
-    public int displayHeight=768;
     public File mcDataDir=new File(System.getProperty("java.io.tmpdir"),"sawbot-test-mc");
     private final NetHandlerPlayClient net=new NetHandlerPlayClient();
     private final RenderManager renderManager=new RenderManager();

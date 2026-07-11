@@ -60,8 +60,6 @@ Remaining defect:
 Phase 2 remains open only for this focused visual-colour retest.
 
 
-## Acceptance update
+## UI experiment rejection and restoration
 
-After `0.3.0-alpha.2`, the user confirmed that LOS/OCC text and colours switch correctly, tracking IDs remain stable through wall transitions, tracers can be toggled independently, landmark height is corrected, block selection works, freeze/step/export work, safety controls remain immediate, and no serious FPS collapse or repeated SawBot error was observed.
-
-The core Phase 2 sensor-inspector behavior is therefore accepted. `0.3.0-alpha.4` changes presentation only and is tracked separately in `PHASE2_UI_REFRESH.md`.
+Target-machine testing rejected the `0.3.0-alpha.4` glass/card interface because it obscured gameplay and made checks less efficient. The accepted response is a full restoration of the compact text HUD in `0.3.0-alpha.5`, with no decorative replacement.

@@ -8,14 +8,11 @@ public final class SawBotConfig {
     private final boolean hudEnabled;
     private final int timingWindowSize;
     private final int sensorIntervalTicks;
-    private final boolean hudAnimationsEnabled;
 
-    private SawBotConfig(boolean hudEnabled, int timingWindowSize, int sensorIntervalTicks,
-                         boolean hudAnimationsEnabled) {
+    private SawBotConfig(boolean hudEnabled, int timingWindowSize, int sensorIntervalTicks) {
         this.hudEnabled = hudEnabled;
         this.timingWindowSize = timingWindowSize;
         this.sensorIntervalTicks = sensorIntervalTicks;
-        this.hudAnimationsEnabled = hudAnimationsEnabled;
     }
 
     public static SawBotConfig load(File file, Logger logger) {
@@ -28,12 +25,10 @@ public final class SawBotConfig {
                 "Bounded number of client-handler timing samples.");
             int interval = configuration.getInt("sensorIntervalTicks", "phase1", 2, 1, 20,
                 "Client ticks between immutable observation snapshots; 2 equals 10 Hz.");
-            boolean animations = configuration.getBoolean("hudAnimationsEnabled", "interface", true,
-                "Use short presentation-only HUD transitions. Disable for reduced motion.");
-            return new SawBotConfig(hudEnabled, window, interval, animations);
+            return new SawBotConfig(hudEnabled, window, interval);
         } catch (RuntimeException exception) {
             logger.error("Failed to load SawBotV1 configuration; using safe defaults.", exception);
-            return new SawBotConfig(true, 256, 2, true);
+            return new SawBotConfig(true, 256, 2);
         } finally {
             if (configuration.hasChanged()) configuration.save();
         }
@@ -42,5 +37,4 @@ public final class SawBotConfig {
     public boolean hudEnabled() { return hudEnabled; }
     public int timingWindowSize() { return timingWindowSize; }
     public int sensorIntervalTicks() { return sensorIntervalTicks; }
-    public boolean hudAnimationsEnabled() { return hudAnimationsEnabled; }
 }

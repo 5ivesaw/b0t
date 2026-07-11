@@ -10,9 +10,6 @@ import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.forge.inspection.SnapshotJsonWriter;
 import dev.fivesaw.sawbot.forge.hud.EntityVisualStyle;
-import dev.fivesaw.sawbot.forge.hud.KeyLabel;
-import dev.fivesaw.sawbot.forge.hud.MotionValue;
-import dev.fivesaw.sawbot.forge.hud.UiTheme;
 import dev.fivesaw.sawbot.forge.map.LandmarkSensor;
 import java.io.StringWriter;
 import dev.fivesaw.sawbot.forge.safety.SawBotMode;
@@ -58,9 +55,6 @@ public final class FoundationContractTest {
         observationFreezeIsIndependentOfEnableState();
         tracerToggleIsIndependentOfEntityBoxes();
         entityVisualStyleFollowsCurrentVisibility();
-        premiumHudThemeIsStable();
-        motionValueIsPresentationOnly();
-        keyLabelsFollowActualBindings();
         phase1PipelineCreatesBoundedSnapshot();
         frozenPipelinePreservesSnapshot();
         egocentricInverseTransformsAreStable();
@@ -146,35 +140,6 @@ public final class FoundationContractTest {
         require("LOS".equals(EntityVisualStyle.visibilityToken(los)),"LOS text and colour share state");
         require("OCC".equals(EntityVisualStyle.visibilityToken(occ)),"OCC text and colour share state");
         require(EntityVisualStyle.visibilityArgb(los)!=(EntityVisualStyle.visibilityArgb(occ)),"visibility colours differ");
-    }
-
-
-    private static void premiumHudThemeIsStable(){
-        require(UiTheme.SAFE!=UiTheme.DANGER,"safe and danger colours differ");
-        require(UiTheme.CYAN!=UiTheme.PURPLE,"LOS support and OCC colours differ");
-        require(((UiTheme.GLASS>>>24)&0xFF)>=200,"glass background remains readable");
-        int half=UiTheme.withOpacity(0xC0ABCDEF,0.5f);
-        require(((half>>>24)&0xFF)==96,"theme opacity scales alpha");
-        require((half&0x00FFFFFF)==0x00ABCDEF,"theme opacity preserves RGB");
-        require(UiTheme.RADIUS_PANEL>UiTheme.RADIUS_CARD&&UiTheme.RADIUS_CARD>UiTheme.RADIUS_CHIP,"radius hierarchy");
-    }
-
-    private static void motionValueIsPresentationOnly(){
-        MotionValue motion=new MotionValue();
-        require(motion.update(false,true,1L)==0f,"motion starts closed");
-        float opening=motion.update(true,true,50_000_001L);
-        require(opening>0f&&opening<1f,"motion opens progressively");
-        motion.snap(true,60_000_001L);
-        require(motion.value()==1f,"motion can snap without delaying state");
-        require(motion.update(false,false,70_000_001L)==0f,"reduced motion closes immediately");
-    }
-
-    private static void keyLabelsFollowActualBindings(){
-        SawBotKeyBindings keys=new SawBotKeyBindings();
-        require("F10".equals(KeyLabel.of(keys.toggleEnabled)),"enable label follows F10 binding");
-        require("P".equals(KeyLabel.of(keys.toggleFreeze)),"freeze label follows P binding");
-        require(".".equals(KeyLabel.of(keys.stepObservation)),"step label follows period binding");
-        require("UNBOUND".equals(KeyLabel.of(keys.toggleTelemetry)),"unbound label is explicit");
     }
 
     private static void phase1PipelineCreatesBoundedSnapshot(){Minecraft minecraft=Minecraft.getMinecraft();World world=new World();EntityPlayerSP player=new EntityPlayerSP();player.posX=0.5;player.posY=64;player.posZ=0.5;player.onGround=true;world.setBlockStateForTest(new BlockPos(0,63,0),Blocks.wool.getDefaultState());player.inventory.mainInventory[0]=new ItemStack(Items.iron_ingot,4);player.inventory.mainInventory[1]=new ItemStack(new ItemBlock(Blocks.wool),16);EntityPlayer enemy=new EntityPlayer();enemy.posX=3;enemy.posY=64;enemy.posZ=0.5;world.loadedEntityList.add(enemy);minecraft.theWorld=world;minecraft.thePlayer=player;ObservationPipeline pipeline=new ObservationPipeline(minecraft,2);pipeline.tick(1,false);pipeline.tick(2,false);pipelineSnapshot=pipeline.latest();require(pipelineSnapshot!=null,"pipeline snapshot");require(pipelineSnapshot.schemaVersion().equals(SchemaVersion.OBSERVATION_V0_2),"pipeline schema");require(pipelineSnapshot.localTerrain().blockStateIds().length==LocalTerrainSnapshot.CELL_COUNT,"terrain bounded");require(pipelineSnapshot.midRangeMap().relativeSurfaceY().length==MidRangeMapSnapshot.COLUMN_COUNT,"map bounded");require(pipelineSnapshot.entities().count()==1,"entity captured");require(pipelineSnapshot.inventory().iron()==4&&pipelineSnapshot.inventory().wool()==16,"resources captured");require((pipelineSnapshot.sensorValidityFlags()&SensorValidity.ALL_PHASE1)==SensorValidity.ALL_PHASE1,"validity flags");require(pipelineSnapshot.sensorTimings().totalNanos()>=0,"timing captured");}

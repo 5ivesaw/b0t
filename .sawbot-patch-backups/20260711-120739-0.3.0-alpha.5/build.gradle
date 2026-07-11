@@ -1,0 +1,41 @@
+plugins {
+    id 'base'
+}
+
+// CI and release workflows must be able to override the repository default.
+// Environment-first ordering prevents gradle.properties from masking SAWBOT_VERSION.
+def resolvedVersion = providers.environmentVariable('SAWBOT_VERSION')
+    .orElse(providers.gradleProperty('sawbotVersion'))
+    .orElse('0.3.0-alpha.3')
+    .get()
+
+allprojects {
+    group = 'dev.fivesaw.sawbot'
+    version = resolvedVersion
+}
+
+subprojects {
+    repositories {
+        mavenCentral()
+        maven { url = 'https://repo.essential.gg/repository/maven-releases/' }
+        maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://repo.spongepowered.org/maven/' }
+    }
+}
+
+tasks.register('phase2Info') {
+    group = 'help'
+    description = 'Print the current SawBotV1 phase and build lane.'
+    doLast {
+        println 'SawBotV1 Phase 2: visual sensor inspector, snapshot export, stepping, and comparison.'
+        println "Version: ${project.version}"
+        println 'Build lane: Gradle 8.8 + Architectury Loom + Java 8 bytecode.'
+    }
+}
+
+tasks.register('ciBuild') {
+    group = 'build'
+    description = 'Build every Phase 2 module exactly as CI does.'
+    dependsOn ':sawbot-common:check'
+    dependsOn ':sawbot-forge-1.8.9:build'
+}
