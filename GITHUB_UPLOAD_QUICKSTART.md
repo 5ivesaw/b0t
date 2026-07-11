@@ -1,47 +1,43 @@
-# Update `5ivesaw/b0t` with the SawBotV1 Phase 2 visual patch
+# Update `5ivesaw/b0t` and publish automatically
 
-This update is distributed as a **patch-only ZIP**. Run `apply-patch.ps1` from the extracted patch folder, or copy only the included repository-path files over the existing local `b0t` repository. Read `DELETE_THESE.txt` before committing.
+This update is a **patch-only ZIP**. Apply it over the existing repository with `apply-patch.ps1`.
 
-From PowerShell inside the repository:
+After applying the patch, the normal release process is only:
 
 ```powershell
 git status
 git add -A
-git commit -m "Make Phase 2 LOS OCC colours update immediately"
+git commit -m "Automate verified GitHub releases"
 git push origin main
 ```
 
-Open `https://github.com/5ivesaw/b0t/actions` and wait for both CI jobs:
+That is all. Do not create or push a tag manually.
 
-- **Offline contracts and safety checks**
-- **Build Forge 1.8.9 mod**
+The `CI and automatic release` workflow will:
 
-After both pass, publish the prerelease from GitHub Actions:
+1. Read `sawbotVersion` from `gradle.properties`.
+2. Run offline verification.
+3. Build the real Forge 1.8.9 JAR.
+4. Validate the exact JAR and release payload.
+5. Create tag `v<sawbotVersion>`.
+6. Publish the GitHub Release and all assets.
 
-1. Open **Actions**.
-2. Select **Release**.
-3. Select **Run workflow**.
-4. Enter `0.3.0-alpha.2`.
-5. Keep prerelease enabled.
-6. Run it.
-
-Or push the release tag after CI passes:
-
-```powershell
-git tag -a v0.3.0-alpha.2 -m "SawBotV1 Phase 2 visibility colour fix"
-git push origin v0.3.0-alpha.2
-```
-
-The release should contain:
+For this patch the expected automatic tag is:
 
 ```text
-SawBotV1-0.3.0-alpha.2-mc1.8.9.jar
-SawBotV1-0.3.0-alpha.2-sources.jar
-SHA256SUMS.txt
-PHASE2_REPORT.md
-PHASE1_ACCEPTANCE.md
-PHASE0_ACCEPTANCE.md
-GITHUB_RELEASES.md
+v0.3.0-alpha.3
 ```
 
-Install only the `-mc1.8.9.jar` in the Forge 1.8.9 `mods` folder. Remove every older SawBotV1 JAR first.
+A version is immutable. If the tag or release already exists, the workflow deliberately fails instead of silently overwriting it. Every future patch supplied for SawBotV1 will include a version bump.
+
+## One-time GitHub setting
+
+If the release job reports a permission error, open:
+
+```text
+Repository Settings → Actions → General → Workflow permissions
+```
+
+Select **Read and write permissions**, then save and rerun the failed job.
+
+`Manual Release Recovery` remains available under Actions only as a fallback for a broken/missing release. It is no longer part of the normal process.

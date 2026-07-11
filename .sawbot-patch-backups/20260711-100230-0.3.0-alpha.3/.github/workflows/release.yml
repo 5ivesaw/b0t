@@ -1,11 +1,14 @@
-name: Manual Release Recovery
+name: Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Optional version override. Leave blank to use sawbotVersion from gradle.properties.'
-        required: false
+        description: 'Version without the v prefix, for example 0.3.0-alpha.2'
+        required: true
         type: string
       prerelease:
         description: 'Publish as a prerelease'
@@ -17,12 +20,12 @@ permissions:
   contents: write
 
 concurrency:
-  group: manual-release-${{ github.ref }}-${{ inputs.version || 'repository-version' }}
+  group: release-${{ github.ref }}-${{ inputs.version || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   build-and-release:
-    name: Rebuild and publish recovery release
+    name: Build and publish GitHub Release
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
@@ -35,19 +38,30 @@ jobs:
         id: release_meta
         shell: bash
         env:
+          EVENT_NAME: ${{ github.event_name }}
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_PRERELEASE: ${{ inputs.prerelease }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          REPOSITORY_VERSION="$(bash tools/read-version.sh)"
-          VERSION="${INPUT_VERSION:-$REPOSITORY_VERSION}"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            VERSION="$INPUT_VERSION"
+            TAG="v$VERSION"
+            PRERELEASE="$INPUT_PRERELEASE"
+          else
+            TAG="$REF_NAME"
+            VERSION="${TAG#v}"
+            if [[ "$VERSION" == *-* ]]; then PRERELEASE=true; else PRERELEASE=false; fi
+          fi
+
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
             echo "Invalid release version: $VERSION" >&2
             exit 1
           fi
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$INPUT_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
       - name: Install Java 8 toolchain
         uses: actions/setup-java@v5
@@ -87,9 +101,23 @@ jobs:
       - name: Package and verify release assets
         env:
           VERSION: ${{ steps.release_meta.outputs.version }}
-        run: |
-          bash tools/package-release.sh "$VERSION"
-          bash tools/verify-release-payload.sh "$VERSION" dist
+        run: bash tools/package-release.sh "$VERSION"
+
+      - name: Upload release build as workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: SawBotV1-${{ steps.release_meta.outputs.version }}
+          path: |
+            dist/SawBotV1-${{ steps.release_meta.outputs.version }}-mc1.8.9.jar
+            dist/SawBotV1-${{ steps.release_meta.outputs.version }}-sources.jar
+            dist/SHA256SUMS.txt
+            dist/PHASE2_REPORT.md
+            dist/PHASE2_RUNTIME_FEEDBACK.md
+            dist/PHASE1_ACCEPTANCE.md
+            dist/PHASE0_ACCEPTANCE.md
+            dist/GITHUB_RELEASES.md
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Publish GitHub Release
         shell: bash
@@ -117,5 +145,4 @@ jobs:
             "dist/PHASE1_ACCEPTANCE.md" \
             "dist/PHASE0_ACCEPTANCE.md" \
             "dist/GITHUB_RELEASES.md" \
-            "dist/INTERFACE_DESIGN_SYSTEM.md" \
             "${FLAGS[@]}"

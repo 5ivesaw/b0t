@@ -1,16 +1,5 @@
 # Changelog
 
-## 0.3.0-alpha.3 — Verified single-push releases and interface design charter
-
-- Changed the normal release process to one `git push origin main`; successful CI now creates the version tag and GitHub Release automatically.
-- Reused the exact Forge artifact produced by the tested build instead of rebuilding in a separate release workflow.
-- Added a second payload verification after artifact transfer, including JAR metadata/class validation and SHA-256 verification.
-- Made `sawbotVersion` in `gradle.properties` the single release-version source of truth.
-- Added duplicate-version protection so published releases are never silently overwritten.
-- Retained a manual recovery workflow for exceptional failures only.
-- Added the locked premium interface design system for future HUD, inspector, overlay, control-centre, and trainer UI work.
-- Preserved Phase 2 runtime sensor behavior from `0.3.0-alpha.2`.
-
 ## 0.3.0-alpha.2 — Immediate LOS/OCC visual-state correction
 
 - Made LOS/OCC visibility the primary colour source for entity boxes, labels, and tracers.

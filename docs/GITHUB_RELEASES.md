@@ -1,39 +1,53 @@
-# GitHub CI and Releases
+# GitHub CI and Automatic Releases
 
-## CI
+## Normal process
 
-Every push and pull request runs two jobs:
-
-1. **Offline contracts and safety checks** compiles common and Forge-facing source for Java 8 against narrow verification stubs, runs 527 assertions, generates a full debug snapshot, parses the JSON, and verifies exact terrain/map/inventory bounds.
-2. **Build Forge 1.8.9 mod** installs Java 8 and Java 17, runs Gradle 8.8 with Architectury Loom, remaps the Forge JAR, validates required Phase 2 classes and metadata, and uploads release-shaped artifacts.
-
-The real Forge dependency resolution/remapping occurs on GitHub because the artifact-generation environment may not have network access to Minecraft/Forge/Loom repositories.
-
-## Updating `5ivesaw/b0t`
+A push to `main` is now the complete release operation:
 
 ```powershell
 git add -A
-git commit -m "Make Phase 2 LOS OCC colours update immediately"
+git commit -m "Describe the SawBotV1 update"
 git push origin main
 ```
 
-Wait for both CI jobs to pass before publishing a tag.
+No manual tag command and no second workflow launch are required.
 
-## Publishing `0.3.0-alpha.2`
+## Pipeline
 
-Website method:
+`CI and automatic release` runs these jobs:
 
-1. Open **Actions → Release → Run workflow**.
-2. Enter `0.3.0-alpha.2` without the `v` prefix.
-3. Keep prerelease enabled.
-4. Run the workflow.
+1. **Resolve repository version** reads and validates `sawbotVersion` from `gradle.properties`.
+2. **Offline contracts and safety checks** compiles Java 8-compatible source against the verification APIs, runs the regression suite, validates exported JSON, and audits repository structure.
+3. **Build Forge 1.8.9 mod** installs Java 8 and Java 17, builds and remaps the real mod, validates its metadata/classes, and packages a release-shaped artifact.
+4. **Publish release automatically** runs only for successful pushes to `main`. It downloads the exact artifact produced by the tested build, verifies checksums again, creates the version tag, and publishes the GitHub Release.
 
-Tag method:
+Pull requests and non-main branches run verification/builds but do not publish releases.
 
-```powershell
-git tag -a v0.3.0-alpha.2 -m "SawBotV1 Phase 2 visibility colour fix"
-git push origin v0.3.0-alpha.2
+## Version rule
+
+The source of truth is:
+
+```properties
+sawbotVersion=0.3.0-alpha.3
 ```
+
+The automatic release is tagged:
+
+```text
+v0.3.0-alpha.3
+```
+
+Published versions are immutable. Reusing a version causes an explicit failure. This prevents a release tag from referring to different code at different times.
+
+## Authentication and recursion safety
+
+The release job uses the repository's short-lived `GITHUB_TOKEN` and requests only `contents: write`. The tag and release are created by the same tested workflow. GitHub does not start a second workflow from ordinary events created with `GITHUB_TOKEN`, so the automatically created tag does not produce a release loop.
+
+If repository policy blocks write access, enable **Read and write permissions** under **Settings → Actions → General → Workflow permissions**.
+
+## Manual recovery
+
+`Manual Release Recovery` is retained for exceptional cases such as a release that failed after a successful build. It can use the repository version or an explicitly supplied version. It refuses to overwrite an existing release.
 
 ## Release assets
 
@@ -41,34 +55,16 @@ git push origin v0.3.0-alpha.2
 - Sources JAR
 - `SHA256SUMS.txt`
 - `PHASE2_REPORT.md`
+- `PHASE2_RUNTIME_FEEDBACK.md`
 - `PHASE1_ACCEPTANCE.md`
 - `PHASE0_ACCEPTANCE.md`
-- This guide
-
-The workflow uses GitHub's short-lived workflow token and requests only `contents: write`.
+- `GITHUB_RELEASES.md`
+- `INTERFACE_DESIGN_SYSTEM.md`
 
 ## Integrity checks
 
-`tools/verify-built-jar.py` rejects a release when:
+`tools/verify-built-jar.py` rejects a release when required metadata/classes are missing, the embedded version is wrong, or Java source leaks into the installable JAR.
 
-- The expected remapped JAR is missing.
-- `mcmod.info` is absent, malformed, or has the wrong version, Minecraft version, or mod ID.
-- The Forge entry class, observation classes, pipeline, terrain/entity sensors, difference calculator, inspector controller, snapshot exporter, or world renderer is missing.
-- Java source leaked into the installable JAR.
+`tools/package-release.sh` creates the release payload and hashes.
 
-`tools/package-release.sh` checks the sources JAR and generates SHA-256 hashes for every published asset.
-
-## Local build
-
-Gradle runs on Java 17 and compiles Minecraft code using a Java 8 toolchain:
-
-```powershell
-.\gradlew.bat clean ciBuild
-.\gradlew.bat runClient
-```
-
-If Gradle cannot discover JDK 8, add its absolute path to the user Gradle properties:
-
-```properties
-org.gradle.java.installations.paths=C:\Path\To\JDK8
-```
+`tools/verify-release-payload.sh` checks every required file, validates the installable JAR, and verifies `SHA256SUMS.txt` after artifact transfer.

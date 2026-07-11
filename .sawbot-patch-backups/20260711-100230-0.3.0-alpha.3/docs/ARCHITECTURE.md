@@ -83,13 +83,3 @@ Phase 2 adds selected block/entity state, HUD pages, visual-overlay toggles, sna
 Frozen mode now halts every observation sensor and the mid-range cache. A single explicit step captures once on the current client tick and returns to frozen mode. This is an observation-system step, not a world/server pause.
 
 Snapshot debug export uses one bounded background worker and a four-item queue. Only immutable snapshots and immutable inspector metadata cross the thread boundary. The worker never reads Minecraft world objects.
-
-## ADR-0009 — Unified premium interface design system
-
-**Status:** Accepted
-
-**Decision:** All future SawBotV1 HUD, inspector, world-overlay, control-centre, and trainer-interface work follows `docs/INTERFACE_DESIGN_SYSTEM.md`. Runtime UI will be built from centralized semantic tokens and reusable components rather than phase-specific text drawing and scattered color constants.
-
-**Reason:** The Phase 0–2 text HUD proved the sensor architecture but is not an acceptable long-term product interface. A unified system is needed to achieve high information density, stable hierarchy, immediate state synchronization, and premium interaction quality while remaining viable on Intel HD 520.
-
-**Boundaries:** This decision does not alter observation/action contracts and does not permit visual interpolation to modify measured values. Emergency controls remain immediate. Blur, custom fonts, shadows, and animation are optional effects gated by benchmark results.
