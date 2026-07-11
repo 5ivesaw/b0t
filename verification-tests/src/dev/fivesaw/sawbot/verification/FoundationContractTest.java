@@ -14,6 +14,7 @@ import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.forge.inspection.SnapshotJsonWriter;
 import dev.fivesaw.sawbot.forge.hud.EntityVisualStyle;
 import dev.fivesaw.sawbot.forge.map.LandmarkSensor;
+import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
 import java.io.File;
 import java.io.StringWriter;
 import java.io.ByteArrayInputStream;
@@ -49,6 +50,7 @@ import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.util.BlockPos;
+import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.world.World;
 import org.apache.logging.log4j.Logger;
 
@@ -71,6 +73,7 @@ public final class FoundationContractTest {
         entityTypeClassificationIsSpecific();
         entityVisibilityUpdatesAcrossWallTransition();
         worldSpawnLandmarkResolvesToStandableSurface();
+        navigationWaypointAppearsAsSemanticLandmark();
         rollingWindowRemainsBounded();
         keyDefaultsAvoidVanillaFunctionConflicts();
         safetyControllerReleasesEveryHeldControl();
@@ -97,6 +100,8 @@ public final class FoundationContractTest {
         actionContextRejectsMissingReferences();
         environmentGuardBlocksPublicServers();
         safeActuatorUsesLegitimateControlsAndReleases();
+        disabledActuatorPreservesHumanInput();
+        physicalInputArmClearsStaleMouseDelta();
         System.out.println("PASS FoundationContractTest (" + checks + " checks)");
     }
 
@@ -166,6 +171,22 @@ public final class FoundationContractTest {
         LandmarkObservation cached=sensor.capture(player,world,2).landmarks().get(0);
         require(world.getBlockStateCallsForTest()==0,"spawn surface cache avoids repeated scans");
         require(Math.abs(cached.up())<0.0001f,"cached spawn surface remains stable");
+    }
+
+    private static void navigationWaypointAppearsAsSemanticLandmark(){
+        Minecraft minecraft=Minecraft.getMinecraft();
+        World world=new World();
+        EntityPlayerSP player=new EntityPlayerSP();
+        player.posX=0.5;player.posY=64;player.posZ=0.5;player.rotationYaw=0f;
+        minecraft.theWorld=world;minecraft.thePlayer=player;
+        minecraft.objectMouseOver=new MovingObjectPosition(MovingObjectPosition.MovingObjectType.BLOCK,new BlockPos(0,63,5),null);
+        NavigationWaypointController controller=new NavigationWaypointController(minecraft);
+        require(controller.setFromCrosshair(),"waypoint set from crosshair");
+        LandmarkObservation landmark=controller.capture(player,world);
+        require(landmark!=null&&landmark.landmarkId()==NavigationWaypointController.USER_WAYPOINT_ID,"waypoint landmark id");
+        require(landmark.type()==LandmarkType.STAGING_AREA,"waypoint semantic type");
+        require(landmark.forward()>4f&&Math.abs(landmark.right())<0.1f,"waypoint egocentric position");
+        require(controller.clear()&&controller.capture(player,world)==null,"waypoint clear");
     }
 
     private static void rollingWindowRemainsBounded(){RollingTimingWindow window=new RollingTimingWindow(3);window.add(10);window.add(20);window.add(30);window.add(40);require(window.count()==3,"bounded count");require(window.averageNanos()==30,"ring average");require(window.latestNanos()==40,"latest");require(window.maximumNanos()==40,"maximum");}
@@ -357,6 +378,11 @@ public final class FoundationContractTest {
         byte[] payload=TelemetryBinaryCodec.encodeObservation(richSnapshot());
         require(payload.length>1000&&payload.length<ModelProtocol.MAX_PAYLOAD_BYTES,"bridge observation payload bounded");
         require((payload[0]&255)==0x4F&&(payload[1]&255)==0x42&&(payload[2]&255)==0x53&&(payload[3]&255)==0x31,"bridge observation payload magic OBS1");
+        String fixture=System.getProperty("sawbot.observation.fixture");
+        if(fixture!=null&&!fixture.isEmpty()){
+            try{java.nio.file.Files.write(new File(fixture).toPath(),payload);}
+            catch(Exception exception){throw new AssertionError("observation fixture",exception);}
+        }
     }
 
     private static void modelProtocolFrameRoundTripIsBounded(){
@@ -523,6 +549,29 @@ public final class FoundationContractTest {
     }
 
 
+    private static void disabledActuatorPreservesHumanInput(){
+        Minecraft minecraft=Minecraft.getMinecraft();
+        minecraft.currentScreen=null;
+        minecraft.setSingleplayerForTest(true);
+        KeyBinding.clearForTest();
+        SawBotStateController controller=new SawBotStateController(minecraft,new TestLogger());
+        EnvironmentGuard guard=new EnvironmentGuard(minecraft,true,"");
+        SafeActionActuator actuator=new SafeActionActuator(minecraft,controller,guard,250,3,new TestLogger());
+        KeyBinding.setKeyBindState(minecraft.gameSettings.keyBindForward.getKeyCode(),true);
+        actuator.tick(richSnapshot(),null);
+        require(KeyBinding.isKeyDownForTest(minecraft.gameSettings.keyBindForward.getKeyCode()),"disabled actuator preserves human forward key");
+        KeyBinding.clearForTest();
+    }
+
+    private static void physicalInputArmClearsStaleMouseDelta(){
+        Minecraft minecraft=Minecraft.getMinecraft();
+        minecraft.mouseHelper.deltaX=9;minecraft.mouseHelper.deltaY=-4;
+        PhysicalInputMonitor monitor=new PhysicalInputMonitor(minecraft);
+        monitor.arm();
+        require(minecraft.mouseHelper.deltaX==0&&minecraft.mouseHelper.deltaY==0,"physical input arm clears stale mouse delta");
+        require(!monitor.hasTakeoverInput(),"arming grace ignores stale mouse input");
+    }
+
     private static void telemetryFailureCanBeRetried(){
         TelemetryService service=null;
         try{
@@ -563,7 +612,9 @@ public final class FoundationContractTest {
         List<EntityObservation> entityList=new ArrayList<EntityObservation>();
         entityList.add(new EntityObservation(4,44,EntityKind.PLAYER,EntityType.PLAYER,TeamRelation.ENEMY,2,0,4,0.1f,0,0,0,0,0,30,0,0.6f,1.8f,17,5,4.5f,ItemCategory.SWORD.ordinal(),ItemCategory.EMPTY.ordinal(),2,true,true,false,true,false,false,true,0.9f));
         EntitySetSnapshot entitySet=new EntitySetSnapshot(entityList,0);
-        List<LandmarkObservation> landmarkList=Collections.singletonList(new LandmarkObservation(3,LandmarkType.WORLD_SPAWN,TeamRelation.NEUTRAL,5,0,6,7,8,0.1f,0.3f,1,true));
+        List<LandmarkObservation> landmarkList=new ArrayList<LandmarkObservation>();
+        landmarkList.add(new LandmarkObservation(3,LandmarkType.WORLD_SPAWN,TeamRelation.NEUTRAL,5,0,6,7,8,0.1f,0.3f,1,true));
+        landmarkList.add(new LandmarkObservation(NavigationWaypointController.USER_WAYPOINT_ID,LandmarkType.STAGING_AREA,TeamRelation.NEUTRAL,2,0,5,5.4f,5.4f,0,1,1,true));
         List<ObservationEvent> eventList=Collections.singletonList(new ObservationEvent(ObservationEventType.ENTITY_ENTERED_RANGE,20,4,2,0,4,1,true));
         return new ObservationSnapshot(20,1007,new UUID(1,2),7,"world:test","universal/0.1",self,terrainWithCenter((short)9),midRange(),entitySet,inventory(),new LandmarkSetSnapshot(landmarkList),new EventHistorySnapshot(eventList,0),timing(),TaskStateSnapshot.UNIVERSAL,ActionCommand.zero(6,1007,"none"),SensorValidity.ALL_PHASE1,sensorTimings());
     }

@@ -20,6 +20,7 @@ public final class SawBotStateController {
     private String lastStopReason = "startup";
     private String inspectorNotice = "";
     private long inspectorNoticeTimestampNanos;
+    private int inspectorNoticeSeverity;
     private static final long NOTICE_LIFETIME_NANOS = 3_000_000_000L;
 
     public SawBotStateController(Minecraft minecraft, Logger logger) {
@@ -73,8 +74,8 @@ public final class SawBotStateController {
         return requested;
     }
 
-    public void manualTakeover() { disableAndRelease("manual takeover"); }
-    public void emergencyStop() { disableAndRelease("emergency stop"); }
+    public void manualTakeover() { disableAndRelease("manual takeover"); setInspectorNotice("TAKEOVER: manual control restored", 2); }
+    public void emergencyStop() { disableAndRelease("emergency stop"); setInspectorNotice("EMERGENCY: all SawBot inputs released", 3); }
     public void onWorldUnavailable() {
         observationsFrozen = false;
         observationStepRequested = false;
@@ -104,8 +105,10 @@ public final class SawBotStateController {
     public void toggleLandmarkOverlay() { landmarkOverlayVisible = !landmarkOverlayVisible; setInspectorNotice("landmark overlay " + onOff(landmarkOverlayVisible)); }
     public void toggleTelemetryRequest() { telemetryRequested = !telemetryRequested; setInspectorNotice("telemetry " + (telemetryRequested ? "START" : "STOP")); }
     public void clearTelemetryRequest() { telemetryRequested = false; }
-    public void setInspectorNotice(String notice) {
+    public void setInspectorNotice(String notice) { setInspectorNotice(notice, 0); }
+    public void setInspectorNotice(String notice, int severity) {
         inspectorNotice = notice == null ? "" : notice;
+        inspectorNoticeSeverity = Math.max(0, Math.min(3, severity));
         inspectorNoticeTimestampNanos = System.nanoTime();
     }
     private static String onOff(boolean value) { return value ? "ON" : "OFF"; }
@@ -127,4 +130,5 @@ public final class SawBotStateController {
         if (System.nanoTime() - inspectorNoticeTimestampNanos > NOTICE_LIFETIME_NANOS) return "";
         return inspectorNotice;
     }
+    public int inspectorNoticeSeverity() { return inspectorNotice().isEmpty() ? 0 : inspectorNoticeSeverity; }
 }

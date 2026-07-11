@@ -51,6 +51,7 @@ public final class ModelBridge implements AutoCloseable {
     private volatile long droppedActions;
     private volatile long reconnects;
     private volatile long invalidFrames;
+    private volatile long stateChangedNanos = System.nanoTime();
 
     public ModelBridge(String host, int port, int connectTimeoutMillis, int reconnectDelayMillis,
                        String modVersion, int decisionRateHz, Logger logger) {
@@ -106,7 +107,7 @@ public final class ModelBridge implements AutoCloseable {
             while (running) {
                 Socket socket = null;
                 try {
-                    state = BridgeConnectionState.CONNECTING;
+                    setState(BridgeConnectionState.CONNECTING);
                     socket = new Socket();
                     socket.connect(new InetSocketAddress(host, port), connectTimeoutMillis);
                     socket.setTcpNoDelay(true);
@@ -115,7 +116,7 @@ public final class ModelBridge implements AutoCloseable {
                     DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 65536));
                     DataOutputStream output = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(), 65536));
                     long nonce = new Random().nextLong();
-                    state = BridgeConnectionState.HANDSHAKING;
+                    setState(BridgeConnectionState.HANDSHAKING);
                     ModelProtocol.writeFrame(output, ModelProtocol.TYPE_HELLO,
                         ModelProtocol.encodeHello(modVersion, SchemaVersion.OBSERVATION_V0_3.identifier(),
                             SchemaVersion.ACTION_V0_1.identifier(), nonce, decisionRateHz));
@@ -128,7 +129,7 @@ public final class ModelBridge implements AutoCloseable {
                     lastError = "";
                     lastConnectedNanos = System.nanoTime();
                     reconnects++;
-                    state = BridgeConnectionState.READY;
+                    setState(BridgeConnectionState.READY);
                     socket.setSoTimeout(100);
                     logger.info("SawBotV1 model bridge connected to " + host + ":" + port
                         + " using model " + modelVersion + ".");
@@ -150,7 +151,7 @@ public final class ModelBridge implements AutoCloseable {
                 if (!running) break;
                 sleep(reconnectDelayMillis);
             }
-            state = BridgeConnectionState.STOPPED;
+            setState(BridgeConnectionState.STOPPED);
         }
 
         private void runConnected(DataInputStream input, DataOutputStream output) throws IOException {
@@ -205,7 +206,15 @@ public final class ModelBridge implements AutoCloseable {
         private void failConnection(String message) {
             if (!running) return;
             lastError = message == null || message.isEmpty() ? "connection failure" : message;
-            state = BridgeConnectionState.DISCONNECTED;
+            setState(BridgeConnectionState.DISCONNECTED);
+        }
+
+
+        private void setState(BridgeConnectionState next) {
+            if (next != state) {
+                state = next;
+                stateChangedNanos = System.nanoTime();
+            }
         }
 
         private void sleep(long millis) {
@@ -232,6 +241,14 @@ public final class ModelBridge implements AutoCloseable {
     public long invalidFrames() { return invalidFrames; }
     public int observationQueueSize() { return observationQueue.size(); }
     public int actionQueueSize() { return actionQueue.size(); }
+    /** Stable HUD label that does not flicker CONNECTING/DISCONNECTED every retry. */
+    public String displayState() {
+        if (state == BridgeConnectionState.READY) return "READY";
+        if (state == BridgeConnectionState.HANDSHAKING) return "HANDSHAKE";
+        if (state == BridgeConnectionState.STOPPED) return "STOPPED";
+        return "OFFLINE";
+    }
+    public long stateAgeMillis() { return Math.max(0L, (System.nanoTime() - stateChangedNanos) / 1_000_000L); }
     public String endpoint() { return host + ":" + port; }
 
     @Override public void close() {

@@ -11,6 +11,7 @@ import dev.fivesaw.sawbot.forge.hud.WorldDebugRenderer;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.forge.inspection.SnapshotExportService;
 import dev.fivesaw.sawbot.forge.model.ModelActionEnvelope;
+import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
 import dev.fivesaw.sawbot.forge.model.ModelBridge;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
@@ -23,6 +24,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import org.lwjgl.input.Keyboard;
 import org.apache.logging.log4j.Logger;
 
 public final class ClientRuntime {
@@ -32,6 +34,7 @@ public final class ClientRuntime {
     private final SawBotKeyBindings keys;
     private final SawBotStateController state;
     private final RollingTimingWindow tickTiming;
+    private final NavigationWaypointController navigationWaypoint;
     private final ObservationPipeline observations;
     private final InspectorController inspector;
     private final SnapshotExportService exports;
@@ -54,7 +57,8 @@ public final class ClientRuntime {
         this.keys = new SawBotKeyBindings();
         this.state = new SawBotStateController(minecraft, logger);
         this.tickTiming = new RollingTimingWindow(config.timingWindowSize());
-        this.observations = new ObservationPipeline(minecraft, config.sensorIntervalTicks());
+        this.navigationWaypoint = new NavigationWaypointController(minecraft);
+        this.observations = new ObservationPipeline(minecraft, config.sensorIntervalTicks(), navigationWaypoint);
         this.inspector = new InspectorController(minecraft);
         this.exports = new SnapshotExportService(minecraft.mcDataDir, logger);
         this.telemetry = new TelemetryService(minecraft.mcDataDir, minecraft,
@@ -71,7 +75,7 @@ public final class ClientRuntime {
         this.worldRenderer = new WorldDebugRenderer(minecraft, state, inspector,
             config.timingWindowSize());
         this.hud = new FoundationHud(minecraft, state, tickTiming, observations, inspector,
-            exports, telemetry, modelBridge, actuator, worldRenderer);
+            exports, telemetry, modelBridge, actuator, worldRenderer, navigationWaypoint);
     }
 
     public void register() {
@@ -96,6 +100,7 @@ public final class ClientRuntime {
                 actuator.release("world unavailable");
                 state.clearTelemetryRequest();
                 telemetry.onWorldUnavailable();
+                navigationWaypoint.onWorldUnavailable();
                 observations.tick(clientTick, false);
                 inspector.update(null, null);
                 lastPublishedObservationSequence = -1L;
@@ -106,7 +111,7 @@ public final class ClientRuntime {
                 && physicalInput.hasTakeoverInput()) {
                 state.manualTakeover();
                 actuator.release("physical human input");
-                state.setInspectorNotice("manual takeover: physical input");
+                state.setInspectorNotice("TAKEOVER: physical input", 2);
             }
 
             boolean singleStep = state.consumeObservationStepRequest();
@@ -171,8 +176,9 @@ public final class ClientRuntime {
             } else if (!modelBridge.isReady()) {
                 state.setInspectorNotice("model offline at " + modelBridge.endpoint());
             } else {
+                physicalInput.arm();
                 state.enable();
-                state.setInspectorNotice("actuator enabled: " + modelBridge.modelVersion());
+                state.setInspectorNotice("actuator enabled: " + modelBridge.modelVersion(), 1);
             }
         }
         if (keys.toggleFreeze.isPressed()) {
@@ -196,6 +202,19 @@ public final class ClientRuntime {
             }
             state.toggleTelemetryRequest();
         }
+        if (keys.setNavigationWaypoint.isPressed()) {
+            boolean clear = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)
+                || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
+            if (clear) {
+                navigationWaypoint.clear();
+                state.setInspectorNotice("waypoint cleared", 1);
+            } else if (navigationWaypoint.setFromCrosshair()) {
+                state.setInspectorNotice("waypoint #" + NavigationWaypointController.USER_WAYPOINT_ID
+                    + " set " + navigationWaypoint.compactPosition(), 1);
+            } else {
+                state.setInspectorNotice("aim at a block, then press G", 2);
+            }
+        }
     }
 
     private void drainNonSafetyKeyPresses() {
@@ -213,6 +232,7 @@ public final class ClientRuntime {
         drain(keys.nextEntity);
         drain(keys.exportSnapshot);
         drain(keys.toggleTelemetry);
+        drain(keys.setNavigationWaypoint);
     }
 
     private static void drain(net.minecraft.client.settings.KeyBinding keyBinding) {

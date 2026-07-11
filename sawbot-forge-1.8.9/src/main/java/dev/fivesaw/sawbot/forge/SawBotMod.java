@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 public final class SawBotMod {
     public static final String MOD_ID = "sawbotv1";
     public static final String NAME = "SawBotV1";
-    public static final String VERSION = "0.5.0-alpha.0";
+    public static final String VERSION = "0.6.0-alpha.0";
 
     private Logger logger;
     private ClientRuntime clientRuntime;

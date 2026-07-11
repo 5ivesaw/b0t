@@ -1,135 +1,75 @@
 # SawBotV1
 
-SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a visible, inspectable neural agent. Minecraft is the agent's body. The mod reads structured internal game state, never screen pixels, and actuates only legitimate client controls inside local/private test environments.
+SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a visible, inspectable neural agent. Minecraft is the body: the mod reads structured internal state, never screen pixels, and applies only legitimate client controls in local/private test environments.
 
 ## Current gate
 
-**Phases 0, 1, and 2 passed target-machine runtime acceptance.** Phase 3's binary format and offline validation pass, but its target-machine writer needs one focused retest after the bundled reliability fixes. This repository contains the **Phase 4 — Safe Actuator and Local Model Bridge candidate** (`0.5.0-alpha.0`).
+Phases 0–2 passed target-machine runtime acceptance. Phase 3 structured telemetry and Phase 4 bridge/actuator infrastructure are implemented. This repository contains the **Phase 5 — First Learned Behaviour candidate** (`0.6.0-alpha.0`).
 
-Implemented:
+The first exported neural policy navigates toward a user-selected semantic waypoint without a runtime pathfinder or teacher. Its held-out evaluation succeeds in 698/800 scenarios (87.25%) versus 29/800 (3.625%) for the random baseline.
 
-- Observation Contract `sawbot.observation/0.3`
-- Action Contract `sawbot.action/0.1`
-- Telemetry Contract `sawbot.telemetry/0.1`
-- Local bridge protocol `sawbot.bridge/0.1`
-- Bounded self, terrain, map, entity, inventory, event, timing, and landmark observations
-- Compact text inspector, frozen snapshots, single-step capture, overlays, and JSON export
-- Structured human gameplay telemetry with validation, replay, CRC, and recovery
-- Background local model transport with bounded queues and latency metrics
-- Strict client-thread safe actuator for legitimate controls
-- Environment guard, action deadlines, physical takeover, disconnect release, F9, and F12
-- Deterministic dummy model and actuator demo
+Implemented contracts and systems:
+
+- Observation `sawbot.observation/0.3`
+- Action `sawbot.action/0.1`
+- Telemetry `sawbot.telemetry/0.1`
+- Bridge `sawbot.bridge/0.1`
+- Bounded internal sensors, compact inspector, overlays, freeze/step, and export
+- Structured human trajectory recording, validation, replay, CRC, and recovery
+- Non-blocking local model bridge and client-thread safe actuator
+- Environment guard, action deadlines, physical takeover, F9, and F12
+- Deterministic teacher dataset, tiny MLP, held-out evaluation, and live learned waypoint model
 - Single-push automatic GitHub build/tag/release
 
-The repository still contains **no learned neural policy, Bedwars strategy, handcrafted runtime pathfinder, aim helper, scaffold controller, packet advantage, screenshot/OCR pipeline, or public-server automation**.
+There is still no Bedwars strategy, runtime pathfinder, aim helper, scaffold controller, packet advantage, screenshot/OCR pipeline, or public-server automation.
 
-Key reports:
+## Phase 5 quick start
 
-- [`docs/PHASE0_ACCEPTANCE.md`](docs/PHASE0_ACCEPTANCE.md)
-- [`docs/PHASE1_ACCEPTANCE.md`](docs/PHASE1_ACCEPTANCE.md)
-- [`docs/PHASE2_ACCEPTANCE.md`](docs/PHASE2_ACCEPTANCE.md)
-- [`docs/PHASE3_RUNTIME_STATUS.md`](docs/PHASE3_RUNTIME_STATUS.md)
-- [`docs/PHASE4_REPORT.md`](docs/PHASE4_REPORT.md)
-- [`docs/MODEL_BRIDGE_PROTOCOL.md`](docs/MODEL_BRIDGE_PROTOCOL.md)
-- [`docs/PHASE_GATES.md`](docs/PHASE_GATES.md)
+1. Aim at a reachable block and press `G` to set user waypoint `#1000`.
+2. Run `sawbot-trainer\waypoint\RUN-WAYPOINT-MODEL.bat`.
+3. Wait for model state `READY`.
+4. Press `F10` to enable.
+5. Press `F9` or any physical movement/mouse input for takeover; `F12` is emergency release.
+6. Use `Shift+G` to clear the waypoint.
 
-The locked project brief remains in [`docs/PROJECT_BRIEF.txt`](docs/PROJECT_BRIEF.txt).
+## Build
 
-## Build and automatic release
-
-A push to `main` runs offline verification, builds and remaps the real Forge 1.8.9 JAR, validates the release payload, creates tag `v0.5.0-alpha.0`, and publishes the GitHub Release.
+A push to `main` verifies, builds, remaps, tags `v0.6.0-alpha.0`, and publishes the exact tested release artifact.
 
 ```powershell
 git add -A
-git commit -m "Implement Phase 4 actuator and model bridge"
+git commit -m "Implement Phase 5 learned waypoint navigation"
 git push origin main
 ```
 
-## Toolchain
-
-- Gradle 8.8
-- Architectury Loom `0.10.0.5`
-- Java 17 for Gradle
-- Java 8 bytecode/toolchain for Minecraft
-- Forge `1.8.9-11.15.1.2318-1.8.9`
-- MCP `stable_22`
-
-Build:
-
-```powershell
-.\gradlew.bat clean ciBuild
-```
-
-Installable JAR:
-
-```text
-sawbot-forge-1.8.9/build/libs/SawBotV1-0.5.0-alpha.0-mc1.8.9.jar
-```
-
-Offline verification:
-
-```bash
-bash tools/offline-verify.sh
-```
+Toolchain: Gradle 8.8, Architectury Loom `0.10.0.5`, Java 17 for Gradle, Java 8 bytecode, Forge `1.8.9-11.15.1.2318-1.8.9`, MCP `stable_22`.
 
 ## Controls
 
-All bindings are configurable under **Options → Controls → SawBotV1**.
-
 | Key | Function |
 |---|---|
-| F10 | Enable/disable safe actuator; requires allowed scope and model `READY` |
+| F10 | Enable/disable safe actuator when model is ready |
 | F9 | Immediate manual takeover |
-| F12 | Emergency release all controlled inputs |
-| F7 | Show/hide compact inspector |
-| P | Freeze/unfreeze immutable observation |
-| . | Capture one observation while frozen |
-| H | Next inspector page, including MODEL |
-| B | Terrain overlay |
-| C | Collision/support overlay |
-| N | Entity boxes and LOS/OCC labels |
-| V | Entity tracers |
-| M | Landmark overlay |
+| F12 | Emergency release |
+| G | Set learned-navigation waypoint above aimed block |
+| Shift+G | Clear learned-navigation waypoint |
+| F7 | Compact inspector |
+| H | Next inspector page |
+| P / . | Freeze/unfreeze / single observation step |
+| B / C / N / V / M | Terrain / collision / entities / tracers / landmarks |
 | [ / ] | Previous/next tracked entity |
-| O | Export current snapshot JSON |
+| O | Export snapshot JSON |
 | K | Start/stop structured telemetry |
 
-## Phase 4 dummy model
+## Reports
 
-Start the interactive bridge server before enabling SawBot:
-
-```text
-sawbot-tools\dummy-model\RUN-DUMMY-MODEL.bat
-```
-
-Or run the deterministic control sequence:
-
-```text
-sawbot-tools\dummy-model\RUN-ACTUATOR-DEMO.bat
-```
-
-Interactive commands include movement, jump/sprint/sneak, smooth yaw/pitch, hotbar selection, attack, use, drop, inventory, idle, demo, status, and quit. The dummy model is testing infrastructure, not a neural policy.
-
-## Runtime paths
-
-Snapshot exports:
-
-```text
-.minecraft/sawbotv1/exports/
-```
-
-Structured telemetry:
-
-```text
-.minecraft/sawbotv1/telemetry/
-```
-
-Validate the newest trajectory on the configured Windows test machine with:
-
-```text
-tools\TEST-LATEST-TELEMETRY.bat
-```
+- `docs/PHASE5_REPORT.md`
+- `docs/WAYPOINT_MODEL.md`
+- `docs/PHASE4_RUNTIME_FINDINGS.md`
+- `docs/MODEL_BRIDGE_PROTOCOL.md`
+- `docs/PHASE_GATES.md`
+- `docs/PROJECT_BRIEF.txt`
 
 ## Safety scope
 
-Autonomous input is restricted to single-player, LAN/private hosts explicitly configured by the user, and owned test arenas. Public-server automation, anti-cheat bypasses, authentication bypasses, packet advantage, altered reach, impossible placement, teleportation, and silent server-only controls are prohibited.
+Autonomous input is restricted to single-player and explicitly configured owned/private environments. Public-server automation, anti-cheat bypasses, authentication bypasses, packet advantage, altered reach, impossible placement, teleportation, and silent server-only controls are prohibited.

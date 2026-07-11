@@ -154,3 +154,23 @@ Runtime acceptance required:
 - [ ] Focused five-minute test has no repeated SawBot errors.
 
 **Gate: PENDING TARGET-MACHINE PHASE 4 TEST.**
+## Phase 5 — First learned behaviour
+
+Implemented in candidate `0.6.0-alpha.0`:
+
+- [x] Explicit user waypoint enters the normal bounded landmark contract.
+- [x] Deterministic balanced teacher dataset with 28,000 examples.
+- [x] Teacher is absent from the live runtime.
+- [x] Exported 18→32→7 MLP checkpoint with fixed feature/action ordering.
+- [x] Pure-standard-library local inference process over `sawbot.bridge/0.1`.
+- [x] No runtime pathfinder or hidden steering correction.
+- [x] 800 held-out rollout starts and retained failure examples.
+- [x] Learned success 87.25%; random baseline 3.625%.
+- [x] Inference and checkpoint/data/evaluation contracts verified in CI.
+- [x] Phase 4 input-ownership, stable bridge-status, takeover-notice, and telemetry-close corrections bundled.
+
+Runtime acceptance is intentionally deferred to the next major integration review while development continues.
+
+**Gate: SOURCE/EVALUATION PASS; INTEGRATED RUNTIME ACCEPTANCE DEFERRED.**
+
+Evidence: `docs/PHASE5_REPORT.md`, `docs/WAYPOINT_MODEL.md`, committed dataset/checkpoint/evaluation, and `verify_phase5.py`.

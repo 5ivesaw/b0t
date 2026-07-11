@@ -60,7 +60,9 @@ final class TelemetrySession {
     void requestClose(String reason) {
         terminalReason = reason == null || reason.isEmpty() ? "unknown" : reason;
         closeRequested = true;
-        worker.interrupt();
+        // Do not interrupt the writer during normal close. Interrupting a thread while
+        // it writes through a NIO channel can raise ClosedByInterruptException and
+        // corrupt an otherwise healthy session. The bounded poll wakes within 250 ms.
     }
 
     void closeAndWait(String reason, long timeoutMillis) {

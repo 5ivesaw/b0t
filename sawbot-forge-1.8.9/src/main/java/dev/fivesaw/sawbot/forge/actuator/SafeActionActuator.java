@@ -35,6 +35,7 @@ public final class SafeActionActuator {
     private long lastActionRoundTripNanos;
     private String status = "IDLE";
     private String lastReason = "startup";
+    private boolean ownsContinuousInputs;
 
     public SafeActionActuator(Minecraft minecraft, SawBotStateController state,
                               EnvironmentGuard environment, long maximumActionAgeMillis,
@@ -53,7 +54,7 @@ public final class SafeActionActuator {
     public void tick(ObservationSnapshot latest, ModelActionEnvelope incoming) {
         long now = System.nanoTime();
         if (!state.mayApplyAutonomousActions()) {
-            release("disabled/frozen");
+            releaseIfOwned("disabled/frozen");
             return;
         }
         if (!environment.isAllowed()) {
@@ -69,7 +70,7 @@ public final class SafeActionActuator {
         }
         if (incoming != null) accept(incoming, latest, now);
         if (activeAction == null) {
-            release("waiting for action");
+            releaseIfOwned("waiting for action");
             return;
         }
         if (now - activeActionAcceptedNanos > maximumActionAgeNanos || remainingTicks <= 0) {
@@ -110,6 +111,7 @@ public final class SafeActionActuator {
     private void applyCurrentTick() {
         ActionCommand command = activeAction;
         GameSettings settings = minecraft.gameSettings;
+        ownsContinuousInputs = hasContinuousInput(command);
         set(settings.keyBindForward, command.forward() > AXIS_THRESHOLD);
         set(settings.keyBindBack, command.forward() < -AXIS_THRESHOLD);
         set(settings.keyBindRight, command.strafe() > AXIS_THRESHOLD);
@@ -164,8 +166,14 @@ public final class SafeActionActuator {
         }
     }
 
+    private void releaseIfOwned(String reason) {
+        if (!ownsContinuousInputs && activeAction == null) return;
+        release(reason);
+    }
+
     private void clear(String nextStatus, String reason) {
         InputRelease.releaseAll(minecraft);
+        ownsContinuousInputs = false;
         activeAction = null;
         remainingTicks = 0;
         remainingYaw = 0F;
@@ -176,7 +184,24 @@ public final class SafeActionActuator {
     }
 
     private void releaseContinuous() {
-        InputRelease.releaseAll(minecraft);
+        if (!ownsContinuousInputs) return;
+        GameSettings settings = minecraft.gameSettings;
+        set(settings.keyBindForward, false);
+        set(settings.keyBindBack, false);
+        set(settings.keyBindLeft, false);
+        set(settings.keyBindRight, false);
+        set(settings.keyBindJump, false);
+        set(settings.keyBindSneak, false);
+        set(settings.keyBindSprint, false);
+        ownsContinuousInputs = false;
+    }
+
+    private static boolean hasContinuousInput(ActionCommand command) {
+        return Math.abs(command.forward()) >= AXIS_THRESHOLD
+            || Math.abs(command.strafe()) >= AXIS_THRESHOLD
+            || command.jumpProbability() >= BUTTON_THRESHOLD
+            || command.sprintProbability() >= BUTTON_THRESHOLD
+            || command.sneakProbability() >= BUTTON_THRESHOLD;
     }
 
     private static boolean isSafeGuiToggle(ActionCommand command) {
@@ -219,4 +244,5 @@ public final class SafeActionActuator {
     public long maximumActionAgeNanos() { return maximumActionAgeNanos; }
     public long maximumSequenceLag() { return maximumSequenceLag; }
     public String environmentDescription() { return environment.description(); }
+    public boolean ownsContinuousInputs() { return ownsContinuousInputs; }
 }

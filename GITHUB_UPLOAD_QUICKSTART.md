@@ -1,20 +1,12 @@
-# GitHub upload quick start
+# GitHub update quick start
 
-Repository: `https://github.com/5ivesaw/b0t`
+The patch automation reads `AUTO_UPDATE.json`, applies the patch to the repository, commits `Implement Phase 5 learned waypoint navigation`, and pushes `main`. GitHub Actions then verifies the Phase 5 model assets, builds the Forge JAR, creates tag `v0.6.0-alpha.0`, and publishes the release.
 
-Current version: `0.5.0-alpha.0`
-
-## Patch workflow
-
-Apply `SawBotV1-0.5.0-alpha.0-PATCH.zip` over the existing `0.4.0-alpha.0` repository using its `apply-patch.ps1`, or use the user's local patch automation.
-
-Then:
+Manual fallback:
 
 ```powershell
 cd "C:\Users\fivesaw\Desktop\SawBotV1-GitHub-Ready"
 git add -A
-git commit -m "Implement Phase 4 actuator and model bridge"
+git commit -m "Implement Phase 5 learned waypoint navigation"
 git push origin main
 ```
-
-The `main` push automatically runs verification, builds the Forge JAR, creates tag `v0.5.0-alpha.0`, and publishes the release. Do not create a tag manually.

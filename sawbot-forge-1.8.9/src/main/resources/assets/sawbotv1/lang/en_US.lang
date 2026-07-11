@@ -15,3 +15,5 @@ key.sawbotv1.previousEntity=Select Previous Tracked Entity
 key.sawbotv1.nextEntity=Select Next Tracked Entity
 key.sawbotv1.export=Export Current Snapshot
 key.sawbotv1.telemetry=Start/stop structured telemetry
+
+key.sawbotv1.waypoint=Set/Clear Learned Navigation Waypoint

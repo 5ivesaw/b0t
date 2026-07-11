@@ -28,13 +28,13 @@ Pull requests and non-main branches run verification/builds but do not publish r
 The source of truth is:
 
 ```properties
-sawbotVersion=0.5.0-alpha.0
+sawbotVersion=0.6.0-alpha.0
 ```
 
 The automatic release is tagged:
 
 ```text
-v0.5.0-alpha.0
+v0.6.0-alpha.0
 ```
 
 Published versions are immutable. Reusing a version causes an explicit failure. This prevents a release tag from referring to different code at different times.

@@ -418,7 +418,7 @@ def self_test() -> int:
 
     hello = (
         write_u16_text(PROTOCOL, 48)
-        + write_u16_text("0.5.0-alpha.0", 64)
+        + write_u16_text("0.6.0-alpha.0", 64)
         + write_u16_text("sawbot.observation/0.3", 48)
         + write_u16_text("sawbot.action/0.1", 48)
         + struct.pack(">qH", 123456789, 10)
@@ -426,7 +426,7 @@ def self_test() -> int:
     decoded = decode_hello(hello)
     assert decoded == (
         PROTOCOL,
-        "0.5.0-alpha.0",
+        "0.6.0-alpha.0",
         "sawbot.observation/0.3",
         "sawbot.action/0.1",
         123456789,

@@ -1,0 +1,33 @@
+{
+  "format": "sawbot.waypoint.evaluation/0.1",
+  "modelVersion": "SawBotV1-Waypoint-0.1",
+  "heldOutSeed": 920260711,
+  "heldOutStartingPositions": true,
+  "runtimePathfinder": false,
+  "model": {
+    "episodes": 800,
+    "successes": 698,
+    "successRate": 0.8725,
+    "meanStepsOnSuccess": 46.561604584527224,
+    "failureCounts": {
+      "timeout": 102
+    },
+    "meanMinimumDistance": 2.4602498329750286
+  },
+  "randomBaseline": {
+    "episodes": 800,
+    "successes": 29,
+    "successRate": 0.03625,
+    "meanStepsOnSuccess": 60.62068965517241,
+    "failureCounts": {
+      "fall": 770,
+      "timeout": 1
+    },
+    "meanMinimumDistance": 12.608123816605103
+  },
+  "cpuInference": {
+    "iterations": 10000,
+    "averageMicros": 33.674171900000005,
+    "totalMillis": 336.741719
+  }
+}

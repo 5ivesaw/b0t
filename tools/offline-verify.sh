@@ -10,7 +10,7 @@ mapfile -t SOURCES < <(find "$ROOT/verification-stubs/src" "$ROOT/sawbot-common/
 JAVAC=(javac)
 if javac --help 2>&1 | grep -q -- '--release'; then JAVAC+=(--release 8); else JAVAC+=(-source 1.8 -target 1.8); fi
 "${JAVAC[@]}" -Xlint:all,-options -Werror -d "$OUT" "${SOURCES[@]}"
-java -Dsawbot.fixture="$ROOT/build/phase2-snapshot-fixture.json" -Dsawbot.telemetry.fixture="$ROOT/build/phase3-telemetry-fixture.sbt" -cp "$OUT" dev.fivesaw.sawbot.verification.FoundationContractTest
+java -Dsawbot.fixture="$ROOT/build/phase2-snapshot-fixture.json" -Dsawbot.telemetry.fixture="$ROOT/build/phase3-telemetry-fixture.sbt" -Dsawbot.observation.fixture="$ROOT/build/phase5-observation-fixture.bin" -cp "$OUT" dev.fivesaw.sawbot.verification.FoundationContractTest
 
 ROOT_FOR_PY="$ROOT" python3 - <<'PYJSONFIXTURE'
 from pathlib import Path
@@ -41,7 +41,7 @@ PYVALIDATEJSON
 
 ROOT_FOR_PY="$ROOT" python3 - <<'PYREPOCHECK'
 from pathlib import Path
-import os
+import json, os
 root = Path(os.environ['ROOT_FOR_PY'])
 required = [
     root / '.github/workflows/ci.yml',
@@ -51,6 +51,9 @@ required = [
     root / 'tools/verify-release-payload.sh',
     root / 'tools/verify-built-jar.py',
     root / 'docs/GITHUB_RELEASES.md',
+    root / 'docs/PHASE5_REPORT.md',
+    root / 'docs/WAYPOINT_MODEL.md',
+    root / 'docs/PHASE4_RUNTIME_FINDINGS.md',
     root / 'docs/PHASE4_REPORT.md',
     root / 'docs/MODEL_BRIDGE_PROTOCOL.md',
     root / 'docs/PHASE3_RUNTIME_STATUS.md',
@@ -62,15 +65,19 @@ required = [
     root / 'sawbot-tools/dataset-validator/validate_telemetry.py',
     root / 'sawbot-tools/replay-inspector/inspect_telemetry.py',
     root / 'sawbot-tools/dummy-model/dummy_model.py',
-    root / 'sawbot-tools/dummy-model/RUN-DUMMY-MODEL.bat',
-    root / 'sawbot-tools/dummy-model/RUN-ACTUATOR-DEMO.bat',
+    root / 'sawbot-trainer/waypoint/verify_phase5.py',
+    root / 'sawbot-trainer/waypoint/waypoint_model.py',
+    root / 'sawbot-trainer/waypoint/checkpoints/waypoint_v0.1.json',
+    root / 'sawbot-trainer/waypoint/datasets/teacher_waypoint_v0.1.jsonl.gz',
+    root / 'sawbot-trainer/waypoint/evaluation/waypoint_eval_v0.1.json',
+    root / 'sawbot-trainer/waypoint/evaluation/waypoint_failures_v0.1.jsonl',
     root / 'tools/test-latest-telemetry.ps1',
     root / 'tools/TEST-LATEST-TELEMETRY.bat',
     root / 'GITHUB_UPLOAD_QUICKSTART.md',
 ]
 missing = [str(path.relative_to(root)) for path in required if not path.is_file()]
 if missing:
-    raise SystemExit('Missing Phase 4 packaging files: ' + ', '.join(missing))
+    raise SystemExit('Missing Phase 5 packaging files: ' + ', '.join(missing))
 for workflow in required[:2]:
     text = workflow.read_text(encoding='utf-8')
     if '\t' in text:
@@ -83,23 +90,27 @@ for token in (
     'automatic-release:', "github.ref == 'refs/heads/main'",
     'needs: [metadata, offline-verification, forge-build]',
     'actions/download-artifact@', 'tools/verify-release-payload.sh',
-    'PHASE4_REPORT.md', 'MODEL_BRIDGE_PROTOCOL.md', 'PHASE3_RUNTIME_STATUS.md',
+    'PHASE5_REPORT.md', 'WAYPOINT_MODEL.md', 'waypoint_v0.1.json',
+    'waypoint_eval_v0.1.json', 'verify_phase5.py',
     'gh release create', 'contents: write', 'dummy_model.py --self-test'
 ):
     if token not in ci_text:
-        raise SystemExit('CI missing Phase 4 automatic-release token: ' + token)
+        raise SystemExit('CI missing Phase 5 automatic-release token: ' + token)
 if "tags:\n      - 'v*'" in release_text:
     raise SystemExit('Manual recovery workflow must not be tag-triggered')
 if 'workflow_dispatch:' not in release_text or 'Manual Release Recovery' not in release_text:
     raise SystemExit('Manual release recovery workflow is missing or malformed')
+for token in ('PHASE5_REPORT.md', 'WAYPOINT_MODEL.md', 'waypoint_v0.1.json', 'waypoint_eval_v0.1.json'):
+    if token not in release_text:
+        raise SystemExit('Manual release workflow missing Phase 5 asset: ' + token)
 properties = (root / 'gradle.properties').read_text(encoding='utf-8')
 if 'loom.platform=forge' not in properties:
     raise SystemExit('gradle.properties does not declare loom.platform=forge')
 version = os.environ['SAWBOT_VERIFY_VERSION']
-if f'sawbotVersion={version}' not in properties or version != '0.5.0-alpha.0':
-    raise SystemExit('Phase 4 version metadata is inconsistent')
+if f'sawbotVersion={version}' not in properties or version != '0.6.0-alpha.0':
+    raise SystemExit('Phase 5 version metadata is inconsistent')
 package_script = (root / 'tools/package-release.sh').read_text(encoding='utf-8')
-for token in ('PHASE4_REPORT.md','MODEL_BRIDGE_PROTOCOL.md','PHASE3_RUNTIME_STATUS.md','SHA256SUMS.txt'):
+for token in ('PHASE5_REPORT.md','WAYPOINT_MODEL.md','waypoint_v0.1.json','waypoint_eval_v0.1.json','SHA256SUMS.txt'):
     if token not in package_script:
         raise SystemExit('Release packager missing ' + token)
 verifier = (root / 'tools/verify-built-jar.py').read_text(encoding='utf-8')
@@ -108,11 +119,12 @@ for token in (
     'dev/fivesaw/sawbot/forge/model/ModelProtocol.class',
     'dev/fivesaw/sawbot/forge/actuator/SafeActionActuator.class',
     'dev/fivesaw/sawbot/forge/actuator/EnvironmentGuard.class',
+    'dev/fivesaw/sawbot/forge/map/NavigationWaypointController.class',
     'dev/fivesaw/sawbot/forge/telemetry/TelemetryService.class',
     'dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class',
 ):
     if token not in verifier:
-        raise SystemExit('Release verifier missing Phase 4 class: ' + token)
+        raise SystemExit('Release verifier missing Phase 5 class: ' + token)
 renderer = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.java').read_text(encoding='utf-8')
 style = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.java').read_text(encoding='utf-8')
 if ('EntityVisualStyle.visibilityRgb(entity)' not in renderer
@@ -122,33 +134,57 @@ if ('EntityVisualStyle.visibilityRgb(entity)' not in renderer
 if ('LOS_RGB = 0x55FF55' not in style or 'OCCLUDED_RGB = 0xAA55FF' not in style):
     raise SystemExit('Visibility style colours changed without acceptance update')
 if ('GL11.glPushAttrib' in renderer or 'GL11.glPopAttrib' in renderer):
-    raise SystemExit('Raw GL attribute stack returned; it can desynchronise GlStateManager and tint the HUD')
-for token in ('restoreState()', 'FROZEN SNAPSHOT #', '255, 255, 85, 255'):
+    raise SystemExit('Raw GL attribute stack returned; it can desynchronise GlStateManager')
+for token in ('restoreState()', 'FROZEN SNAPSHOT #', '255, 255, 85, 255', 'USER_WAYPOINT_ID'):
     if token not in renderer:
-        raise SystemExit('World renderer missing state restoration/frozen/yellow-selection token: ' + token)
+        raise SystemExit('World renderer missing state/waypoint token: ' + token)
 client = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/client/ClientRuntime.java').read_text(encoding='utf-8')
-for token in ('modelBridge.offerObservation', 'modelBridge.pollLatestAction', 'physicalInput.hasTakeoverInput', 'disableAndRelease("model disconnected")'):
+for token in ('modelBridge.offerObservation', 'modelBridge.pollLatestAction', 'physicalInput.hasTakeoverInput',
+              'physicalInput.arm()', 'NavigationWaypointController', 'setFromCrosshair'):
     if token not in client:
-        raise SystemExit('Client runtime missing Phase 4 safety/integration token: ' + token)
+        raise SystemExit('Client runtime missing Phase 5 integration token: ' + token)
 actuator = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/actuator/SafeActionActuator.java').read_text(encoding='utf-8')
-for token in ('KeyBinding.setKeyBindState', 'KeyBinding.onTick', 'maximumActionAgeNanos', 'ActionContextValidator.validate', 'InputRelease.releaseAll'):
+for token in ('KeyBinding.setKeyBindState', 'KeyBinding.onTick', 'maximumActionAgeNanos',
+              'ActionContextValidator.validate', 'ownsContinuousInputs', 'releaseIfOwned'):
     if token not in actuator:
         raise SystemExit('Safe actuator missing required mechanism: ' + token)
+if 'InputRelease.releaseAll(minecraft);' not in actuator:
+    raise SystemExit('Safe actuator lost complete emergency/block release path')
 bridge = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/model/ModelBridge.java').read_text(encoding='utf-8')
-for token in ('ArrayBlockingQueue', 'setDaemon(true)', 'socket.setSoTimeout(100)', 'offerObservation', 'pollLatestAction'):
+for token in ('ArrayBlockingQueue', 'setDaemon(true)', 'socket.setSoTimeout(100)',
+              'offerObservation', 'pollLatestAction', 'displayState()'):
     if token not in bridge:
-        raise SystemExit('Model bridge missing bounded/non-blocking mechanism: ' + token)
+        raise SystemExit('Model bridge missing bounded/stable mechanism: ' + token)
 telemetry = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/telemetry/TelemetryService.java').read_text(encoding='utf-8')
 session = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/telemetry/TelemetrySession.java').read_text(encoding='utf-8')
 if ('failureLatched' not in telemetry or 'lastFailureMessage' not in telemetry or 'encodingRejectedSteps' not in session):
     raise SystemExit('Phase 3 telemetry restart/error hardening is missing')
+if 'worker.interrupt();' in session:
+    raise SystemExit('Normal telemetry close must not interrupt an active NIO writer')
+waypoint = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/map/NavigationWaypointController.java').read_text(encoding='utf-8')
+landmarks = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/map/LandmarkSensor.java').read_text(encoding='utf-8')
+if ('USER_WAYPOINT_ID = 1000' not in waypoint or 'LandmarkType.STAGING_AREA' not in waypoint
+    or 'navigationWaypoint.capture' not in landmarks):
+    raise SystemExit('Phase 5 semantic waypoint observation is incomplete')
+model = (root / 'sawbot-trainer/waypoint/waypoint_model.py').read_text(encoding='utf-8')
+core = (root / 'sawbot-trainer/waypoint/waypoint_core.py').read_text(encoding='utf-8')
+for forbidden in ('net.minecraft', 'pathfind', 'teacher_action('):
+    if forbidden in model:
+        raise SystemExit('Live waypoint model contains forbidden runtime dependency: ' + forbidden)
+if 'TinyMlp' not in model or 'features_from_observation' not in model or '18' not in (root / 'docs/PHASE5_REPORT.md').read_text(encoding='utf-8'):
+    raise SystemExit('Phase 5 learned runtime/report is incomplete')
+evaluation = json.loads((root / 'sawbot-trainer/waypoint/evaluation/waypoint_eval_v0.1.json').read_text(encoding='utf-8'))
+if evaluation.get('runtimePathfinder') is not False:
+    raise SystemExit('Evaluation claims a runtime pathfinder')
+if evaluation['model']['successRate'] < 0.8 or evaluation['model']['successRate'] <= evaluation['randomBaseline']['successRate']:
+    raise SystemExit('Learned waypoint evaluation does not meet the gate')
 contract = (root / 'docs/ACTION_CONTRACT.md').read_text(encoding='utf-8')
 protocol = (root / 'docs/MODEL_BRIDGE_PROTOCOL.md').read_text(encoding='utf-8')
 if 'sawbot.action/0.1' not in contract or 'local receive timestamp' not in contract:
-    raise SystemExit('Action Contract is not synchronized with Phase 4')
+    raise SystemExit('Action Contract is not synchronized')
 if 'sawbot.bridge/0.1' not in protocol or '262,144' not in protocol or 'client thread' not in protocol:
     raise SystemExit('Bridge protocol documentation is incomplete')
-print('PASS GitHub repository and Phase 4 packaging check')
+print('PASS GitHub repository and Phase 5 packaging check')
 PYREPOCHECK
 
 
@@ -184,4 +220,5 @@ PYTELEMETRY
 python3 "$ROOT/sawbot-tools/replay-inspector/inspect_telemetry.py" "$ROOT/build/phase3-telemetry-fixture.sbt" --limit 2 > "$ROOT/build/phase3-replay-summary.txt"
 
 python3 "$ROOT/sawbot-tools/dummy-model/dummy_model.py" --self-test
-printf '%s\n' 'PASS offline Phase 4 verification'
+python3 "$ROOT/sawbot-trainer/waypoint/verify_phase5.py"
+printf '%s\n' 'PASS offline Phase 5 verification'

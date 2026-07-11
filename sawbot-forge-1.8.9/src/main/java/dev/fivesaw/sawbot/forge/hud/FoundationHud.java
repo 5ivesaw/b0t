@@ -16,6 +16,7 @@ import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.forge.inspection.InspectorPage;
 import dev.fivesaw.sawbot.forge.inspection.SnapshotExportService;
 import dev.fivesaw.sawbot.forge.model.ModelBridge;
+import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
 import dev.fivesaw.sawbot.forge.actuator.SafeActionActuator;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
@@ -37,22 +38,24 @@ public final class FoundationHud {
     private final ModelBridge modelBridge;
     private final SafeActionActuator actuator;
     private final WorldDebugRenderer worldRenderer;
+    private final NavigationWaypointController navigationWaypoint;
 
     public FoundationHud(Minecraft minecraft, SawBotStateController state,
                          RollingTimingWindow tickTiming, ObservationPipeline observations,
                          InspectorController inspector, SnapshotExportService exports,
                          TelemetryService telemetry, ModelBridge modelBridge,
-                         SafeActionActuator actuator, WorldDebugRenderer worldRenderer) {
+                         SafeActionActuator actuator, WorldDebugRenderer worldRenderer,
+                         NavigationWaypointController navigationWaypoint) {
         this.minecraft=minecraft; this.state=state; this.tickTiming=tickTiming; this.observations=observations;
         this.inspector=inspector; this.exports=exports; this.telemetry=telemetry; this.modelBridge=modelBridge;
-        this.actuator=actuator; this.worldRenderer=worldRenderer;
+        this.actuator=actuator; this.worldRenderer=worldRenderer; this.navigationWaypoint=navigationWaypoint;
     }
 
     public void render(long clientTick) {
         if(minecraft.fontRendererObj==null)return;
         int x=6,y=6;
         int statusColour=state.isEnabled()?WARNING:SAFE;
-        draw("SawBotV1  Phase 4",x,y,WHITE); y+=10;
+        draw("SawBotV1  Phase 5",x,y,WHITE); y+=10;
         draw("State: "+state.mode()+"  scope "+actuator.environmentDescription(),x,y,statusColour); y+=10;
         ObservationSnapshot snapshot=observations.latest();
         if(snapshot==null){draw("Eyes: waiting",x,y,WARNING);y+=10;}
@@ -69,13 +72,14 @@ public final class FoundationHud {
             draw("HP "+one(snapshot.selfState().health())+"  wool "+snapshot.inventory().wool()+"  ping "+(snapshot.serverTiming().pingValid()?snapshot.serverTiming().estimatedPingMillis()+" ms":"unknown"),x,y,MUTED); y+=10;
         }
         draw("Handler "+micros(tickTiming.averageNanos())+"/"+micros(tickTiming.maximumNanos())+" us  render "+micros(worldRenderer.averageRenderNanos())+"/"+micros(worldRenderer.maximumRenderNanos())+" us",x,y,MUTED); y+=10;
-        draw("Model "+modelBridge.state()+"  "+modelBridge.modelVersion()+"  rtt "+millis(modelBridge.latestRoundTripNanos())+" ms  rx "+modelBridge.receivedActions(),x,y,modelBridge.isReady()?MODEL:MUTED); y+=10;
+        draw("Model "+modelBridge.displayState()+"  "+modelBridge.modelVersion()+"  rtt "+millis(modelBridge.latestRoundTripNanos())+" ms  rx "+modelBridge.receivedActions(),x,y,modelBridge.isReady()?MODEL:MUTED); y+=10;
         if(state.isEnabled()||actuator.activeAction()!=null||actuator.rejectedActions()>0){
             draw("Actuator "+actuator.status()+"  "+actionCompact(actuator.activeAction())+"  "+tail(actuator.lastReason(),42),x,y,"APPLY".equals(actuator.status())?ACTION:MUTED); y+=10;
         }
         draw("P freeze  . step  F7 panel  H page  O export  K telemetry",x,y,MUTED); y+=10;
-        draw("B terrain  C collision  N entities  V tracers  M landmarks",x,y,MUTED); y+=10;
+        draw("B terrain  C collision  N entities  V tracers  M landmarks  G waypoint",x,y,MUTED); y+=10;
         draw("[/] entity  F10 toggle  F9 takeover  F12 emergency",x,y,MUTED);
+        if(navigationWaypoint.active()){y+=10;draw("Waypoint #"+NavigationWaypointController.USER_WAYPOINT_ID+"  "+navigationWaypoint.compactPosition()+"  Shift+G clear",x,y,ACTION);}
 
         String telemetryStatus=telemetry.status();
         if(!"idle".equals(telemetryStatus)){
@@ -85,7 +89,11 @@ public final class FoundationHud {
             draw("Telemetry "+telemetryStatus+suffix,x,y,colour);
         }
         String notice=state.inspectorNotice();
-        if(!notice.isEmpty()){y+=10;draw(notice,x,y,INFO);}
+        if(!notice.isEmpty()){
+            int severity=state.inspectorNoticeSeverity();
+            int noticeColour=severity>=3?ERROR:(severity==2?WARNING:(severity==1?ACTION:INFO));
+            y+=10;draw(notice,x,y,noticeColour);
+        }
         if(state.inspectorVisible()&&snapshot!=null){
             y+=12;
             draw("Inspector "+(inspector.page().ordinal()+1)+"/"+InspectorPage.values().length+" "+inspector.page()+"  validity 0x"+Long.toHexString(snapshot.sensorValidityFlags()),x,y,INFO); y+=10;
@@ -210,10 +218,10 @@ public final class FoundationHud {
     private int renderModel(ObservationSnapshot snapshot,int x,int y){
         ActionCommand action=actuator.activeAction();
         if(action==null)action=actuator.previousAppliedAction();
-        draw("bridge "+modelBridge.state()+" endpoint "+modelBridge.endpoint()+" model "+modelBridge.modelVersion(),x,y,modelBridge.isReady()?MODEL:MUTED);y+=10;
+        draw("bridge "+modelBridge.displayState()+" endpoint "+modelBridge.endpoint()+" model "+modelBridge.modelVersion(),x,y,modelBridge.isReady()?MODEL:MUTED);y+=10;
         draw("tx/rx "+modelBridge.sentObservations()+"/"+modelBridge.receivedActions()+" q "+modelBridge.observationQueueSize()+"/2 "+modelBridge.actionQueueSize()+"/8 rtt "+millis(modelBridge.latestRoundTripNanos())+" ms",x,y,WHITE);y+=10;
         draw("bridge drop obs/action "+modelBridge.droppedObservations()+"/"+modelBridge.droppedActions()+" reconnect "+modelBridge.reconnects()+" invalid "+modelBridge.invalidFrames(),x,y,WHITE);y+=10;
-        draw("actuator "+actuator.status()+" accepted/rejected/expired "+actuator.acceptedActions()+"/"+actuator.rejectedActions()+"/"+actuator.expiredActions()+" remain "+actuator.remainingTicks(),x,y,ACTION);y+=10;
+        draw("actuator "+actuator.status()+" own "+bit(actuator.ownsContinuousInputs())+" accepted/rejected/expired "+actuator.acceptedActions()+"/"+actuator.rejectedActions()+"/"+actuator.expiredActions()+" remain "+actuator.remainingTicks(),x,y,ACTION);y+=10;
         draw("action #"+action.observationSequenceNumber()+" model "+action.modelVersion()+" confidence "+one(action.confidence()),x,y,WHITE);y+=10;
         draw("move F/S "+one(action.forward())+"/"+one(action.strafe())+" camera Y/P "+one(action.yawDeltaDegrees())+"/"+one(action.pitchDeltaDegrees()),x,y,WHITE);y+=10;
         draw("p J/Sp/Sn/A/U/D/I "+one(action.jumpProbability())+"/"+one(action.sprintProbability())+"/"+one(action.sneakProbability())+"/"+one(action.attackProbability())+"/"+one(action.useOrPlaceProbability())+"/"+one(action.dropProbability())+"/"+one(action.inventoryToggleProbability()),x,y,WHITE);y+=10;

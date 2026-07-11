@@ -76,7 +76,7 @@ jobs:
           mkdir -p "$HOME/.gradle"
           echo "org.gradle.java.installations.paths=$JAVA8_HOME" >> "$HOME/.gradle/gradle.properties"
 
-      - name: Verify contracts, telemetry, model bridge, and safe actuator
+      - name: Verify contracts, telemetry, bridge, actuator, and learned policy
         run: bash tools/offline-verify.sh
 
       - name: Build release
@@ -112,6 +112,12 @@ jobs:
             "dist/SawBotV1-$VERSION-mc1.8.9.jar" \
             "dist/SawBotV1-$VERSION-sources.jar" \
             "dist/SHA256SUMS.txt" \
+            "dist/PHASE5_REPORT.md" \
+            "dist/WAYPOINT_MODEL.md" \
+            "dist/PHASE4_RUNTIME_FINDINGS.md" \
+            "dist/waypoint_v0.1.json" \
+            "dist/waypoint_eval_v0.1.json" \
+            "dist/waypoint_failures_v0.1.jsonl" \
             "dist/PHASE4_REPORT.md" \
             "dist/MODEL_BRIDGE_PROTOCOL.md" \
             "dist/PHASE3_RUNTIME_STATUS.md" \

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0-alpha.0 — Phase 5 learned waypoint navigation
+
+- Adds the first exported learned policy and complete dataset/train/evaluate/live-inference lane.
+- Adds user waypoint `#1000` via G and Shift+G.
+- Adds held-out evaluation (87.25% vs 3.625% random).
+- Adds pure-standard-library runtime inference with no pathfinder or teacher.
+- Fixes disabled actuator interference with human movement.
+- Stabilizes bridge HUD status and adds clear F9/F12 notices.
+- Avoids interrupting normal telemetry NIO close.
+
 ## 0.5.0-alpha.0 — Phase 4 safe actuator and local model bridge
 
 - Added versioned CRC-protected `sawbot.bridge/0.1` loopback protocol.

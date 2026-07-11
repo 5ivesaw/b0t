@@ -38,6 +38,7 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/forge/actuator/EnvironmentGuard.class",
     "dev/fivesaw/sawbot/forge/actuator/PhysicalInputMonitor.class",
     "dev/fivesaw/sawbot/forge/actuator/ActionContextValidator.class",
+    "dev/fivesaw/sawbot/forge/map/NavigationWaypointController.class",
 }
 
 

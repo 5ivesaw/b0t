@@ -14,6 +14,7 @@ import dev.fivesaw.sawbot.common.observation.SensorValidity;
 import dev.fivesaw.sawbot.common.observation.ServerTimingSnapshot;
 import dev.fivesaw.sawbot.common.observation.TaskStateSnapshot;
 import dev.fivesaw.sawbot.forge.map.LandmarkSensor;
+import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
 import dev.fivesaw.sawbot.forge.tracking.EntityTrackerSensor;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
@@ -25,7 +26,7 @@ public final class ObservationPipeline {
     private final int intervalTicks;
     private final BlockSemanticClassifier classifier=new BlockSemanticClassifier();
     private final InventorySensor inventorySensor=new InventorySensor();
-    private final LandmarkSensor landmarkSensor=new LandmarkSensor();
+    private final LandmarkSensor landmarkSensor;
     private SelfStateSensor selfSensor;
     private LocalTerrainSensor terrainSensor;
     private MidRangeMapSensor midRangeSensor;
@@ -39,7 +40,12 @@ public final class ObservationPipeline {
     private volatile ObservationSnapshot previous;
     private ActionCommand previousAppliedAction = ActionCommand.zero(0L, 0L, "none/0");
 
-    public ObservationPipeline(Minecraft minecraft,int intervalTicks){if(minecraft==null||intervalTicks<1||intervalTicks>20)throw new IllegalArgumentException("pipeline");this.minecraft=minecraft;this.intervalTicks=intervalTicks;resetSensors();}
+    public ObservationPipeline(Minecraft minecraft,int intervalTicks){this(minecraft,intervalTicks,new NavigationWaypointController(minecraft));}
+
+    public ObservationPipeline(Minecraft minecraft,int intervalTicks,NavigationWaypointController navigationWaypoint){
+        if(minecraft==null||intervalTicks<1||intervalTicks>20||navigationWaypoint==null)throw new IllegalArgumentException("pipeline");
+        this.minecraft=minecraft;this.intervalTicks=intervalTicks;this.landmarkSensor=new LandmarkSensor(navigationWaypoint);resetSensors();
+    }
 
     public void tick(long clientTick, boolean frozen) { tick(clientTick, frozen, false); }
 

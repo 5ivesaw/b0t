@@ -200,16 +200,22 @@ public final class WorldDebugRenderer {
             double x = self.absoluteX() + EgocentricTransform.worldDx(landmark.right(), landmark.forward(), self.yawDegrees());
             double y = self.absoluteY() + landmark.up();
             double z = self.absoluteZ() + EgocentricTransform.worldDz(landmark.right(), landmark.forward(), self.yawDegrees());
-            drawLine(x, y, z, x, y + 2D, z, 170, 85, 255, 220);
+            boolean learnedWaypoint = landmark.landmarkId() == dev.fivesaw.sawbot.forge.map.NavigationWaypointController.USER_WAYPOINT_ID;
+            int red = learnedWaypoint ? 85 : 170;
+            int green = learnedWaypoint ? 255 : 85;
+            int blue = learnedWaypoint ? 170 : 255;
+            drawLine(x, y, z, x, y + 2D, z, red, green, blue, 220);
             drawBox(new AxisAlignedBB(x - 0.15D, y - 0.15D, z - 0.15D,
-                x + 0.15D, y + 0.15D, z + 0.15D), 170, 85, 255, 220);
+                x + 0.15D, y + 0.15D, z + 0.15D), red, green, blue, 220);
         }
         endLines();
         for (LandmarkObservation landmark : snapshot.landmarks().landmarks()) {
             double x = self.absoluteX() + EgocentricTransform.worldDx(landmark.right(), landmark.forward(), self.yawDegrees());
             double y = self.absoluteY() + landmark.up() + 2.2D;
             double z = self.absoluteZ() + EgocentricTransform.worldDz(landmark.right(), landmark.forward(), self.yawDegrees());
-            renderLabel("WP#" + landmark.landmarkId() + " " + landmark.type(), x, y, z, manager, 0xFFAA55FF);
+            int colour = landmark.landmarkId() == dev.fivesaw.sawbot.forge.map.NavigationWaypointController.USER_WAYPOINT_ID
+                ? 0xFF55FFAA : 0xFFAA55FF;
+            renderLabel("WP#" + landmark.landmarkId() + " " + landmark.type(), x, y, z, manager, colour);
         }
     }
 

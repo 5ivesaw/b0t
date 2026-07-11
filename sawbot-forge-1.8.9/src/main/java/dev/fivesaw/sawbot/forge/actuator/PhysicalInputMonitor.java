@@ -8,17 +8,28 @@ import org.lwjgl.input.Mouse;
 
 /** Reads physical hardware state rather than synthetic KeyBinding state. */
 public final class PhysicalInputMonitor {
+    private static final long MOUSE_ARM_GRACE_NANOS = 300_000_000L;
     private final Minecraft minecraft;
+    private long ignoreMouseUntilNanos;
 
     public PhysicalInputMonitor(Minecraft minecraft) {
         if (minecraft == null) throw new IllegalArgumentException("minecraft");
         this.minecraft = minecraft;
     }
 
+    /** Clears stale MouseHelper deltas before autonomous control is armed. */
+    public void arm() {
+        ignoreMouseUntilNanos = System.nanoTime() + MOUSE_ARM_GRACE_NANOS;
+        if (minecraft.mouseHelper != null) {
+            minecraft.mouseHelper.deltaX = 0;
+            minecraft.mouseHelper.deltaY = 0;
+        }
+    }
+
     public boolean hasTakeoverInput() {
         GameSettings settings = minecraft.gameSettings;
         if (settings == null) return false;
-        return physical(settings.keyBindForward)
+        boolean keyboardOrButtons = physical(settings.keyBindForward)
             || physical(settings.keyBindBack)
             || physical(settings.keyBindLeft)
             || physical(settings.keyBindRight)
@@ -27,9 +38,11 @@ public final class PhysicalInputMonitor {
             || physical(settings.keyBindSprint)
             || physical(settings.keyBindDrop)
             || Mouse.isButtonDown(0)
-            || Mouse.isButtonDown(1)
-            || (minecraft.mouseHelper != null
-                && (minecraft.mouseHelper.deltaX != 0 || minecraft.mouseHelper.deltaY != 0));
+            || Mouse.isButtonDown(1);
+        if (keyboardOrButtons) return true;
+        return System.nanoTime() >= ignoreMouseUntilNanos
+            && minecraft.mouseHelper != null
+            && (minecraft.mouseHelper.deltaX != 0 || minecraft.mouseHelper.deltaY != 0);
     }
 
     private static boolean physical(KeyBinding binding) {

@@ -5,16 +5,19 @@ import dev.fivesaw.sawbot.common.observation.LandmarkObservation;
 import dev.fivesaw.sawbot.common.observation.LandmarkSetSnapshot;
 import dev.fivesaw.sawbot.common.observation.LandmarkType;
 import dev.fivesaw.sawbot.common.observation.TeamRelation;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.BlockPos;
 import net.minecraft.world.World;
 
-/** Resolves world spawn to a nearby standable surface instead of rendering the raw save-coordinate underground. */
+/** Universal landmarks plus the explicit user waypoint used by learned navigation. */
 public final class LandmarkSensor {
     private static final long RESOLVE_INTERVAL_TICKS = 100L;
+    private final NavigationWaypointController navigationWaypoint;
     private int cachedSpawnX = Integer.MIN_VALUE;
     private int cachedSpawnY = Integer.MIN_VALUE;
     private int cachedSpawnZ = Integer.MIN_VALUE;
@@ -22,7 +25,22 @@ public final class LandmarkSensor {
     private float cachedConfidence = 0.25F;
     private long lastResolveTick = Long.MIN_VALUE;
 
+    public LandmarkSensor() { this(new NavigationWaypointController(Minecraft.getMinecraft())); }
+
+    public LandmarkSensor(NavigationWaypointController navigationWaypoint) {
+        if (navigationWaypoint == null) throw new IllegalArgumentException("navigationWaypoint");
+        this.navigationWaypoint = navigationWaypoint;
+    }
+
     public LandmarkSetSnapshot capture(EntityPlayerSP player, World world, long clientTick) {
+        List<LandmarkObservation> landmarks = new ArrayList<LandmarkObservation>(2);
+        landmarks.add(captureWorldSpawn(player, world, clientTick));
+        LandmarkObservation user = navigationWaypoint.capture(player, world);
+        if (user != null) landmarks.add(user);
+        return new LandmarkSetSnapshot(landmarks);
+    }
+
+    private LandmarkObservation captureWorldSpawn(EntityPlayerSP player, World world, long clientTick) {
         BlockPos spawn = world.getSpawnPoint();
         if (spawnChanged(spawn) || clientTick - lastResolveTick >= RESOLVE_INTERVAL_TICKS) {
             resolveSurface(world, spawn, clientTick);
@@ -35,10 +53,9 @@ public final class LandmarkSensor {
         float right = EgocentricTransform.right(dx, dz, player.rotationYaw);
         float forward = EgocentricTransform.forward(dx, dz, player.rotationYaw);
         float distance = (float)Math.sqrt(dx * dx + dy * dy + dz * dz);
-        LandmarkObservation landmark = new LandmarkObservation(0, LandmarkType.WORLD_SPAWN,
+        return new LandmarkObservation(0, LandmarkType.WORLD_SPAWN,
             TeamRelation.NEUTRAL, right, (float)dy, forward, distance, distance,
             0F, 0.25F, cachedConfidence, true);
-        return new LandmarkSetSnapshot(Collections.singletonList(landmark));
     }
 
     private boolean spawnChanged(BlockPos spawn) {
