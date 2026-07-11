@@ -58,3 +58,10 @@ Remaining defect:
 - OCC opacity is raised so the state does not appear to change only faintly.
 
 Phase 2 remains open only for this focused visual-colour retest.
+
+
+## Acceptance update
+
+After `0.3.0-alpha.2`, the user confirmed that LOS/OCC text and colours switch correctly, tracking IDs remain stable through wall transitions, tracers can be toggled independently, landmark height is corrected, block selection works, freeze/step/export work, safety controls remain immediate, and no serious FPS collapse or repeated SawBot error was observed.
+
+The core Phase 2 sensor-inspector behavior is therefore accepted. `0.3.0-alpha.4` changes presentation only and is tracked separately in `PHASE2_UI_REFRESH.md`.

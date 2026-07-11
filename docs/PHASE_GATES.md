@@ -95,6 +95,8 @@ Runtime acceptance required:
 - [ ] Individual overlay costs are measured without serious FPS collapse.
 - [x] Five-minute inspector test has no repeated SawBot errors.
 
-**Gate: PENDING `0.3.0-alpha.2` VISUAL-COLOUR RETEST.**
+**Core Phase 2 gate: ACCEPTED on the target machine.**
 
-No Phase 3 telemetry implementation begins before this checklist passes.
+The user confirmed terrain, collision, entity tracking, LOS/OCC transitions, stable tracking IDs, landmark placement, block selection, freeze, single-step, export, snapshot difference, safety controls, and performance. `0.3.0-alpha.4` adds a presentation-layer refresh and has its own visual acceptance checklist in `docs/PHASE2_UI_REFRESH.md`; sensor semantics remain accepted.
+
+No Phase 3 telemetry implementation begins before the `0.3.0-alpha.4` interface checklist is visually accepted on the target machine.

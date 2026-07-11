@@ -23,6 +23,11 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.class",
     "dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class",
     "dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.class",
+    "dev/fivesaw/sawbot/forge/hud/FoundationHud.class",
+    "dev/fivesaw/sawbot/forge/hud/GlassUi.class",
+    "dev/fivesaw/sawbot/forge/hud/UiTheme.class",
+    "dev/fivesaw/sawbot/forge/hud/MotionValue.class",
+    "dev/fivesaw/sawbot/forge/hud/KeyLabel.class",
 }
 
 

@@ -254,3 +254,8 @@ The mod remains non-autonomous. It renders and exports exactly the bounded infor
 - Obs # before step, immediately after step, and five seconds later.
 - Entity tracking ID and LOS/OCC state before and after hiding it.
 - Normal FPS, each individual overlay FPS, combined-overlay FPS, and System-page render avg/max.
+
+
+## Post-gate interface addendum (`0.3.0-alpha.4`)
+
+The core Phase 2 runtime checklist was completed successfully on the target machine after the LOS/OCC, tracer, and landmark corrections. Version `0.3.0-alpha.4` does not change sensor semantics; it replaces the debug-text presentation with the compact status island and premium inspector workspace documented in `PHASE2_UI_REFRESH.md`.

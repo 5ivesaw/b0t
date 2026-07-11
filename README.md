@@ -4,7 +4,7 @@ SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a 
 
 ## Current gate
 
-**Phase 0 and Phase 1 passed real runtime acceptance on the target machine.** This repository contains the **Phase 2 — Sensor Inspector automation candidate** (`0.3.0-alpha.3`). It retains the `alpha.2` immediate LOS/OCC visual correction and adds verified single-push GitHub releases. Phase 2 still awaits the final in-client visibility-colour retest before Phase 3 telemetry begins.
+**Phase 0 and Phase 1 passed real runtime acceptance on the target machine.** This repository contains the **Phase 2 premium inspector candidate** (`0.3.0-alpha.4`). It retains the accepted sensor inspector and immediate LOS/OCC correction, keeps verified single-push GitHub releases, and replaces the original debug-text wall with the first implemented SawBot interface-design baseline.
 
 Implemented foundation:
 
@@ -19,12 +19,13 @@ Implemented foundation:
 - Bounded landmarks, events, timing, validity, and performance fields
 - Immutable freeze independent of enable/disable state
 - Independently toggleable terrain, collision/support, entity/LOS, and landmark overlays
-- Eight compact text-inspector pages
+- Premium compact status island and eight-page glass inspector workspace
 - Selected-block and stable tracked-entity inspection
 - Current-versus-previous snapshot comparison
 - Bounded asynchronous one-shot JSON export
 - One-observation-step capture while frozen
 - Conflict-free F10/F9/F12 safety controls
+- Backed world-label chips, selected-block context, real key labels, and reduced-motion support
 
 The repository still contains **no neural model, autonomous actuator loop, Bedwars policy, runtime pathfinder, aim assist, scaffold controller, packet advantage, screenshot/OCR pipeline, or public-server automation**.
 
@@ -34,6 +35,7 @@ The complete locked brief is preserved in [`docs/PROJECT_BRIEF.txt`](docs/PROJEC
 - [`docs/PHASE1_ACCEPTANCE.md`](docs/PHASE1_ACCEPTANCE.md)
 - [`docs/PHASE2_REPORT.md`](docs/PHASE2_REPORT.md)
 - [`docs/PHASE_GATES.md`](docs/PHASE_GATES.md)
+- [`docs/PHASE2_UI_REFRESH.md`](docs/PHASE2_UI_REFRESH.md)
 
 ## GitHub CI and automatic release
 
@@ -45,9 +47,9 @@ git commit -m "Describe the SawBotV1 update"
 git push origin main
 ```
 
-For this repository state the automatic release is `v0.3.0-alpha.3`. Published versions are immutable; a duplicate version fails clearly instead of overwriting an existing release. `Manual Release Recovery` remains available only as a fallback.
+For this repository state the automatic release is `v0.3.0-alpha.4`. Published versions are immutable; a duplicate version fails clearly instead of overwriting an existing release. `Manual Release Recovery` remains available only as a fallback.
 
-The future HUD and inspector direction is locked in [`docs/INTERFACE_DESIGN_SYSTEM.md`](docs/INTERFACE_DESIGN_SYSTEM.md): premium macOS/iOS-inspired hierarchy and interaction quality, centralized visual tokens, restrained motion, and strict Intel HD 520 performance budgets.
+The HUD and inspector baseline now implements the direction in [`docs/INTERFACE_DESIGN_SYSTEM.md`](docs/INTERFACE_DESIGN_SYSTEM.md): premium macOS/iOS-inspired hierarchy, centralized visual tokens, restrained motion, progressive disclosure, and strict Intel HD 520 performance budgets.
 
 ## Toolchain
 
@@ -70,7 +72,7 @@ Install JDK 17 and JDK 8, then run:
 The final remapped mod is written to:
 
 ```text
-sawbot-forge-1.8.9/build/libs/SawBotV1-0.3.0-alpha.3-mc1.8.9.jar
+sawbot-forge-1.8.9/build/libs/SawBotV1-0.3.0-alpha.4-mc1.8.9.jar
 ```
 
 Launch a development client with:
@@ -85,7 +87,7 @@ Launch a development client with:
 bash tools/offline-verify.sh
 ```
 
-This verifies Java 8 source compatibility against narrow APIs, runs 527 assertions, emits and parses a complete debug snapshot, and validates repository/release structure. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
+This verifies Java 8 source compatibility against narrow APIs, runs 541 assertions, emits and parses a complete debug snapshot, and validates repository/release structure. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
 
 ## Controls
 

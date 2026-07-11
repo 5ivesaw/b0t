@@ -1,6 +1,6 @@
 # SawBotV1 Interface Design System
 
-Status: **Locked direction for all new HUD, inspector, control-centre, and training UI work**
+Status: **Locked direction; first runtime implementation shipped in `0.3.0-alpha.4`**
 
 SawBotV1 must feel like a deliberately designed professional client, not a pile of debug text. The visual target is a restrained, premium desktop interface inspired by the clarity, spacing, layering, and motion discipline of current macOS and iOS—adapted to Minecraft rather than copied literally.
 
@@ -175,3 +175,8 @@ A UI change is not accepted merely because it renders. It must demonstrate:
 - Screenshots showing compact, expanded, warning, and empty states
 
 The intended result is a distinctive SawBot interface: premium, restrained, fast, technically honest, and visibly more considered than a generic Minecraft utility HUD.
+
+
+## 9. Implemented baseline (`0.3.0-alpha.4`)
+
+The first in-game implementation now includes `UiTheme`, `GlassUi`, `MotionValue`, `KeyLabel`, the compact status island, the modular inspector workspace, backed world labels, reduced-motion configuration, and independent HUD timing. Future changes should extend these components instead of returning to ad hoc text rendering.

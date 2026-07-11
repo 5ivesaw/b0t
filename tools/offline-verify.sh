@@ -49,6 +49,7 @@ required = [
     root / 'tools/verify-built-jar.py',
     root / 'docs/GITHUB_RELEASES.md',
     root / 'docs/INTERFACE_DESIGN_SYSTEM.md',
+    root / 'docs/PHASE2_UI_REFRESH.md',
     root / 'docs/PHASE0_ACCEPTANCE.md',
     root / 'docs/PHASE2_REPORT.md',
     root / 'docs/PHASE2_RUNTIME_FEEDBACK.md',
@@ -86,6 +87,7 @@ if f'sawbotVersion={version}' not in properties:
     raise SystemExit('read-version.sh output does not match gradle.properties')
 package_script = (root / 'tools/package-release.sh').read_text(encoding='utf-8')
 if ('INTERFACE_DESIGN_SYSTEM.md' not in package_script
+    or 'PHASE2_UI_REFRESH.md' not in package_script
     or 'SHA256SUMS.txt' not in package_script):
     raise SystemExit('Release packager does not include the design charter and checksums')
 verifier = (root / 'tools/verify-built-jar.py').read_text(encoding='utf-8')
@@ -94,6 +96,11 @@ if ('dev/fivesaw/sawbot/forge/SawBotMod.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.class' not in verifier
+    or 'dev/fivesaw/sawbot/forge/hud/FoundationHud.class' not in verifier
+    or 'dev/fivesaw/sawbot/forge/hud/GlassUi.class' not in verifier
+    or 'dev/fivesaw/sawbot/forge/hud/UiTheme.class' not in verifier
+    or 'dev/fivesaw/sawbot/forge/hud/MotionValue.class' not in verifier
+    or 'dev/fivesaw/sawbot/forge/hud/KeyLabel.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/tracking/VisibilitySampler.class' not in verifier):
     raise SystemExit('Release verifier does not check Phase 2 runtime classes')
 renderer = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.java').read_text(encoding='utf-8')
@@ -105,6 +112,23 @@ if ('EntityVisualStyle.visibilityRgb(entity)' not in renderer
     raise SystemExit('World renderer does not use the immediate visibility style consistently')
 if ('LOS_RGB = 0x55FF55' not in style or 'OCCLUDED_RGB = 0xAA55FF' not in style):
     raise SystemExit('Visibility style colours changed without updating the acceptance contract')
+
+hud = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/FoundationHud.java').read_text(encoding='utf-8')
+glass = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/GlassUi.java').read_text(encoding='utf-8')
+if ('new ScaledResolution(minecraft)' not in hud
+    or 'KeyLabel.of(' not in hud
+    or 'hudTiming' not in hud
+    or 'drawStatusIsland' not in hud
+    or 'drawInspector' not in hud
+    or 'UiTheme.GLASS' not in hud):
+    raise SystemExit('Premium HUD architecture is incomplete')
+if ('CORNER_INSETS' not in glass
+    or 'buildInsets()' not in glass
+    or 'roundedRect' not in glass
+    or 'robotMark' not in glass):
+    raise SystemExit('Glass UI renderer does not retain cached geometry and core primitives')
+if 'SawBotV1  Phase 2' in hud or 'P freeze  . step' in hud:
+    raise SystemExit('Legacy debug-text wall returned to the compact HUD')
 print('PASS GitHub repository packaging check')
 PYREPOCHECK
 

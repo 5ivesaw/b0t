@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0-alpha.4 — Premium compact HUD and inspector workspace
+
+- Replaced the always-visible Phase 2 debug-text wall with a compact glass status island.
+- Added a stable eight-page inspector workspace with cards, hierarchy, empty states, page indicators, overlay chips, and contextual controls.
+- Added centralized `UiTheme`, cached rounded-card rendering through `GlassUi`, presentation-only `MotionValue`, and actual-binding `KeyLabel` components.
+- Added semantic freshness, safety, LOS/OCC, support, danger, and selection styling throughout the interface.
+- Added F3-aware compact positioning and a configurable reduced-motion option.
+- Added independent HUD render timing to the System inspector page.
+- Added dark backed world-label chips and a contextual selected-block label.
+- Preserved every accepted Phase 2 sensor, export, freeze, step, overlay, and safety behavior.
+- Expanded offline verification from 527 to 541 checks.
+
 ## 0.3.0-alpha.3 — Verified single-push releases and interface design charter
 
 - Changed the normal release process to one `git push origin main`; successful CI now creates the version tag and GitHub Release automatically.

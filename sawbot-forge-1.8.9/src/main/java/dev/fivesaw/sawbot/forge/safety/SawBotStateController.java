@@ -28,6 +28,7 @@ public final class SawBotStateController {
     public void toggleEnabled() {
         if (mode == SawBotMode.DISABLED) {
             mode = SawBotMode.ENABLED;
+            inspectorNotice = "SawBot enabled - sensors only";
             logger.warn("SawBotV1 enabled in Phase 2. Sensors and inspectors run, but no model or actuator loop exists yet.");
         } else {
             disableAndRelease("toggle disable");
@@ -60,8 +61,8 @@ public final class SawBotStateController {
         return requested;
     }
 
-    public void manualTakeover() { disableAndRelease("manual takeover"); }
-    public void emergencyStop() { disableAndRelease("emergency stop"); }
+    public void manualTakeover() { disableAndRelease("manual takeover"); inspectorNotice = "manual takeover - inputs released"; }
+    public void emergencyStop() { disableAndRelease("emergency stop"); inspectorNotice = "emergency stop - inputs released"; }
     public void onWorldUnavailable() {
         observationsFrozen = false;
         observationStepRequested = false;
@@ -79,10 +80,14 @@ public final class SawBotStateController {
         observationStepRequested = false;
         lastStopReason = reason == null ? "unspecified" : reason;
         InputRelease.releaseAll(minecraft);
+        inspectorNotice = "SawBot disabled - " + lastStopReason;
         logger.info("SawBotV1 disabled; inputs released. Reason: {}", lastStopReason);
     }
 
-    public void toggleInspector() { inspectorVisible = !inspectorVisible; }
+    public void toggleInspector() {
+        inspectorVisible = !inspectorVisible;
+        inspectorNotice = inspectorVisible ? "inspector opened" : "inspector closed";
+    }
     public void toggleTerrainOverlay() { terrainOverlayVisible = !terrainOverlayVisible; inspectorNotice = "terrain overlay " + onOff(terrainOverlayVisible); }
     public void toggleCollisionOverlay() { collisionOverlayVisible = !collisionOverlayVisible; inspectorNotice = "collision overlay " + onOff(collisionOverlayVisible); }
     public void toggleEntityOverlay() { entityOverlayVisible = !entityOverlayVisible; inspectorNotice = "entity overlay " + onOff(entityOverlayVisible); }

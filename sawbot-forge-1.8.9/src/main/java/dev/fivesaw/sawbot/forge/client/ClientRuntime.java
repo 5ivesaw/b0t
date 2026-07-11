@@ -45,7 +45,8 @@ public final class ClientRuntime {
         this.inspector=new InspectorController(minecraft);
         this.exports=new SnapshotExportService(minecraft.mcDataDir,logger);
         this.worldRenderer=new WorldDebugRenderer(minecraft,state,inspector,config.timingWindowSize());
-        this.hud=new FoundationHud(minecraft,state,tickTiming,observations,inspector,exports,worldRenderer);
+        this.hud=new FoundationHud(minecraft,state,tickTiming,observations,inspector,exports,worldRenderer,
+            keys,config.timingWindowSize(),config.hudAnimationsEnabled());
     }
 
     public void register() {

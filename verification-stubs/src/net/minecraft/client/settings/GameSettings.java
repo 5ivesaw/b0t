@@ -1,5 +1,6 @@
 package net.minecraft.client.settings;
 public class GameSettings {
+    public boolean showDebugInfo;
     public KeyBinding keyBindForward = key(1);
     public KeyBinding keyBindBack = key(2);
     public KeyBinding keyBindLeft = key(3);
