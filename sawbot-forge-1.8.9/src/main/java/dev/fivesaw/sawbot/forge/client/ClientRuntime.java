@@ -69,7 +69,8 @@ public final class ClientRuntime {
             }
             clientTick++;
             boolean singleStep=state.consumeObservationStepRequest();
-            observations.tick(clientTick,state.observationsFrozen(),singleStep);
+            boolean immediateRefresh=state.consumeObservationRefreshRequest();
+            observations.tick(clientTick,state.observationsFrozen(),singleStep||immediateRefresh);
             inspector.update(observations.latest(),observations.previous());
             processInspectorActions();
         } catch(RuntimeException exception) {

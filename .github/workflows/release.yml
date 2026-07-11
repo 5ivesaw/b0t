@@ -114,6 +114,7 @@ jobs:
             "dist/SHA256SUMS.txt" \
             "dist/PHASE2_REPORT.md" \
             "dist/PHASE2_RUNTIME_FEEDBACK.md" \
+            "dist/PHASE2_RUNTIME_VALIDATION.md" \
             "dist/PHASE1_ACCEPTANCE.md" \
             "dist/PHASE0_ACCEPTANCE.md" \
             "dist/GITHUB_RELEASES.md" \

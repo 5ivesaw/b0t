@@ -18,10 +18,13 @@ import json, os
 root=Path(os.environ['ROOT_FOR_PY'])
 fixture=root/'build/phase2-snapshot-fixture.json'
 data=json.loads(fixture.read_text(encoding='utf-8'))
-assert data['exportFormat']=='sawbot.snapshot.debug/0.1'
+assert data['exportFormat']=='sawbot.snapshot.debug/0.2'
 assert len(data['localTerrain']['blockStateIds'])==1521
 assert len(data['midRangeMap']['relativeSurfaceY'])==1089
 assert len(data['inventory']['slots'])==41
+assert data['schemaVersion']=='sawbot.observation/0.3'
+assert 'type' in data['entities'][0]
+assert 'payloadItemCategory' in data['entities'][0]
 print('PASS Phase 2 snapshot JSON parse and bounds check')
 PYJSONFIXTURE
 
@@ -52,6 +55,7 @@ required = [
     root / 'docs/PHASE0_ACCEPTANCE.md',
     root / 'docs/PHASE2_REPORT.md',
     root / 'docs/PHASE2_RUNTIME_FEEDBACK.md',
+    root / 'docs/PHASE2_RUNTIME_VALIDATION.md',
     root / 'docs/PHASE1_ACCEPTANCE.md',
     root / 'GITHUB_UPLOAD_QUICKSTART.md',
 ]
@@ -71,6 +75,7 @@ if ('automatic-release:' not in ci_text
     or 'needs: [metadata, offline-verification, forge-build]' not in ci_text
     or 'actions/download-artifact@' not in ci_text
     or 'tools/verify-release-payload.sh' not in ci_text
+    or 'PHASE2_RUNTIME_VALIDATION.md' not in ci_text
     or 'gh release create' not in ci_text
     or 'contents: write' not in ci_text):
     raise SystemExit('CI does not contain the verified automatic main-branch release gate')
@@ -86,15 +91,18 @@ if f'sawbotVersion={version}' not in properties:
     raise SystemExit('read-version.sh output does not match gradle.properties')
 package_script = (root / 'tools/package-release.sh').read_text(encoding='utf-8')
 if ('PHASE2_UI_REVERT.md' not in package_script
+    or 'PHASE2_RUNTIME_VALIDATION.md' not in package_script
     or 'SHA256SUMS.txt' not in package_script):
-    raise SystemExit('Release packager does not include the design charter and checksums')
+    raise SystemExit('Release packager does not include runtime evidence and checksums')
 verifier = (root / 'tools/verify-built-jar.py').read_text(encoding='utf-8')
 if ('dev/fivesaw/sawbot/forge/SawBotMod.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/sensors/ObservationPipeline.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class' not in verifier
     or 'dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.class' not in verifier
-    or 'dev/fivesaw/sawbot/forge/tracking/VisibilitySampler.class' not in verifier):
+    or 'dev/fivesaw/sawbot/forge/tracking/VisibilitySampler.class' not in verifier
+    or 'dev/fivesaw/sawbot/forge/tracking/EntityTypeClassifier.class' not in verifier
+    or 'dev/fivesaw/sawbot/common/observation/EntityType.class' not in verifier):
     raise SystemExit('Release verifier does not check Phase 2 runtime classes')
 renderer = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.java').read_text(encoding='utf-8')
 style = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.java').read_text(encoding='utf-8')
@@ -105,6 +113,18 @@ if ('EntityVisualStyle.visibilityRgb(entity)' not in renderer
     raise SystemExit('World renderer does not use the immediate visibility style consistently')
 if ('LOS_RGB = 0x55FF55' not in style or 'OCCLUDED_RGB = 0xAA55FF' not in style):
     raise SystemExit('Visibility style colours changed without updating the acceptance contract')
+if ('GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS)' not in renderer
+    or 'FROZEN SNAPSHOT #' not in renderer
+    or '255, 255, 85, 255' not in renderer):
+    raise SystemExit('World renderer is missing alpha.6 state isolation, frozen anchor, or yellow selection')
+export_service = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.java').read_text(encoding='utf-8')
+if ('SUCCESS_STATUS_LIFETIME_NANOS' not in export_service or 'status = "idle"' not in export_service):
+    raise SystemExit('Snapshot export success status is not transient')
+contract = (root / 'docs/OBSERVATION_CONTRACT.md').read_text(encoding='utf-8')
+if ('sawbot.observation/0.3' not in contract
+    or 'sawbot.snapshot.debug/0.2' not in contract
+    or 'EntityType' not in contract):
+    raise SystemExit('Observation Contract documentation is not synchronized with alpha.6')
 print('PASS GitHub repository packaging check')
 PYREPOCHECK
 

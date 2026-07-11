@@ -5,6 +5,7 @@ import java.util.Objects;
 public final class SchemaVersion {
     public static final SchemaVersion OBSERVATION_V0_1 = new SchemaVersion("sawbot.observation", 0, 1);
     public static final SchemaVersion OBSERVATION_V0_2 = new SchemaVersion("sawbot.observation", 0, 2);
+    public static final SchemaVersion OBSERVATION_V0_3 = new SchemaVersion("sawbot.observation", 0, 3);
     public static final SchemaVersion ACTION_V0_1 = new SchemaVersion("sawbot.action", 0, 1);
 
     private final String family;

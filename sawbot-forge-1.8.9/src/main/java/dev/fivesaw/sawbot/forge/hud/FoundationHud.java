@@ -51,8 +51,12 @@ public final class FoundationHud {
         else{
             long age=observations.snapshotAgeMillis();
             String freezeSuffix=state.observationsFrozen()?"  FROZEN":"";
-            draw("Tick "+clientTick+"  Obs #"+snapshot.sequenceNumber()+"  age "+age+" ms"+freezeSuffix,x,y,
+            draw("Live tick "+clientTick+"  Snapshot #"+snapshot.sequenceNumber()+"  age "+age+" ms"+freezeSuffix,x,y,
                 state.observationsFrozen()?INFO:(age>300?WARNING:MUTED)); y+=10;
+            if(state.observationsFrozen()){
+                draw("Frozen at "+one((float)snapshot.selfState().absoluteX())+","+one((float)snapshot.selfState().absoluteY())+","+one((float)snapshot.selfState().absoluteZ())
+                    +"  you moved "+one(distanceFromSnapshot(snapshot))+"m  (. captures here)",x,y,distanceFromSnapshot(snapshot)>2F?WARNING:INFO); y+=10;
+            }
             draw("Eyes "+micros(snapshot.sensorTimings().totalNanos())+" us  entities "+snapshot.entities().count()+"  events "+snapshot.events().count(),x,y,MUTED); y+=10;
             draw("HP "+one(snapshot.selfState().health())+"  wool "+snapshot.inventory().wool()+"  ping "+(snapshot.serverTiming().pingValid()?snapshot.serverTiming().estimatedPingMillis()+" ms":"unknown"),x,y,MUTED); y+=10;
         }
@@ -62,10 +66,11 @@ public final class FoundationHud {
         draw("[/] select entity  aim block = yellow selection",x,y,MUTED); y+=10;
         draw("F10 toggle  F9 takeover  F12 emergency",x,y,MUTED);
 
-        if(!state.inspectorNotice().isEmpty()){y+=10;draw(state.inspectorNotice(),x,y,INFO);}
+        String notice=state.inspectorNotice();
+        if(!notice.isEmpty()){y+=10;draw(notice,x,y,INFO);}
         if(state.inspectorVisible()&&snapshot!=null){
             y+=12;
-            draw("Inspector "+inspector.page()+"  validity 0x"+Long.toHexString(snapshot.sensorValidityFlags()),x,y,INFO); y+=10;
+            draw("Inspector "+(inspector.page().ordinal()+1)+"/"+InspectorPage.values().length+" "+inspector.page()+" - "+pagePurpose(inspector.page())+"  validity 0x"+Long.toHexString(snapshot.sensorValidityFlags()),x,y,INFO); y+=10;
             draw("Overlay T/C/E/TR/L "+bit(state.terrainOverlayVisible())+"/"+bit(state.collisionOverlayVisible())+"/"+bit(state.entityOverlayVisible())+"/"+bit(state.entityTracersVisible())+"/"+bit(state.landmarkOverlayVisible()),x,y,MUTED); y+=10;
             y=renderPage(snapshot,x,y);
         }
@@ -93,10 +98,11 @@ public final class FoundationHud {
         draw("Support L/C/R "+one(s.supportDistanceLeft())+"/"+one(s.supportDistanceCenter())+"/"+one(s.supportDistanceRight())+"  void "+one(s.distanceToVoid()),x,y,WHITE); y+=10;
         draw("Terrain changed "+snapshot.localTerrain().changedCellCount()+"  facing "+snapshot.localTerrain().facingQuadrant()+"  map rows/tick "+snapshot.midRangeMap().rowsUpdatedThisTick(),x,y,WHITE); y+=10;
         draw("Inventory Fe/Au/D/E/W "+snapshot.inventory().iron()+"/"+snapshot.inventory().gold()+"/"+snapshot.inventory().diamonds()+"/"+snapshot.inventory().emeralds()+"/"+snapshot.inventory().wool(),x,y,WHITE); y+=10;
+        draw("M landmark is the universal world spawn test marker, not a Bedwars bed/team spawn.",x,y,MUTED); y+=10;
         EntityObservation selected=inspector.selectedEntity(snapshot);
-        draw(selected==null?"Selected entity: none":"Selected entity #"+selected.trackingId()+" "+selected.kind()+" "+EntityVisualStyle.visibilityToken(selected)+" distance "+one(selected.distance()),x,y,selected==null?MUTED:EntityVisualStyle.visibilityArgb(selected)); y+=10;
+        draw(selected==null?"Selected entity: none":"Selected entity #"+selected.trackingId()+" "+selected.type()+" "+EntityVisualStyle.visibilityToken(selected)+" distance "+one(selected.distance()),x,y,selected==null?MUTED:EntityVisualStyle.visibilityArgb(selected)); y+=10;
         BlockInspection block=inspector.selectedBlock();
-        draw(block==null?"Selected block: aim at a block":"Selected block "+block.worldX()+","+block.worldY()+","+block.worldZ()+" "+block.category()+" "+(block.insideTensor()?"cell "+block.terrainIndex():"outside tensor"),x,y,block==null?MUTED:WHITE); y+=10;
+        draw(block==null?"Selected block: aim at a block (yellow outline)":"Selected block "+block.worldX()+","+block.worldY()+","+block.worldZ()+" "+block.category()+" "+(block.insideTensor()?"cell "+block.terrainIndex():"outside frozen/live tensor"),x,y,block==null?MUTED:0xFFFF55); y+=10;
         return y;
     }
 
@@ -117,12 +123,13 @@ public final class FoundationHud {
         LocalTerrainSnapshot terrain=snapshot.localTerrain();
         int[] counts=new int[BlockSemanticCategory.values().length];
         for(byte raw:terrain.categories()){int index=raw&0xFF;if(index<counts.length)counts[index]++;}
-        draw("origin "+terrain.originX()+","+terrain.originY()+","+terrain.originZ()+" quadrant "+terrain.facingQuadrant()+" cells "+LocalTerrainSnapshot.CELL_COUNT,x,y,WHITE);y+=10;
+        draw("tensor anchor "+terrain.originX()+","+terrain.originY()+","+terrain.originZ()+" quadrant "+terrain.facingQuadrant()+" cells "+LocalTerrainSnapshot.CELL_COUNT,x,y,WHITE);y+=10;
+        draw("B draws this block-snapped 13x9x13 snapshot volume; it intentionally snaps to voxel coordinates.",x,y,MUTED);y+=10;
         draw("AIR "+counts[BlockSemanticCategory.AIR.ordinal()]+" SOLID "+counts[BlockSemanticCategory.SOLID.ordinal()]+" PARTIAL "+counts[BlockSemanticCategory.PARTIAL.ordinal()]+" UNKNOWN "+counts[BlockSemanticCategory.UNKNOWN.ordinal()],x,y,WHITE);y+=10;
         draw("LIQUID "+counts[BlockSemanticCategory.LIQUID.ordinal()]+" HAZARD "+counts[BlockSemanticCategory.HAZARD.ordinal()]+" CLIMB "+counts[BlockSemanticCategory.CLIMBABLE.ordinal()]+" BED "+counts[BlockSemanticCategory.BED.ordinal()],x,y,WHITE);y+=10;
         draw("CONTAINER "+counts[BlockSemanticCategory.CONTAINER.ordinal()]+" INTERACT "+counts[BlockSemanticCategory.INTERACTABLE.ordinal()]+" PLANT "+counts[BlockSemanticCategory.PLANT.ordinal()]+" DECOR "+counts[BlockSemanticCategory.DECORATION.ordinal()],x,y,WHITE);y+=10;
         BlockInspection block=inspector.selectedBlock();
-        if(block==null){draw("Aim at a block to decode its model cell.",x,y,MUTED);y+=10;return y;}
+        if(block==null){draw("Aim at a block: yellow outline; this page decodes coordinates, category, flags and collision class.",x,y,MUTED);y+=10;return y;}
         draw("world "+block.worldX()+","+block.worldY()+","+block.worldZ()+" offset R/U/F "+block.rightOffset()+"/"+block.upOffset()+"/"+block.forwardOffset(),x,y,WHITE);y+=10;
         draw("inside "+block.insideTensor()+" index "+block.terrainIndex()+" stateId "+block.blockStateId()+" category "+block.category(),x,y,WHITE);y+=10;
         draw("flags 0x"+Integer.toHexString(block.flags()&0xFFFF)+" collisionClass "+block.collisionHeightClass()+" changedTotal "+terrain.changedCellCount(),x,y,WHITE);y+=10;
@@ -133,13 +140,15 @@ public final class FoundationHud {
         EntityObservation e=inspector.selectedEntity(snapshot);
         draw("tracked "+snapshot.entities().count()+" droppedByBound "+snapshot.entities().droppedCount()+"  use [ and ]",x,y,WHITE);y+=10;
         if(e==null){draw("No selected entity.",x,y,MUTED);y+=10;return y;}
-        draw("#"+e.trackingId()+" mc#"+e.minecraftEntityId()+" "+e.kind()+" "+EntityVisualStyle.visibilityToken(e)+" team "+e.teamRelation()+" conf "+one(e.trackingConfidence()),x,y,EntityVisualStyle.visibilityArgb(e));y+=10;
+        String relation=e.kind()==dev.fivesaw.sawbot.common.observation.EntityKind.PLAYER?" team "+e.teamRelation():"";
+        draw("#"+e.trackingId()+" mc#"+e.minecraftEntityId()+" "+e.type()+" ("+e.kind()+") "+EntityVisualStyle.visibilityToken(e)+relation+" conf "+one(e.trackingConfidence()),x,y,EntityVisualStyle.visibilityArgb(e));y+=10;
         draw("R/U/F "+one(e.right())+"/"+one(e.up())+"/"+one(e.forward())+" distance "+one(e.distance()),x,y,WHITE);y+=10;
         draw("velocity "+three(e.velocityRight())+"/"+three(e.velocityUp())+"/"+three(e.velocityForward()),x,y,WHITE);y+=10;
         draw("accel "+three(e.accelerationRight())+"/"+three(e.accelerationUp())+"/"+three(e.accelerationForward()),x,y,WHITE);y+=10;
         draw("yaw/pitch "+one(e.yawDegrees())+"/"+one(e.pitchDegrees())+" size "+one(e.width())+"x"+one(e.height()),x,y,WHITE);y+=10;
-        draw("health/armour "+one(e.health())+"/"+one(e.armour())+" heldCat "+e.heldItemCategory()+" hurt "+e.hurtTimerTicks(),x,y,WHITE);y+=10;
+        draw("health/armour "+one(e.health())+"/"+one(e.armour())+" held "+itemCategoryName(e.heldItemCategory())+" payload "+itemCategoryName(e.payloadItemCategory())+" hurt "+e.hurtTimerTicks(),x,y,WHITE);y+=10;
         draw("ground/sprint/sneak "+bits(e.onGround(),e.sprinting(),e.sneaking())+" LOS/OCC/attack/load "+bits(e.lineOfSight(),e.occluded(),e.attackable(),e.loaded()),x,y,EntityVisualStyle.visibilityArgb(e));y+=10;
+        draw(state.observationsFrozen()?"FROZEN: these are entities from the captured location; press . to recapture here.":"LIVE: entity positions and LOS refresh every observation.",x,y,state.observationsFrozen()?WARNING:MUTED);y+=10;
         StringBuilder ids=new StringBuilder("IDs ");for(EntityObservation item:snapshot.entities().entities()){if(ids.length()>90)break;ids.append(item.trackingId()).append(item.lineOfSight()?"L ":"O ");}
         draw(ids.toString(),x,y,MUTED);y+=10;return y;
     }
@@ -192,9 +201,37 @@ public final class FoundationHud {
         draw("total "+micros(t.totalNanos())+" us interval "+observations.intervalTicks()+" ticks snapshot age "+observations.snapshotAgeMillis()+" ms",x,y,WHITE);y+=10;
         draw("handler avg/max "+micros(tickTiming.averageNanos())+"/"+micros(tickTiming.maximumNanos())+" us",x,y,WHITE);y+=10;
         draw("world-render avg/max "+micros(worldRenderer.averageRenderNanos())+"/"+micros(worldRenderer.maximumRenderNanos())+" us",x,y,WHITE);y+=10;
-        draw("export "+exports.status()+" queue "+exports.queueSize()+"/"+exports.queueCapacity()+" rejected "+exports.rejectedCount(),x,y,WHITE);y+=10;
+        String exportStatus=exports.status();
+        draw("export "+exportStatus+" queue "+exports.queueSize()+"/"+exports.queueCapacity()+" rejected "+exports.rejectedCount()+" (success text auto-clears)",x,y,WHITE);y+=10;
         if(!exports.latestFile().isEmpty()){draw("last file "+tail(exports.latestFile(),100),x,y,MUTED);y+=10;}
         return y;
+    }
+
+    private float distanceFromSnapshot(ObservationSnapshot snapshot){
+        if(minecraft.thePlayer==null)return 0F;
+        double dx=minecraft.thePlayer.posX-snapshot.selfState().absoluteX();
+        double dy=minecraft.thePlayer.posY-snapshot.selfState().absoluteY();
+        double dz=minecraft.thePlayer.posZ-snapshot.selfState().absoluteZ();
+        return (float)Math.sqrt(dx*dx+dy*dy+dz*dz);
+    }
+
+    private static String pagePurpose(InspectorPage page){
+        switch(page){
+            case BODY:return "player motion, collisions and support";
+            case TERRAIN:return "tensor contents and selected-block decoding";
+            case ENTITIES:return "specific type, LOS/OCC and tracking";
+            case INVENTORY:return "41 encoded slots and Bedwars resources";
+            case EVENTS:return "bounded recent event history";
+            case DIFFERENCE:return "current vs immediately previous snapshot";
+            case SYSTEM:return "schema, timings, export and queue health";
+            case SUMMARY:
+            default:return "overview plus selected entity/block";
+        }
+    }
+
+    private static String itemCategoryName(int ordinal){
+        dev.fivesaw.sawbot.common.observation.ItemCategory[] values=dev.fivesaw.sawbot.common.observation.ItemCategory.values();
+        return ordinal>=0&&ordinal<values.length?values[ordinal].name():"INVALID("+ordinal+")";
     }
 
     private static String shortCategory(ItemSlotObservation slot){String value=slot.category().name();return value.length()>7?value.substring(0,7):value;}

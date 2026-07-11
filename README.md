@@ -4,11 +4,11 @@ SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a 
 
 ## Current gate
 
-**Phase 0 and Phase 1 passed real runtime acceptance on the target machine.** This repository contains the **Phase 2 — Sensor Inspector automation candidate** (`0.3.0-alpha.5`). It retains the accepted Phase 2 sensors, immediate LOS/OCC colour correction, and single-push GitHub releases. The experimental `alpha.4` card interface has been removed; the compact text HUD and text inspector are restored for unobstructed testing.
+**Phase 0 and Phase 1 passed real runtime acceptance on the target machine.** This repository contains the **Phase 2 — Sensor Inspector automation candidate** (`0.3.0-alpha.6`). It retains the accepted Phase 2 sensors, compact text HUD, immediate LOS/OCC colour correction, and single-push GitHub releases. Alpha.6 adds specific entity types, clearer frozen-snapshot semantics, immediate unfreeze refresh, transient export notices, yellow block selection, and complete OpenGL state restoration.
 
 Implemented foundation:
 
-- Immutable Observation Contract `sawbot.observation/0.2`
+- Immutable Observation Contract `sawbot.observation/0.3`
 - Self/body state, support probes, and void distance
 - Bounded 13×9×13 egocentric terrain tensor
 - Incremental 33×33 mid-range map
@@ -33,6 +33,7 @@ The complete locked brief is preserved in [`docs/PROJECT_BRIEF.txt`](docs/PROJEC
 - [`docs/PHASE0_ACCEPTANCE.md`](docs/PHASE0_ACCEPTANCE.md)
 - [`docs/PHASE1_ACCEPTANCE.md`](docs/PHASE1_ACCEPTANCE.md)
 - [`docs/PHASE2_REPORT.md`](docs/PHASE2_REPORT.md)
+- [`docs/PHASE2_RUNTIME_VALIDATION.md`](docs/PHASE2_RUNTIME_VALIDATION.md)
 - [`docs/PHASE_GATES.md`](docs/PHASE_GATES.md)
 
 ## GitHub CI and automatic release
@@ -45,7 +46,7 @@ git commit -m "Describe the SawBotV1 update"
 git push origin main
 ```
 
-For this repository state the automatic release is `v0.3.0-alpha.5`. Published versions are immutable; a duplicate version fails clearly instead of overwriting an existing release. `Manual Release Recovery` remains available only as a fallback.
+For this repository state the automatic release is `v0.3.0-alpha.6`. Published versions are immutable; a duplicate version fails clearly instead of overwriting an existing release. `Manual Release Recovery` remains available only as a fallback.
 
 The runtime inspector intentionally remains a compact engineering text overlay. Decorative dashboard work is deferred unless it improves testing without obscuring Minecraft.
 
@@ -70,7 +71,7 @@ Install JDK 17 and JDK 8, then run:
 The final remapped mod is written to:
 
 ```text
-sawbot-forge-1.8.9/build/libs/SawBotV1-0.3.0-alpha.5-mc1.8.9.jar
+sawbot-forge-1.8.9/build/libs/SawBotV1-0.3.0-alpha.6-mc1.8.9.jar
 ```
 
 Launch a development client with:
@@ -85,7 +86,7 @@ Launch a development client with:
 bash tools/offline-verify.sh
 ```
 
-This verifies Java 8 source compatibility against narrow APIs, runs 527 assertions, emits and parses a complete debug snapshot, and validates repository/release structure. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
+This verifies Java 8 source compatibility against narrow APIs, runs 539 assertions, emits and parses a complete debug snapshot, and validates repository/release structure. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
 
 ## Controls
 

@@ -1,8 +1,8 @@
-# Observation Contract v0.2
+# Observation Contract v0.3
 
-Identifier: `sawbot.observation/0.2`  
-Status: Phase 1 runtime candidate  
-Compatibility: breaking replacement for the placeholder-only v0.1 snapshot
+Identifier: `sawbot.observation/0.3`
+Status: Phase 2 runtime candidate
+Compatibility: additive breaking revision of v0.2; consumers must reject mismatched schemas
 
 ## Invariants
 
@@ -19,7 +19,7 @@ Compatibility: breaking replacement for the placeholder-only v0.1 snapshot
 
 | Field | Type | Constraint |
 |---|---|---|
-| `schemaVersion` | enum | always `sawbot.observation/0.2` |
+| `schemaVersion` | enum | always `sawbot.observation/0.3` |
 | `clientTick` | int64 | non-negative |
 | `monotonicTimestampNanos` | int64 | non-negative, monotonic-clock domain |
 | `episodeId` | UUID | changes when the client world identity changes |
@@ -75,7 +75,8 @@ Maximum 32 observations. Candidates within 64 blocks are deterministically sorte
 Each observation contains:
 
 - Tracking ID and Minecraft entity ID.
-- Entity kind and team relationship.
+- Broad `EntityKind`, bounded specific `EntityType`, and team relationship. Vanilla types are derived from Minecraft’s registered entity identity, not localized display text.
+- Optional `payloadItemCategory` for dropped-item entities; empty for non-payload entities.
 - Egocentric relative position and relative velocity.
 - Bounding-box width and height.
 - Health, armour summary, held-item category, hurt timer.
@@ -122,7 +123,7 @@ Includes ping, smoothed ping jitter, ticks since a classified enemy observation,
 - bit 7: server timing
 - bit 8: task state
 
-## Phase 1 acceptance requirements
+## Phase 1/2 acceptance requirements
 
 - Correct full and partial block classifications in a real client.
 - Correct void/support behavior at edges, slabs, stairs, and fences.
@@ -135,8 +136,12 @@ Includes ping, smoothed ping jitter, ticks since a classified enemy observation,
 - No client-thread exception or unsafe worker access.
 - Measured target-hardware cost recorded before Phase 2.
 
+## v0.2 → v0.3 migration
+
+Version 0.3 adds two bounded entity fields: `EntityType type` and `int payloadItemCategory`. It does not change tensor dimensions, inventory dimensions, entity limits, coordinate conventions, action semantics, or sensor-validity bit assignments. Because persistent and IPC consumers must never guess missing fields, v0.2 and v0.3 are intentionally schema-incompatible and a mismatched consumer must reject the snapshot.
+
 ## Phase 2 tooling note
 
-Phase 2 does not change `sawbot.observation/0.2`. Inspector page, overlay visibility, crosshair selection, export queue status, and snapshot differences are development-tool state and are deliberately excluded from the model input.
+Inspector page, overlay visibility, crosshair selection, export queue status, and snapshot differences are development-tool state and are deliberately excluded from the model input.
 
-The human-readable `sawbot.snapshot.debug/0.1` export serializes every bounded v0.2 field without Java serialization. It is for individual inspection only and is not the Phase 3 high-volume trajectory format.
+The human-readable `sawbot.snapshot.debug/0.2` export serializes every bounded v0.3 field without Java serialization, including specific entity type and dropped-item payload category. It is for individual inspection only and is not the Phase 3 high-volume trajectory format.

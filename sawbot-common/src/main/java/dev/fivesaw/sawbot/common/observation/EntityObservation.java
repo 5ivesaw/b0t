@@ -4,6 +4,7 @@ public final class EntityObservation {
     private final int trackingId;
     private final int minecraftEntityId;
     private final EntityKind kind;
+    private final EntityType type;
     private final TeamRelation teamRelation;
     private final float right;
     private final float up;
@@ -23,6 +24,7 @@ public final class EntityObservation {
     private final float distance;
     private final float trackingConfidence;
     private final int heldItemCategory;
+    private final int payloadItemCategory;
     private final int hurtTimerTicks;
     private final boolean onGround;
     private final boolean sprinting;
@@ -32,22 +34,23 @@ public final class EntityObservation {
     private final boolean attackable;
     private final boolean loaded;
 
-    public EntityObservation(int trackingId, int minecraftEntityId, EntityKind kind, TeamRelation teamRelation,
+    public EntityObservation(int trackingId, int minecraftEntityId, EntityKind kind, EntityType type, TeamRelation teamRelation,
                              float right, float up, float forward,
                              float velocityRight, float velocityUp, float velocityForward,
                              float accelerationRight, float accelerationUp, float accelerationForward,
                              float yawDegrees, float pitchDegrees,
                              float width, float height, float health, float armour, float distance,
-                             int heldItemCategory, int hurtTimerTicks,
+                             int heldItemCategory, int payloadItemCategory, int hurtTimerTicks,
                              boolean onGround, boolean sprinting, boolean sneaking,
                              boolean lineOfSight, boolean occluded, boolean attackable, boolean loaded,
                              float trackingConfidence) {
-        if (trackingId <= 0 || kind == null || teamRelation == null || heldItemCategory < 0 || hurtTimerTicks < 0) {
+        if (trackingId <= 0 || kind == null || type == null || teamRelation == null || heldItemCategory < 0 || heldItemCategory >= ItemCategory.values().length || payloadItemCategory < 0 || payloadItemCategory >= ItemCategory.values().length || hurtTimerTicks < 0) {
             throw new IllegalArgumentException("entity identity");
         }
         this.trackingId = trackingId;
         this.minecraftEntityId = minecraftEntityId;
         this.kind = kind;
+        this.type = type;
         this.teamRelation = teamRelation;
         this.right = finite(right);
         this.up = finite(up);
@@ -66,6 +69,7 @@ public final class EntityObservation {
         this.armour = finite(armour);
         this.distance = finite(distance);
         this.heldItemCategory = heldItemCategory;
+        this.payloadItemCategory = payloadItemCategory;
         this.hurtTimerTicks = hurtTimerTicks;
         this.onGround = onGround;
         this.sprinting = sprinting;
@@ -86,6 +90,7 @@ public final class EntityObservation {
     public int trackingId() { return trackingId; }
     public int minecraftEntityId() { return minecraftEntityId; }
     public EntityKind kind() { return kind; }
+    public EntityType type() { return type; }
     public TeamRelation teamRelation() { return teamRelation; }
     public float right() { return right; }
     public float up() { return up; }
@@ -104,6 +109,7 @@ public final class EntityObservation {
     public float armour() { return armour; }
     public float distance() { return distance; }
     public int heldItemCategory() { return heldItemCategory; }
+    public int payloadItemCategory() { return payloadItemCategory; }
     public int hurtTimerTicks() { return hurtTimerTicks; }
     public boolean onGround() { return onGround; }
     public boolean sprinting() { return sprinting; }

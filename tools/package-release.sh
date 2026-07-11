@@ -21,6 +21,7 @@ cp "$FINAL_JAR" "$DIST/"
 cp "$SOURCES_JAR" "$DIST/"
 cp "$ROOT/docs/PHASE2_REPORT.md" "$DIST/PHASE2_REPORT.md"
 cp "$ROOT/docs/PHASE2_RUNTIME_FEEDBACK.md" "$DIST/PHASE2_RUNTIME_FEEDBACK.md"
+cp "$ROOT/docs/PHASE2_RUNTIME_VALIDATION.md" "$DIST/PHASE2_RUNTIME_VALIDATION.md"
 cp "$ROOT/docs/PHASE1_ACCEPTANCE.md" "$DIST/PHASE1_ACCEPTANCE.md"
 cp "$ROOT/docs/PHASE0_ACCEPTANCE.md" "$DIST/PHASE0_ACCEPTANCE.md"
 cp "$ROOT/docs/GITHUB_RELEASES.md" "$DIST/GITHUB_RELEASES.md"
@@ -28,7 +29,7 @@ cp "$ROOT/docs/PHASE2_UI_REVERT.md" "$DIST/PHASE2_UI_REVERT.md"
 
 (
   cd "$DIST"
-  sha256sum SawBotV1-* PHASE2_REPORT.md PHASE2_RUNTIME_FEEDBACK.md PHASE1_ACCEPTANCE.md PHASE0_ACCEPTANCE.md GITHUB_RELEASES.md PHASE2_UI_REVERT.md > SHA256SUMS.txt
+  sha256sum SawBotV1-* PHASE2_REPORT.md PHASE2_RUNTIME_FEEDBACK.md PHASE2_RUNTIME_VALIDATION.md PHASE1_ACCEPTANCE.md PHASE0_ACCEPTANCE.md GITHUB_RELEASES.md PHASE2_UI_REVERT.md > SHA256SUMS.txt
 )
 
 cat > "$DIST/release-notes.md" <<NOTES
@@ -42,13 +43,14 @@ Phase 2 sensor-inspector candidate for Minecraft Forge 1.8.9.
 - \`SawBotV1-$VERSION-sources.jar\`: Java source archive.
 - \`SHA256SUMS.txt\`: integrity hashes.
 - \`PHASE2_REPORT.md\`: implementation, validation, limitations, and runtime checklist.
+- \`PHASE2_RUNTIME_VALIDATION.md\`: target-machine evidence, findings, and alpha.6 corrections.
 - \`PHASE1_ACCEPTANCE.md\`: recorded Phase 1 runtime acceptance evidence.
 - \`PHASE0_ACCEPTANCE.md\`: recorded Phase 0 runtime acceptance evidence.
 - \`PHASE2_UI_REVERT.md\`: target-machine rationale and exact scope of the text-HUD restoration.
 
 ## Scope
 
-This release retains the accepted Phase 2 inspector and the immediate LOS/OCC visual-state correction. It adds a single-push GitHub release lane: a successful push to `main` builds once, verifies the exact payload, creates the version tag, and publishes the GitHub Release automatically. It also restores the compact text HUD after rejecting the alpha.4 card UI on the target machine. Runtime sensor behaviour is unchanged from the preceding Phase 2 visual correction.
+This release hardens the accepted compact Phase 2 inspector after a long target-machine session. It makes frozen world-anchored snapshot semantics explicit, adds bounded specific entity types and dropped-item payload categories through Observation Contract v0.3, forces immediate refresh on unfreeze, makes block selection consistently yellow, expires transient success notices, and restores complete OpenGL state after debug rendering. The single-push GitHub release lane remains unchanged.
 
 It intentionally contains no neural model, autonomous actuator loop, Bedwars policy, screen capture, OCR, packet advantage, reach modification, aim assist, scaffold controller, or public-server automation.
 NOTES

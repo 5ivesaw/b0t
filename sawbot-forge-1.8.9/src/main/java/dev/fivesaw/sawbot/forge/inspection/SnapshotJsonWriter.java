@@ -27,7 +27,7 @@ public final class SnapshotJsonWriter {
         if (snapshot == null || writer == null) throw new IllegalArgumentException("snapshot/writer");
         Json out = new Json(writer);
         out.raw("{\n");
-        out.field("exportFormat", "sawbot.snapshot.debug/0.1", true, 1);
+        out.field("exportFormat", "sawbot.snapshot.debug/0.2", true, 1);
         out.field("schemaVersion", snapshot.schemaVersion().identifier(), true, 1);
         out.field("clientTick", snapshot.clientTick(), true, 1);
         out.field("monotonicTimestampNanos", snapshot.monotonicTimestampNanos(), true, 1);
@@ -36,6 +36,7 @@ public final class SnapshotJsonWriter {
         out.field("worldIdentifier", snapshot.worldIdentifier(), true, 1);
         out.field("taskAdapterIdentifier", snapshot.taskAdapterIdentifier(), true, 1);
         out.field("sensorValidityFlagsHex", "0x" + Long.toHexString(snapshot.sensorValidityFlags()), true, 1);
+        out.field("entityDroppedByBound", snapshot.entities().droppedCount(), true, 1);
 
         out.indent(1); out.raw("\"selfState\": {"); writeSelf(snapshot.selfState(), out, 2); out.raw("\n  },\n");
         out.indent(1); out.raw("\"localTerrain\": {"); writeTerrain(snapshot.localTerrain(), out, 2); out.raw("\n  },\n");
@@ -146,6 +147,7 @@ public final class SnapshotJsonWriter {
             out.field("trackingId", e.trackingId(), true, level + 1);
             out.field("minecraftEntityId", e.minecraftEntityId(), true, level + 1);
             out.field("kind", e.kind().name(), true, level + 1);
+            out.field("type", e.type().name(), true, level + 1);
             out.field("teamRelation", e.teamRelation().name(), true, level + 1);
             out.field("right", e.right(), true, level + 1);
             out.field("up", e.up(), true, level + 1);
@@ -164,6 +166,7 @@ public final class SnapshotJsonWriter {
             out.field("armour", e.armour(), true, level + 1);
             out.field("distance", e.distance(), true, level + 1);
             out.field("heldItemCategory", e.heldItemCategory(), true, level + 1);
+            out.field("payloadItemCategory", e.payloadItemCategory(), true, level + 1);
             out.field("hurtTimerTicks", e.hurtTimerTicks(), true, level + 1);
             out.field("onGround", e.onGround(), true, level + 1);
             out.field("sprinting", e.sprinting(), true, level + 1);

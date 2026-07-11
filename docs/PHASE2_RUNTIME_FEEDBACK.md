@@ -4,6 +4,7 @@ Date: 2026-07-10
 Tested build: `0.3.0-alpha.0`  
 First correction tested: `0.3.0-alpha.1`  
 Visual-state correction candidate: `0.3.0-alpha.2`
+Runtime-hardening candidate: `0.3.0-alpha.6`
 
 ## Confirmed working on target hardware
 
@@ -63,3 +64,9 @@ Phase 2 remains open only for this focused visual-colour retest.
 ## UI experiment rejection and restoration
 
 Target-machine testing rejected the `0.3.0-alpha.4` glass/card interface because it obscured gameplay and made checks less efficient. The accepted response is a full restoration of the compact text HUD in `0.3.0-alpha.5`, with no decorative replacement.
+
+## `0.3.0-alpha.6` runtime-hardening correction
+
+A longer target-machine session confirmed the Phase 2 sensor pipeline, LOS/OCC behavior, controls, export, difference page, performance, and automatic release. The apparent remote terrain/entity failure occurred while the observation was deliberately frozen for 55–109 seconds: the overlays correctly remained at the immutable snapshot's world coordinates while the player walked away.
+
+Alpha.6 makes that contract visible instead of relying on expert interpretation, adds specific bounded mob/entity types, forces immediate refresh on unfreeze, standardizes block selection as yellow, expires success notices, and fully restores OpenGL state after world overlays. The release remains pending only a focused alpha.6 smoke test.

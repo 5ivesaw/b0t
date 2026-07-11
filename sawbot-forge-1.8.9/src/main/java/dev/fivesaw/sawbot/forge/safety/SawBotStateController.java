@@ -9,6 +9,7 @@ public final class SawBotStateController {
     private SawBotMode mode = SawBotMode.DISABLED;
     private boolean observationsFrozen;
     private boolean observationStepRequested;
+    private boolean observationRefreshRequested;
     private boolean inspectorVisible;
     private boolean terrainOverlayVisible;
     private boolean collisionOverlayVisible;
@@ -18,6 +19,8 @@ public final class SawBotStateController {
     private boolean telemetryRequested;
     private String lastStopReason = "startup";
     private String inspectorNotice = "";
+    private long inspectorNoticeTimestampNanos;
+    private static final long NOTICE_LIFETIME_NANOS = 3_000_000_000L;
 
     public SawBotStateController(Minecraft minecraft, Logger logger) {
         if (minecraft == null || logger == null) throw new IllegalArgumentException("minecraft/logger");
@@ -38,19 +41,20 @@ public final class SawBotStateController {
     public void toggleFrozen() {
         observationsFrozen = !observationsFrozen;
         observationStepRequested = false;
+        observationRefreshRequested = !observationsFrozen;
         InputRelease.releaseAll(minecraft);
-        inspectorNotice = observationsFrozen ? "snapshot frozen" : "snapshot live";
+        setInspectorNotice(observationsFrozen ? "snapshot frozen; overlays stay at captured world positions" : "snapshot live; refreshing now");
         logger.info("SawBotV1 observation freeze changed to {}.", Boolean.valueOf(observationsFrozen));
     }
 
     /** Queue exactly one observation capture on the current client tick while frozen. */
     public boolean requestObservationStep() {
         if (!observationsFrozen) {
-            inspectorNotice = "freeze with P before stepping";
+            setInspectorNotice("freeze with P before stepping");
             return false;
         }
         observationStepRequested = true;
-        inspectorNotice = "single observation step queued";
+        setInspectorNotice("single observation step queued");
         return true;
     }
 
@@ -60,16 +64,25 @@ public final class SawBotStateController {
         return requested;
     }
 
+    /** Forces an immediate fresh capture on the first live tick after unfreezing. */
+    public boolean consumeObservationRefreshRequest() {
+        boolean requested = observationRefreshRequested;
+        observationRefreshRequested = false;
+        return requested;
+    }
+
     public void manualTakeover() { disableAndRelease("manual takeover"); }
     public void emergencyStop() { disableAndRelease("emergency stop"); }
     public void onWorldUnavailable() {
         observationsFrozen = false;
         observationStepRequested = false;
+        observationRefreshRequested = false;
         disableAndRelease("world unavailable/disconnect");
     }
     public void shutdown() {
         observationsFrozen = false;
         observationStepRequested = false;
+        observationRefreshRequested = false;
         disableAndRelease("client shutdown");
     }
 
@@ -83,13 +96,16 @@ public final class SawBotStateController {
     }
 
     public void toggleInspector() { inspectorVisible = !inspectorVisible; }
-    public void toggleTerrainOverlay() { terrainOverlayVisible = !terrainOverlayVisible; inspectorNotice = "terrain overlay " + onOff(terrainOverlayVisible); }
-    public void toggleCollisionOverlay() { collisionOverlayVisible = !collisionOverlayVisible; inspectorNotice = "collision overlay " + onOff(collisionOverlayVisible); }
-    public void toggleEntityOverlay() { entityOverlayVisible = !entityOverlayVisible; inspectorNotice = "entity overlay " + onOff(entityOverlayVisible); }
-    public void toggleEntityTracers() { entityTracersVisible = !entityTracersVisible; inspectorNotice = "entity tracers " + onOff(entityTracersVisible); }
-    public void toggleLandmarkOverlay() { landmarkOverlayVisible = !landmarkOverlayVisible; inspectorNotice = "landmark overlay " + onOff(landmarkOverlayVisible); }
+    public void toggleTerrainOverlay() { terrainOverlayVisible = !terrainOverlayVisible; setInspectorNotice("terrain overlay " + onOff(terrainOverlayVisible)); }
+    public void toggleCollisionOverlay() { collisionOverlayVisible = !collisionOverlayVisible; setInspectorNotice("collision overlay " + onOff(collisionOverlayVisible)); }
+    public void toggleEntityOverlay() { entityOverlayVisible = !entityOverlayVisible; setInspectorNotice("entity overlay " + onOff(entityOverlayVisible)); }
+    public void toggleEntityTracers() { entityTracersVisible = !entityTracersVisible; setInspectorNotice("entity tracers " + onOff(entityTracersVisible)); }
+    public void toggleLandmarkOverlay() { landmarkOverlayVisible = !landmarkOverlayVisible; setInspectorNotice("landmark overlay " + onOff(landmarkOverlayVisible)); }
     public void toggleTelemetryRequest() { telemetryRequested = !telemetryRequested; }
-    public void setInspectorNotice(String notice) { inspectorNotice = notice == null ? "" : notice; }
+    public void setInspectorNotice(String notice) {
+        inspectorNotice = notice == null ? "" : notice;
+        inspectorNoticeTimestampNanos = System.nanoTime();
+    }
     private static String onOff(boolean value) { return value ? "ON" : "OFF"; }
 
     public SawBotMode mode() { return mode; }
@@ -104,5 +120,9 @@ public final class SawBotStateController {
     public boolean landmarkOverlayVisible() { return landmarkOverlayVisible; }
     public boolean telemetryRequested() { return telemetryRequested; }
     public String lastStopReason() { return lastStopReason; }
-    public String inspectorNotice() { return inspectorNotice; }
+    public String inspectorNotice() {
+        if (inspectorNotice.isEmpty()) return "";
+        if (System.nanoTime() - inspectorNoticeTimestampNanos > NOTICE_LIFETIME_NANOS) return "";
+        return inspectorNotice;
+    }
 }

@@ -24,6 +24,9 @@ public final class SnapshotExportService implements AutoCloseable {
     private final Thread shutdownHook;
     private volatile boolean closing;
     private volatile String status = "idle";
+    private volatile long statusTimestampNanos;
+    private static final long SUCCESS_STATUS_LIFETIME_NANOS = 3_000_000_000L;
+    private static final long ERROR_STATUS_LIFETIME_NANOS = 8_000_000_000L;
     private volatile String latestFile = "";
     private volatile long rejectedCount;
 
@@ -43,7 +46,7 @@ public final class SnapshotExportService implements AutoCloseable {
     public boolean request(ObservationSnapshot snapshot, ObservationDiff diff,
                            BlockInspection block, int selectedTrackingId) {
         if (snapshot == null || closing) {
-            status = closing ? "closed" : "no snapshot";
+            setStatus(closing ? "closed" : "no snapshot");
             return false;
         }
         Request request = new Request(snapshot, diff == null ? ObservationDiff.EMPTY : diff,
@@ -51,16 +54,21 @@ public final class SnapshotExportService implements AutoCloseable {
         boolean accepted = queue.offer(request);
         if (!accepted) {
             rejectedCount++;
-            status = "queue full; export rejected";
+            setStatus("queue full; export rejected");
         } else {
-            status = "queued #" + snapshot.sequenceNumber();
+            setStatus("queued #" + snapshot.sequenceNumber());
         }
         return accepted;
     }
 
     public int queueSize() { return queue.size(); }
     public int queueCapacity() { return MAX_PENDING_EXPORTS; }
-    public String status() { return status; }
+    public String status() {
+        String value = status;
+        if ("idle".equals(value) || "closed".equals(value)) return value;
+        long lifetime = isErrorStatus(value) ? ERROR_STATUS_LIFETIME_NANOS : SUCCESS_STATUS_LIFETIME_NANOS;
+        return System.nanoTime() - statusTimestampNanos > lifetime ? "idle" : value;
+    }
     public String latestFile() { return latestFile; }
     public long rejectedCount() { return rejectedCount; }
 
@@ -73,7 +81,7 @@ public final class SnapshotExportService implements AutoCloseable {
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
         }
-        status = "closed";
+        setStatus("closed");
         try {
             if (Thread.currentThread() != shutdownHook) Runtime.getRuntime().removeShutdownHook(shutdownHook);
         } catch (IllegalStateException ignored) {
@@ -90,7 +98,7 @@ public final class SnapshotExportService implements AutoCloseable {
                 } catch (InterruptedException interrupted) {
                     if (closing && queue.isEmpty()) break;
                 } catch (RuntimeException exception) {
-                    status = "export runtime failure";
+                    setStatus("export runtime failure");
                     logger.error("SawBotV1 snapshot export failed.", exception);
                 }
             }
@@ -104,7 +112,7 @@ public final class SnapshotExportService implements AutoCloseable {
             String fileName = "snapshot-" + world + "-seq-" + request.snapshot.sequenceNumber() + ".json";
             Path target = exportDirectory.resolve(fileName);
             Path temporary = exportDirectory.resolve(fileName + ".tmp");
-            status = "writing #" + request.snapshot.sequenceNumber();
+            setStatus("writing #" + request.snapshot.sequenceNumber());
             try (BufferedWriter writer = Files.newBufferedWriter(temporary, StandardCharsets.UTF_8)) {
                 SnapshotJsonWriter.write(request.snapshot, request.diff, request.block,
                     request.selectedTrackingId, writer);
@@ -115,12 +123,22 @@ public final class SnapshotExportService implements AutoCloseable {
                 Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
             }
             latestFile = target.toAbsolutePath().toString();
-            status = "saved #" + request.snapshot.sequenceNumber();
+            setStatus("saved #" + request.snapshot.sequenceNumber());
             logger.info("SawBotV1 exported snapshot to {}.", latestFile);
         } catch (IOException exception) {
-            status = "I/O failure";
+            setStatus("I/O failure");
             logger.error("SawBotV1 snapshot export I/O failure.", exception);
         }
+    }
+
+
+    private void setStatus(String value) {
+        status = value == null || value.isEmpty() ? "idle" : value;
+        statusTimestampNanos = System.nanoTime();
+    }
+
+    private static boolean isErrorStatus(String value) {
+        return value.contains("failure") || value.contains("rejected") || value.contains("full") || value.contains("no snapshot");
     }
 
     private static String sanitize(String value) {

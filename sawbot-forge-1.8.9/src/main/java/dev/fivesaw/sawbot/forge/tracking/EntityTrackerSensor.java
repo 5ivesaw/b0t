@@ -4,6 +4,8 @@ import dev.fivesaw.sawbot.common.observation.EgocentricTransform;
 import dev.fivesaw.sawbot.common.observation.EntityKind;
 import dev.fivesaw.sawbot.common.observation.EntityObservation;
 import dev.fivesaw.sawbot.common.observation.EntitySetSnapshot;
+import dev.fivesaw.sawbot.common.observation.EntityType;
+import dev.fivesaw.sawbot.common.observation.ItemCategory;
 import dev.fivesaw.sawbot.common.observation.TeamRelation;
 import dev.fivesaw.sawbot.forge.sensors.ItemClassifier;
 import java.util.ArrayList;
@@ -109,7 +111,8 @@ public final class EntityTrackerSensor {
         float height = (float)(box.maxY - box.minY);
         float health = 0f;
         float armour = 0f;
-        int heldItem = 0;
+        int heldItem = ItemCategory.EMPTY.ordinal();
+        int payloadItem = ItemCategory.EMPTY.ordinal();
         int hurt = 0;
         if (entity instanceof EntityLivingBase) {
             EntityLivingBase living = (EntityLivingBase)entity;
@@ -119,16 +122,19 @@ public final class EntityTrackerSensor {
             heldItem = ItemClassifier.category(stack).ordinal();
             if (entity instanceof EntityPlayer) armour = ((EntityPlayer)entity).getTotalArmorValue();
         }
+        if (entity instanceof EntityItem) {
+            payloadItem = ItemClassifier.category(((EntityItem)entity).getEntityItem()).ordinal();
+        }
         boolean lineOfSight = visibilitySampler.hasLineOfSight(player, entity, world);
         boolean attackable = entity instanceof EntityLivingBase && !entity.isDead && lineOfSight
             && candidate.distance <= LEGITIMATE_ATTACK_DISTANCE;
-        return new EntityObservation(track.trackingId, entity.getEntityId(), kind(entity), relation(entity, player),
+        return new EntityObservation(track.trackingId, entity.getEntityId(), kind(entity), EntityTypeClassifier.classify(entity), relation(entity, player),
             right, (float)dy, forward,
             velocityRight, (float)relativeMotionY, velocityForward,
             accelerationRight, accelerationUp, accelerationForward,
             normalizeYaw(entity.rotationYaw), MathHelper.clamp_float(entity.rotationPitch, -90f, 90f),
             width, height, health, armour, candidate.distance,
-            heldItem, hurt, entity.onGround, entity.isSprinting(), entity.isSneaking(),
+            heldItem, payloadItem, hurt, entity.onGround, entity.isSprinting(), entity.isSneaking(),
             lineOfSight, !lineOfSight, attackable, true, 1f);
     }
 

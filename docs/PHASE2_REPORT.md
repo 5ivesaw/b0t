@@ -1,9 +1,9 @@
 # PHASE REPORT — Phase 2 Sensor Inspector
 
 Date: 2026-07-10  
-Candidate version: `0.3.0-alpha.2`  
-Observation schema: unchanged at `sawbot.observation/0.2`  
-Debug export format: `sawbot.snapshot.debug/0.1`
+Candidate version: `0.3.0-alpha.6`
+Observation schema: `sawbot.observation/0.3`
+Debug export format: `sawbot.snapshot.debug/0.2`
 
 ## Completed
 
@@ -137,7 +137,7 @@ clean ZIP extraction and manifest comparison
 
 ## Tests
 
-- PASS — `FoundationContractTest` — 527 assertions.
+- PASS — `FoundationContractTest` — 539 assertions.
 - PASS — LOS text, box, label, and tracer resolve from one green visibility style.
 - PASS — OCC text, box, label, and tracer resolve from one purple visibility style.
 - PASS — inconsistent LOS/occlusion flags resolve to an orange warning style.
@@ -183,7 +183,7 @@ No real FPS or render-cost claim is made until the target-machine Phase 2 test.
 
 ### Collision overlay
 
-The overlay shows the bounded collision-height class that the neural policy receives: none, quarter, half, three-quarter, full, other, or compound. It does not pretend that the v0.2 contract contains every raw collision AABB. The selected block's state ID, semantic flags, and collision class are shown verbatim.
+The overlay shows the bounded collision-height class that the neural policy receives: none, quarter, half, three-quarter, full, other, or compound. It does not pretend that the v0.3 contract contains every raw collision AABB. The selected block's state ID, semantic flags, and collision class are shown verbatim.
 
 ### Entity ESP
 
@@ -203,7 +203,7 @@ Occluded loaded entities may be rendered in the controlled private research envi
 ## USER CHECKLIST
 
 - [ ] GitHub CI passes offline verification and the real Loom/Forge build.
-- [ ] `SawBotV1-0.3.0-alpha.2-mc1.8.9.jar` launches with no repeated SawBot error.
+- [ ] `SawBotV1-0.3.0-alpha.6-mc1.8.9.jar` launches with no repeated SawBot error.
 - [ ] F7 opens and closes the Phase 2 panel.
 - [ ] H cycles through all eight pages without hiding Minecraft controls.
 - [ ] B shows the local tensor boundary and coloured non-air cells.
@@ -230,7 +230,7 @@ Occluded loaded entities may be rendered in the controlled private research envi
 ## How to test
 
 1. Push the repository and wait for GitHub Actions CI to pass.
-2. Publish or download `v0.3.0-alpha.2` and install only that SawBot JAR.
+2. Publish or download `v0.3.0-alpha.6` and install only that SawBot JAR.
 3. Join the same local test world used for Phase 1.
 4. Open F7 and cycle H through all pages.
 5. Toggle B, C, N, V, and M one at a time before combining them.
@@ -259,3 +259,19 @@ The mod remains non-autonomous. It renders and exports exactly the bounded infor
 ## 0.3.0-alpha.5 runtime-interface correction
 
 The `0.3.0-alpha.4` card-based HUD was rejected during target-machine testing because it covered too much of the game and slowed manual inspection. `0.3.0-alpha.5` restores the pre-existing compact text HUD and text inspector. Phase 2 sensor behavior, LOS/OCC colour semantics, export, freeze/step, overlay toggles, and safety controls remain unchanged.
+
+## 0.3.0-alpha.6 target-machine hardening
+
+Target-machine feedback confirmed the core Phase 2 pipeline, safety controls, freeze/step behavior, LOS/OCC transitions, export, differences, performance, and automatic GitHub release lane. It also exposed several presentation ambiguities and one possible render-state leak.
+
+Corrections in alpha.6:
+
+- Frozen terrain, entity, and landmark overlays are explicitly identified as world-anchored data from the immutable captured observation; capture coordinates and player distance from the capture are shown.
+- A `FROZEN SNAPSHOT` marker identifies the old observation anchor, and `.` captures exactly one new observation at the player's current position.
+- Unfreeze requests an immediate observation so the HUD does not briefly show stale-warning colour.
+- Observation schema v0.3 adds a bounded specific entity type and dropped-item payload category.
+- Crosshair block selection is always yellow, including outside the tensor; membership remains visible in text.
+- Export-success and normal inspector notices expire automatically.
+- World rendering restores the full OpenGL attribute state to protect the vanilla hotbar and HUD.
+
+The supplied exported snapshot was valid and bounded (`0x1ff`), and its measured total extraction time was approximately 3.08 ms. The supplied log contained no SawBot exception or repeated SawBot error. See `docs/PHASE2_RUNTIME_VALIDATION.md`.

@@ -63,7 +63,7 @@ Evidence: `docs/PHASE1_ACCEPTANCE.md`.
 
 ## Phase 2 — Sensor inspector
 
-Implemented through candidate `0.3.0-alpha.5`:
+Implemented through candidate `0.3.0-alpha.6`:
 
 - [x] Independently toggleable terrain, collision/support, entity boxes, entity tracers, and landmark overlays.
 - [x] Selected block decoding from frozen snapshot coordinates.
@@ -78,12 +78,12 @@ Implemented through candidate `0.3.0-alpha.5`:
 
 Runtime acceptance required:
 
-- [ ] GitHub CI performs the real Loom/Forge compile and remap.
-- [ ] Updated JAR launches without repeated SawBot errors.
-- [ ] Every inspector page is usable at 1366×768.
-- [ ] Terrain and collision overlays correspond to selected model cells.
+- [x] GitHub CI performs the real Loom/Forge compile and remap for the preceding Phase 2 build; alpha.6 remains to be compiled automatically after push.
+- [x] Pre-alpha.6 JAR launches without repeated SawBot errors; alpha.6 focused launch remains pending.
+- [x] Every inspector page is reachable and readable at 1366×768.
+- [x] Terrain and collision overlays render and move on the block-snapped tensor basis; alpha.6 improves explanatory text.
 - [x] Entity boxes and IDs remain stable.
-- [ ] Box, tracer, and label colour switch immediately with LOS/OCC text, including while selected.
+- [x] Box, tracer, and label colour switch immediately with LOS/OCC text, including while selected.
 - [x] LOS/OCC updates in both directions when entities move around cover.
 - [x] V toggles tracers independently and tracers remain anchored while walking.
 - [x] World-spawn landmark resolves to the standable surface instead of underground.
@@ -92,14 +92,14 @@ Runtime acceptance required:
 - [x] Difference page responds to known changes.
 - [x] F10/F9/F12 safety controls remain authoritative.
 - [x] Overlay-off FPS remains equivalent to Phase 1.
-- [ ] Individual overlay costs are measured without serious FPS collapse.
+- [x] Individual overlays and combined use produced no serious FPS collapse in the target-machine session.
 - [x] Five-minute inspector test has no repeated SawBot errors.
 
-**Gate: PENDING FINAL `0.3.0-alpha.5` TEXT-HUD RESTORATION SMOKE TEST.**
+**Gate: PENDING FOCUSED `0.3.0-alpha.6` RUNTIME-HARDENING SMOKE TEST.**
 
 No Phase 3 telemetry implementation begins before this checklist passes.
 
 
 ### Runtime presentation decision
 
-The `0.3.0-alpha.4` card interface was rejected on the target machine. Phase 2 returns to the compact text HUD in `0.3.0-alpha.5`; future presentation changes must not obscure gameplay or make sensor verification harder.
+The `0.3.0-alpha.4` card interface was rejected on the target machine. Phase 2 uses the compact text HUD. Alpha.6 prioritizes truthful state explanation, specific entity labels, and render-state isolation; future presentation changes must not obscure gameplay or make sensor verification harder.

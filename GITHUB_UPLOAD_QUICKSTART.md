@@ -25,7 +25,7 @@ The `CI and automatic release` workflow will:
 For this patch the expected automatic tag is:
 
 ```text
-v0.3.0-alpha.5
+v0.3.0-alpha.6
 ```
 
 A version is immutable. If the tag or release already exists, the workflow deliberately fails instead of silently overwriting it. Every future patch supplied for SawBotV1 will include a version bump.

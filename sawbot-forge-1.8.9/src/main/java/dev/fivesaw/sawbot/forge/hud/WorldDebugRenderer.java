@@ -3,6 +3,7 @@ package dev.fivesaw.sawbot.forge.hud;
 import dev.fivesaw.sawbot.common.observation.BlockSemanticCategory;
 import dev.fivesaw.sawbot.common.observation.EgocentricTransform;
 import dev.fivesaw.sawbot.common.observation.EntityObservation;
+import dev.fivesaw.sawbot.common.observation.ItemCategory;
 import dev.fivesaw.sawbot.common.observation.LandmarkObservation;
 import dev.fivesaw.sawbot.common.observation.LocalTerrainSnapshot;
 import dev.fivesaw.sawbot.common.observation.ObservationSnapshot;
@@ -48,8 +49,11 @@ public final class WorldDebugRenderer {
             && !state.inspectorVisible()) return;
         long start = System.nanoTime();
         boolean matrixPushed = false;
+        boolean attributesPushed = false;
         try {
             RenderManager manager = minecraft.getRenderManager();
+            GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+            attributesPushed = true;
             GlStateManager.pushMatrix();
             matrixPushed = true;
             GlStateManager.translate(-manager.viewerPosX, -manager.viewerPosY, -manager.viewerPosZ);
@@ -58,8 +62,10 @@ public final class WorldDebugRenderer {
             if (state.entityOverlayVisible()) renderEntities(snapshot, manager, partialTicks);
             if (state.landmarkOverlayVisible()) renderLandmarks(snapshot, manager);
             renderSelectedBlock(inspector.selectedBlock());
+            if (state.observationsFrozen()) renderFrozenAnchor(snapshot, manager);
         } finally {
             if (matrixPushed) GlStateManager.popMatrix();
+            if (attributesPushed) GL11.glPopAttrib();
             restoreState();
             renderTiming.add(Math.max(0L, System.nanoTime() - start));
         }
@@ -139,10 +145,13 @@ public final class WorldDebugRenderer {
         beginLines(true, 2.0F);
         SelfState self = snapshot.selfState();
         EntityObservation selected = inspector.selectedEntity(snapshot);
-        double eyeX = interpolate(minecraft.thePlayer.lastTickPosX, minecraft.thePlayer.posX, partialTicks);
-        double eyeY = interpolate(minecraft.thePlayer.lastTickPosY, minecraft.thePlayer.posY, partialTicks)
-            + minecraft.thePlayer.getEyeHeight();
-        double eyeZ = interpolate(minecraft.thePlayer.lastTickPosZ, minecraft.thePlayer.posZ, partialTicks);
+        double eyeX = state.observationsFrozen() ? self.absoluteX()
+            : interpolate(minecraft.thePlayer.lastTickPosX, minecraft.thePlayer.posX, partialTicks);
+        double eyeY = state.observationsFrozen() ? self.absoluteY() + minecraft.thePlayer.getEyeHeight()
+            : interpolate(minecraft.thePlayer.lastTickPosY, minecraft.thePlayer.posY, partialTicks)
+                + minecraft.thePlayer.getEyeHeight();
+        double eyeZ = state.observationsFrozen() ? self.absoluteZ()
+            : interpolate(minecraft.thePlayer.lastTickPosZ, minecraft.thePlayer.posZ, partialTicks);
         int tracersDrawn = 0;
         for (EntityObservation entity : snapshot.entities().entities()) {
             double x = self.absoluteX() + EgocentricTransform.worldDx(entity.right(), entity.forward(), self.yawDegrees());
@@ -176,8 +185,12 @@ public final class WorldDebugRenderer {
             double y = self.absoluteY() + entity.up() + entity.height() + 0.35D;
             double z = self.absoluteZ() + EgocentricTransform.worldDz(entity.right(), entity.forward(), self.yawDegrees());
             boolean isSelected = selected != null && selected.trackingId() == entity.trackingId();
-            String label = (isSelected ? "> " : "") + "#" + entity.trackingId() + " " + entity.kind() + " "
-                + EntityVisualStyle.visibilityToken(entity) + " " + entity.teamRelation() + " "
+            String relation = entity.kind() == dev.fivesaw.sawbot.common.observation.EntityKind.PLAYER
+                ? " " + entity.teamRelation() : "";
+            String payload = entity.payloadItemCategory() == ItemCategory.EMPTY.ordinal()
+                ? "" : " " + itemCategoryName(entity.payloadItemCategory());
+            String label = (isSelected ? "> " : "") + "#" + entity.trackingId() + " " + entity.type() + " "
+                + EntityVisualStyle.visibilityToken(entity) + relation + payload + " "
                 + one(entity.distance()) + "m";
             renderLabel(label, x, y, z, manager, EntityVisualStyle.visibilityArgb(entity));
         }
@@ -208,8 +221,24 @@ public final class WorldDebugRenderer {
         beginLines(true, 3.0F);
         drawBox(new AxisAlignedBB(block.worldX() - 0.01D, block.worldY() - 0.01D, block.worldZ() - 0.01D,
             block.worldX() + 1.01D, block.worldY() + 1.01D, block.worldZ() + 1.01D),
-            block.insideTensor() ? 255 : 255, block.insideTensor() ? 255 : 85, 85, 255);
+            255, 255, 85, 255);
         endLines();
+    }
+
+
+    private void renderFrozenAnchor(ObservationSnapshot snapshot, RenderManager manager) {
+        SelfState self = snapshot.selfState();
+        double y = self.absoluteY() + minecraft.thePlayer.getEyeHeight() + 0.55D;
+        beginLines(true, 1.5F);
+        drawBox(new AxisAlignedBB(self.absoluteX() - 0.18D, self.absoluteY(), self.absoluteZ() - 0.18D,
+            self.absoluteX() + 0.18D, self.absoluteY() + 0.36D, self.absoluteZ() + 0.18D), 85, 255, 255, 220);
+        endLines();
+        renderLabel("FROZEN SNAPSHOT #" + snapshot.sequenceNumber(), self.absoluteX(), y, self.absoluteZ(), manager, 0xFF55FFFF);
+    }
+
+    private static String itemCategoryName(int ordinal) {
+        ItemCategory[] values = ItemCategory.values();
+        return ordinal >= 0 && ordinal < values.length ? values[ordinal].name() : "INVALID_ITEM";
     }
 
     private static int[] categoryColor(BlockSemanticCategory category) {
@@ -300,6 +329,9 @@ public final class WorldDebugRenderer {
         GlStateManager.enableTexture2D();
         GlStateManager.enableLighting();
         GlStateManager.disableBlend();
+        GlStateManager.enableAlpha();
+        GlStateManager.enableCull();
+        GlStateManager.color(1F, 1F, 1F, 1F);
     }
 
     private static double interpolate(double previous, double current, float partialTicks) {

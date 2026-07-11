@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0-alpha.6 — Phase 2 runtime hardening and inspector truthfulness
+
+- Clarified immutable freeze semantics: frozen world overlays stay at the captured world coordinates while Minecraft and the player continue moving.
+- Added frozen capture coordinates, distance-from-capture, and a `FROZEN SNAPSHOT` world anchor; `.` explicitly recaptures at the current location.
+- Forced an immediate observation capture when unfreezing to remove the brief stale/orange transition.
+- Bumped the observation schema to `sawbot.observation/0.3` and debug export to `sawbot.snapshot.debug/0.2`.
+- Added a bounded specific `EntityType` vocabulary and dropped-item payload category, replacing vague `LIVING / UNKNOWN` labels for ordinary mobs.
+- Made selected-block outlines consistently yellow; tensor membership is now expressed in text rather than by changing the selection colour.
+- Made successful export and inspector notices transient while preserving longer error visibility.
+- Added complete OpenGL attribute push/restore to prevent overlays from dimming or contaminating the vanilla hotbar/HUD state.
+- Added target-machine runtime validation documentation and expanded offline verification to 539 checks.
+
 ## 0.3.0-alpha.5 — Immediate debug HUD restoration
 
 - Reverted the `0.3.0-alpha.4` glass/card interface completely after target-machine testing showed that it obscured gameplay and made Phase 2 checks harder.

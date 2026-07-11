@@ -34,7 +34,7 @@ public final class ObservationSnapshot {
                                ServerTimingSnapshot serverTiming, TaskStateSnapshot taskState,
                                ActionCommand previousAction, long sensorValidityFlags, SensorTimings sensorTimings) {
         if (clientTick < 0 || monotonicTimestampNanos < 0 || sequenceNumber < 0) throw new IllegalArgumentException("tick/timestamp/sequence");
-        this.schemaVersion = SchemaVersion.OBSERVATION_V0_2;
+        this.schemaVersion = SchemaVersion.OBSERVATION_V0_3;
         this.clientTick = clientTick;
         this.monotonicTimestampNanos = monotonicTimestampNanos;
         this.episodeId = episodeId == null ? new UUID(0L, 0L) : episodeId;
