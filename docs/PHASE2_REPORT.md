@@ -1,7 +1,7 @@
 # PHASE REPORT — Phase 2 Sensor Inspector
 
 Date: 2026-07-10  
-Candidate version: `0.3.0-alpha.1`  
+Candidate version: `0.3.0-alpha.2`  
 Observation schema: unchanged at `sawbot.observation/0.2`  
 Debug export format: `sawbot.snapshot.debug/0.1`
 
@@ -37,6 +37,7 @@ Debug export format: `sawbot.snapshot.debug/0.1`
 - After first target-machine testing, anchored tracers to the live interpolated eye position to eliminate movement jitter.
 - Replaced the single Minecraft visibility result with seven current bounding-box ray samples so LOS/OCC transitions refresh when an entity moves around a wall.
 - Resolved the world-spawn landmark to the nearest loaded standable surface rather than the raw underground save coordinate.
+- Unified entity box, tracer, and label visibility styling so LOS is immediately green and OCC is immediately purple from the same current observation; selection now uses a separate accent outline.
 - Updated GitHub CI, JAR validation, release packaging, version metadata, and reports for Phase 2.
 
 ## Files created
@@ -54,6 +55,7 @@ Inspector and export runtime:
 - `.../inspection/SnapshotJsonWriter.java`
 - `.../inspection/SnapshotExportService.java`
 - `sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.java`
+- `sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.java`
 - `sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/tracking/VisibilitySampler.java`
 
 Evidence and report:
@@ -135,7 +137,10 @@ clean ZIP extraction and manifest comparison
 
 ## Tests
 
-- PASS — `FoundationContractTest` — 521 assertions.
+- PASS — `FoundationContractTest` — 527 assertions.
+- PASS — LOS text, box, label, and tracer resolve from one green visibility style.
+- PASS — OCC text, box, label, and tracer resolve from one purple visibility style.
+- PASS — inconsistent LOS/occlusion flags resolve to an orange warning style.
 - PASS — Phase 0 and Phase 1 contract/safety regression tests.
 - PASS — cardinal and continuous inverse egocentric transforms.
 - PASS — deterministic observation difference counts.
@@ -198,7 +203,7 @@ Occluded loaded entities may be rendered in the controlled private research envi
 ## USER CHECKLIST
 
 - [ ] GitHub CI passes offline verification and the real Loom/Forge build.
-- [ ] `SawBotV1-0.3.0-alpha.1-mc1.8.9.jar` launches with no repeated SawBot error.
+- [ ] `SawBotV1-0.3.0-alpha.2-mc1.8.9.jar` launches with no repeated SawBot error.
 - [ ] F7 opens and closes the Phase 2 panel.
 - [ ] H cycles through all eight pages without hiding Minecraft controls.
 - [ ] B shows the local tensor boundary and coloured non-air cells.
@@ -207,6 +212,7 @@ Occluded loaded entities may be rendered in the controlled private research envi
 - [ ] V disables and re-enables tracers without hiding boxes or labels.
 - [ ] Tracers remain visually anchored while walking and strafing.
 - [ ] Moving an entity behind a wall visibly changes LOS to OCC while its ID remains stable.
+- [ ] The box, label, and tracer switch green ↔ purple on the same update as the LOS/OCC text, including when the entity is selected.
 - [ ] `[` and `]` cycle tracked entities, including an occluded one.
 - [ ] M shows the world-spawn landmark marker on the standable surface rather than underground.
 - [ ] Aiming at a block automatically shows a yellow outline; Summary/Terrain pages display world coordinates, R/U/F offsets, tensor index, state ID, category, flags, and collision class.
@@ -224,7 +230,7 @@ Occluded loaded entities may be rendered in the controlled private research envi
 ## How to test
 
 1. Push the repository and wait for GitHub Actions CI to pass.
-2. Publish or download `v0.3.0-alpha.1` and install only that SawBot JAR.
+2. Publish or download `v0.3.0-alpha.2` and install only that SawBot JAR.
 3. Join the same local test world used for Phase 1.
 4. Open F7 and cycle H through all pages.
 5. Toggle B, C, N, V, and M one at a time before combining them.

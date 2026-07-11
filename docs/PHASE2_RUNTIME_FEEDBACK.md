@@ -2,7 +2,8 @@
 
 Date: 2026-07-10  
 Tested build: `0.3.0-alpha.0`  
-Correction candidate: `0.3.0-alpha.1`
+First correction tested: `0.3.0-alpha.1`  
+Visual-state correction candidate: `0.3.0-alpha.2`
 
 ## Confirmed working on target hardware
 
@@ -34,4 +35,26 @@ Correction candidate: `0.3.0-alpha.1`
 - The world-spawn landmark resolves to the nearest loaded standable surface and refreshes periodically.
 - HUD help explicitly explains automatic yellow block selection.
 
-Phase 2 remains open until these corrections pass the target-machine retest.
+## Target-machine retest of `0.3.0-alpha.1`
+
+Confirmed:
+
+- Tracers remain anchored while walking.
+- V toggles tracers independently.
+- LOS and OCC text switch quickly in both directions.
+- Tracking IDs remain stable through wall transitions.
+- Spawn landmark resolves to the surface.
+- Block selection, stepping, export, differences, safety controls, FPS, and error checks pass.
+
+Remaining defect:
+
+- The text changed immediately, but selected-entity yellow and team-based colours masked or weakened the corresponding visual LOS/OCC transition.
+
+## `0.3.0-alpha.2` correction
+
+- Entity box, tracer, and label now use one current-observation visibility style.
+- `LOS` is bright green; `OCC` is bright purple; inconsistent flags are orange.
+- Selection is a second yellow outline and no longer replaces the visibility colour.
+- OCC opacity is raised so the state does not appear to change only faintly.
+
+Phase 2 remains open only for this focused visual-colour retest.

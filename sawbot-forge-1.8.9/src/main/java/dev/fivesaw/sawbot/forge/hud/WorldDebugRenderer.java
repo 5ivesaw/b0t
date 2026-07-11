@@ -149,12 +149,24 @@ public final class WorldDebugRenderer {
             double y = self.absoluteY() + entity.up();
             double z = self.absoluteZ() + EgocentricTransform.worldDz(entity.right(), entity.forward(), self.yawDegrees());
             double half = Math.max(0.1D, entity.width() * 0.5D);
-            int[] color = entityColor(entity, selected != null && selected.trackingId() == entity.trackingId());
+            boolean isSelected = selected != null && selected.trackingId() == entity.trackingId();
+            int visibilityRgb = EntityVisualStyle.visibilityRgb(entity);
+            int red = EntityVisualStyle.red(visibilityRgb);
+            int green = EntityVisualStyle.green(visibilityRgb);
+            int blue = EntityVisualStyle.blue(visibilityRgb);
             drawBox(new AxisAlignedBB(x - half, y, z - half, x + half, y + entity.height(), z + half),
-                color[0], color[1], color[2], entity.occluded() ? 145 : 230);
+                red, green, blue, entity.occluded() ? 210 : 255);
+            if (isSelected) {
+                double accent = 0.035D;
+                drawBox(new AxisAlignedBB(x - half - accent, y - accent, z - half - accent,
+                    x + half + accent, y + entity.height() + accent, z + half + accent),
+                    EntityVisualStyle.red(EntityVisualStyle.SELECTED_ACCENT_RGB),
+                    EntityVisualStyle.green(EntityVisualStyle.SELECTED_ACCENT_RGB),
+                    EntityVisualStyle.blue(EntityVisualStyle.SELECTED_ACCENT_RGB), 255);
+            }
             if (state.entityTracersVisible() && tracersDrawn < MAX_ENTITY_TRACERS) {
                 drawLine(eyeX, eyeY, eyeZ, x, y + entity.height() * 0.5D, z,
-                    color[0], color[1], color[2], entity.lineOfSight() ? 180 : 80);
+                    red, green, blue, entity.occluded() ? 210 : 255);
                 tracersDrawn++;
             }
         }
@@ -163,9 +175,11 @@ public final class WorldDebugRenderer {
             double x = self.absoluteX() + EgocentricTransform.worldDx(entity.right(), entity.forward(), self.yawDegrees());
             double y = self.absoluteY() + entity.up() + entity.height() + 0.35D;
             double z = self.absoluteZ() + EgocentricTransform.worldDz(entity.right(), entity.forward(), self.yawDegrees());
-            String label = "#" + entity.trackingId() + " " + entity.kind() + " "
-                + (entity.lineOfSight() ? "LOS" : "OCC") + " " + one(entity.distance()) + "m";
-            renderLabel(label, x, y, z, manager, selected != null && selected.trackingId() == entity.trackingId() ? 0xFFFFFF55 : 0xFFFFFFFF);
+            boolean isSelected = selected != null && selected.trackingId() == entity.trackingId();
+            String label = (isSelected ? "> " : "") + "#" + entity.trackingId() + " " + entity.kind() + " "
+                + EntityVisualStyle.visibilityToken(entity) + " " + entity.teamRelation() + " "
+                + one(entity.distance()) + "m";
+            renderLabel(label, x, y, z, manager, EntityVisualStyle.visibilityArgb(entity));
         }
     }
 
@@ -213,15 +227,6 @@ public final class WorldDebugRenderer {
         }
     }
 
-    private static int[] entityColor(EntityObservation entity, boolean selected) {
-        if (selected) return new int[]{255, 255, 85};
-        switch (entity.teamRelation()) {
-            case ENEMY: return new int[]{255, 75, 75};
-            case TEAMMATE: return new int[]{85, 255, 85};
-            case NEUTRAL: return new int[]{85, 200, 255};
-            default: return entity.occluded() ? new int[]{170, 85, 255} : new int[]{220, 220, 220};
-        }
-    }
 
     private static double collisionHeight(int collisionClass) {
         switch (collisionClass) {

@@ -4,7 +4,7 @@
 
 Every push and pull request runs two jobs:
 
-1. **Offline contracts and safety checks** compiles common and Forge-facing source for Java 8 against narrow verification stubs, runs 521 assertions, generates a full debug snapshot, parses the JSON, and verifies exact terrain/map/inventory bounds.
+1. **Offline contracts and safety checks** compiles common and Forge-facing source for Java 8 against narrow verification stubs, runs 527 assertions, generates a full debug snapshot, parses the JSON, and verifies exact terrain/map/inventory bounds.
 2. **Build Forge 1.8.9 mod** installs Java 8 and Java 17, runs Gradle 8.8 with Architectury Loom, remaps the Forge JAR, validates required Phase 2 classes and metadata, and uploads release-shaped artifacts.
 
 The real Forge dependency resolution/remapping occurs on GitHub because the artifact-generation environment may not have network access to Minecraft/Forge/Loom repositories.
@@ -13,26 +13,26 @@ The real Forge dependency resolution/remapping occurs on GitHub because the arti
 
 ```powershell
 git add -A
-git commit -m "Implement SawBotV1 Phase 2 sensor inspector"
+git commit -m "Make Phase 2 LOS OCC colours update immediately"
 git push origin main
 ```
 
 Wait for both CI jobs to pass before publishing a tag.
 
-## Publishing `0.3.0-alpha.1`
+## Publishing `0.3.0-alpha.2`
 
 Website method:
 
 1. Open **Actions → Release → Run workflow**.
-2. Enter `0.3.0-alpha.1` without the `v` prefix.
+2. Enter `0.3.0-alpha.2` without the `v` prefix.
 3. Keep prerelease enabled.
 4. Run the workflow.
 
 Tag method:
 
 ```powershell
-git tag -a v0.3.0-alpha.1 -m "SawBotV1 Phase 2 sensor inspector"
-git push origin v0.3.0-alpha.1
+git tag -a v0.3.0-alpha.2 -m "SawBotV1 Phase 2 visibility colour fix"
+git push origin v0.3.0-alpha.2
 ```
 
 ## Release assets

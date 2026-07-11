@@ -4,7 +4,7 @@ SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a 
 
 ## Current gate
 
-**Phase 0 and Phase 1 passed real runtime acceptance on the target machine.** This repository contains the **Phase 2 — Sensor Inspector runtime-correction candidate** (`0.3.0-alpha.1`). Phase 2 must pass its GitHub build and in-client checklist before Phase 3 telemetry begins.
+**Phase 0 and Phase 1 passed real runtime acceptance on the target machine.** This repository contains the **Phase 2 — Sensor Inspector runtime-correction candidate** (`0.3.0-alpha.2`). Phase 2 has passed the functional runtime checklist and is awaiting only the `0.3.0-alpha.2` visibility-colour retest before Phase 3 telemetry begins.
 
 Implemented foundation:
 
@@ -13,6 +13,8 @@ Implemented foundation:
 - Bounded 13×9×13 egocentric terrain tensor
 - Incremental 33×33 mid-range map
 - Stable loaded-entity tracking with LOS, occlusion, attackability, and team relation
+- Immediate green LOS / purple OCC box, label, and tracer styling from the current observation
+- Separate yellow selection accent that never masks visibility state
 - Fixed 41-slot inventory/resource representation
 - Bounded landmarks, events, timing, validity, and performance fields
 - Immutable freeze independent of enable/disable state
@@ -38,7 +40,7 @@ The complete locked brief is preserved in [`docs/PROJECT_BRIEF.txt`](docs/PROJEC
 Every push or pull request runs:
 
 1. Java 8-targeted offline contract, safety, sensor, and inspector verification.
-2. The 508-assertion regression suite.
+2. The 527-assertion regression suite.
 3. Generated snapshot JSON parsing and exact bounded-array checks.
 4. A real remapped Forge 1.8.9 build on GitHub.
 5. Release-JAR structure/version validation.
@@ -47,11 +49,11 @@ Every push or pull request runs:
 To publish this candidate:
 
 1. Open **Actions → Release → Run workflow**.
-2. Enter `0.3.0-alpha.1`.
+2. Enter `0.3.0-alpha.2`.
 3. Keep prerelease enabled.
 4. Run the workflow.
 
-The workflow creates tag `v0.3.0-alpha.1` and publishes the installable JAR, sources, checksums, Phase 2 report, and earlier acceptance evidence.
+The workflow creates tag `v0.3.0-alpha.2` and publishes the installable JAR, sources, checksums, Phase 2 report, and earlier acceptance evidence.
 
 ## Toolchain
 
@@ -74,7 +76,7 @@ Install JDK 17 and JDK 8, then run:
 The final remapped mod is written to:
 
 ```text
-sawbot-forge-1.8.9/build/libs/SawBotV1-0.3.0-alpha.1-mc1.8.9.jar
+sawbot-forge-1.8.9/build/libs/SawBotV1-0.3.0-alpha.2-mc1.8.9.jar
 ```
 
 Launch a development client with:
@@ -89,7 +91,7 @@ Launch a development client with:
 bash tools/offline-verify.sh
 ```
 
-This verifies Java 8 source compatibility against narrow APIs, runs 521 assertions, emits and parses a complete debug snapshot, and validates repository/release structure. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
+This verifies Java 8 source compatibility against narrow APIs, runs 527 assertions, emits and parses a complete debug snapshot, and validates repository/release structure. It does not replace the real GitHub Forge/Loom build or in-client acceptance test.
 
 ## Controls
 

@@ -94,7 +94,7 @@ public final class FoundationHud {
         draw("Terrain changed "+snapshot.localTerrain().changedCellCount()+"  facing "+snapshot.localTerrain().facingQuadrant()+"  map rows/tick "+snapshot.midRangeMap().rowsUpdatedThisTick(),x,y,WHITE); y+=10;
         draw("Inventory Fe/Au/D/E/W "+snapshot.inventory().iron()+"/"+snapshot.inventory().gold()+"/"+snapshot.inventory().diamonds()+"/"+snapshot.inventory().emeralds()+"/"+snapshot.inventory().wool(),x,y,WHITE); y+=10;
         EntityObservation selected=inspector.selectedEntity(snapshot);
-        draw(selected==null?"Selected entity: none":"Selected entity #"+selected.trackingId()+" "+selected.kind()+" "+(selected.lineOfSight()?"LOS":"OCC")+" distance "+one(selected.distance()),x,y,selected==null?MUTED:WHITE); y+=10;
+        draw(selected==null?"Selected entity: none":"Selected entity #"+selected.trackingId()+" "+selected.kind()+" "+EntityVisualStyle.visibilityToken(selected)+" distance "+one(selected.distance()),x,y,selected==null?MUTED:EntityVisualStyle.visibilityArgb(selected)); y+=10;
         BlockInspection block=inspector.selectedBlock();
         draw(block==null?"Selected block: aim at a block":"Selected block "+block.worldX()+","+block.worldY()+","+block.worldZ()+" "+block.category()+" "+(block.insideTensor()?"cell "+block.terrainIndex():"outside tensor"),x,y,block==null?MUTED:WHITE); y+=10;
         return y;
@@ -133,13 +133,13 @@ public final class FoundationHud {
         EntityObservation e=inspector.selectedEntity(snapshot);
         draw("tracked "+snapshot.entities().count()+" droppedByBound "+snapshot.entities().droppedCount()+"  use [ and ]",x,y,WHITE);y+=10;
         if(e==null){draw("No selected entity.",x,y,MUTED);y+=10;return y;}
-        draw("#"+e.trackingId()+" mc#"+e.minecraftEntityId()+" "+e.kind()+" team "+e.teamRelation()+" conf "+one(e.trackingConfidence()),x,y,WHITE);y+=10;
+        draw("#"+e.trackingId()+" mc#"+e.minecraftEntityId()+" "+e.kind()+" "+EntityVisualStyle.visibilityToken(e)+" team "+e.teamRelation()+" conf "+one(e.trackingConfidence()),x,y,EntityVisualStyle.visibilityArgb(e));y+=10;
         draw("R/U/F "+one(e.right())+"/"+one(e.up())+"/"+one(e.forward())+" distance "+one(e.distance()),x,y,WHITE);y+=10;
         draw("velocity "+three(e.velocityRight())+"/"+three(e.velocityUp())+"/"+three(e.velocityForward()),x,y,WHITE);y+=10;
         draw("accel "+three(e.accelerationRight())+"/"+three(e.accelerationUp())+"/"+three(e.accelerationForward()),x,y,WHITE);y+=10;
         draw("yaw/pitch "+one(e.yawDegrees())+"/"+one(e.pitchDegrees())+" size "+one(e.width())+"x"+one(e.height()),x,y,WHITE);y+=10;
         draw("health/armour "+one(e.health())+"/"+one(e.armour())+" heldCat "+e.heldItemCategory()+" hurt "+e.hurtTimerTicks(),x,y,WHITE);y+=10;
-        draw("ground/sprint/sneak "+bits(e.onGround(),e.sprinting(),e.sneaking())+" LOS/OCC/attack/load "+bits(e.lineOfSight(),e.occluded(),e.attackable(),e.loaded()),x,y,WHITE);y+=10;
+        draw("ground/sprint/sneak "+bits(e.onGround(),e.sprinting(),e.sneaking())+" LOS/OCC/attack/load "+bits(e.lineOfSight(),e.occluded(),e.attackable(),e.loaded()),x,y,EntityVisualStyle.visibilityArgb(e));y+=10;
         StringBuilder ids=new StringBuilder("IDs ");for(EntityObservation item:snapshot.entities().entities()){if(ids.length()>90)break;ids.append(item.trackingId()).append(item.lineOfSight()?"L ":"O ");}
         draw(ids.toString(),x,y,MUTED);y+=10;return y;
     }

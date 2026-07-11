@@ -63,7 +63,7 @@ Evidence: `docs/PHASE1_ACCEPTANCE.md`.
 
 ## Phase 2 — Sensor inspector
 
-Implemented in candidate `0.3.0-alpha.1`:
+Implemented through candidate `0.3.0-alpha.2`:
 
 - [x] Independently toggleable terrain, collision/support, entity boxes, entity tracers, and landmark overlays.
 - [x] Selected block decoding from frozen snapshot coordinates.
@@ -82,18 +82,19 @@ Runtime acceptance required:
 - [ ] Updated JAR launches without repeated SawBot errors.
 - [ ] Every inspector page is usable at 1366×768.
 - [ ] Terrain and collision overlays correspond to selected model cells.
-- [ ] Entity boxes and IDs remain stable.
-- [ ] LOS/OCC updates in both directions when entities move around cover.
-- [ ] V toggles tracers independently and tracers remain anchored while walking.
-- [ ] World-spawn landmark resolves to the standable surface instead of underground.
-- [ ] One `.` press while frozen increments observation sequence exactly once.
-- [ ] O produces a valid bounded JSON export matching the HUD sequence.
-- [ ] Difference page responds to known changes.
-- [ ] F10/F9/F12 safety controls remain authoritative.
-- [ ] Overlay-off FPS remains equivalent to Phase 1.
+- [x] Entity boxes and IDs remain stable.
+- [ ] Box, tracer, and label colour switch immediately with LOS/OCC text, including while selected.
+- [x] LOS/OCC updates in both directions when entities move around cover.
+- [x] V toggles tracers independently and tracers remain anchored while walking.
+- [x] World-spawn landmark resolves to the standable surface instead of underground.
+- [x] One `.` press while frozen increments observation sequence exactly once.
+- [x] O produces a valid bounded JSON export matching the HUD sequence.
+- [x] Difference page responds to known changes.
+- [x] F10/F9/F12 safety controls remain authoritative.
+- [x] Overlay-off FPS remains equivalent to Phase 1.
 - [ ] Individual overlay costs are measured without serious FPS collapse.
-- [ ] Five-minute inspector test has no repeated SawBot errors.
+- [x] Five-minute inspector test has no repeated SawBot errors.
 
-**Gate: PENDING `0.3.0-alpha.1` CORRECTION RETEST.**
+**Gate: PENDING `0.3.0-alpha.2` VISUAL-COLOUR RETEST.**
 
 No Phase 3 telemetry implementation begins before this checklist passes.

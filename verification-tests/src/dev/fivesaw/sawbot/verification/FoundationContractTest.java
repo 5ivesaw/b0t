@@ -9,6 +9,7 @@ import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.forge.inspection.SnapshotJsonWriter;
+import dev.fivesaw.sawbot.forge.hud.EntityVisualStyle;
 import dev.fivesaw.sawbot.forge.map.LandmarkSensor;
 import java.io.StringWriter;
 import dev.fivesaw.sawbot.forge.safety.SawBotMode;
@@ -53,6 +54,7 @@ public final class FoundationContractTest {
         safetyControllerReleasesEveryHeldControl();
         observationFreezeIsIndependentOfEnableState();
         tracerToggleIsIndependentOfEntityBoxes();
+        entityVisualStyleFollowsCurrentVisibility();
         phase1PipelineCreatesBoundedSnapshot();
         frozenPipelinePreservesSnapshot();
         egocentricInverseTransformsAreStable();
@@ -127,6 +129,19 @@ public final class FoundationContractTest {
     }
 
     private static ObservationSnapshot pipelineSnapshot;
+
+    private static void entityVisualStyleFollowsCurrentVisibility(){
+        EntityObservation los=new EntityObservation(7,70,EntityKind.PLAYER,TeamRelation.ENEMY,1,0,3,0,0,0,0,0,0,0,0,0.6f,1.8f,20,0,3,0,0,true,false,false,true,false,true,true,1f);
+        EntityObservation occ=new EntityObservation(7,70,EntityKind.PLAYER,TeamRelation.ENEMY,1,0,3,0,0,0,0,0,0,0,0,0.6f,1.8f,20,0,3,0,0,true,false,false,false,true,false,true,1f);
+        EntityObservation invalid=new EntityObservation(7,70,EntityKind.PLAYER,TeamRelation.ENEMY,1,0,3,0,0,0,0,0,0,0,0,0.6f,1.8f,20,0,3,0,0,true,false,false,true,true,false,true,1f);
+        require(EntityVisualStyle.visibilityRgb(los)==EntityVisualStyle.LOS_RGB,"LOS visual is immediate green");
+        require(EntityVisualStyle.visibilityRgb(occ)==EntityVisualStyle.OCCLUDED_RGB,"OCC visual is immediate purple");
+        require(EntityVisualStyle.visibilityRgb(invalid)==EntityVisualStyle.INCONSISTENT_RGB,"inconsistent visibility warns orange");
+        require("LOS".equals(EntityVisualStyle.visibilityToken(los)),"LOS text and colour share state");
+        require("OCC".equals(EntityVisualStyle.visibilityToken(occ)),"OCC text and colour share state");
+        require(EntityVisualStyle.visibilityArgb(los)!=(EntityVisualStyle.visibilityArgb(occ)),"visibility colours differ");
+    }
+
     private static void phase1PipelineCreatesBoundedSnapshot(){Minecraft minecraft=Minecraft.getMinecraft();World world=new World();EntityPlayerSP player=new EntityPlayerSP();player.posX=0.5;player.posY=64;player.posZ=0.5;player.onGround=true;world.setBlockStateForTest(new BlockPos(0,63,0),Blocks.wool.getDefaultState());player.inventory.mainInventory[0]=new ItemStack(Items.iron_ingot,4);player.inventory.mainInventory[1]=new ItemStack(new ItemBlock(Blocks.wool),16);EntityPlayer enemy=new EntityPlayer();enemy.posX=3;enemy.posY=64;enemy.posZ=0.5;world.loadedEntityList.add(enemy);minecraft.theWorld=world;minecraft.thePlayer=player;ObservationPipeline pipeline=new ObservationPipeline(minecraft,2);pipeline.tick(1,false);pipeline.tick(2,false);pipelineSnapshot=pipeline.latest();require(pipelineSnapshot!=null,"pipeline snapshot");require(pipelineSnapshot.schemaVersion().equals(SchemaVersion.OBSERVATION_V0_2),"pipeline schema");require(pipelineSnapshot.localTerrain().blockStateIds().length==LocalTerrainSnapshot.CELL_COUNT,"terrain bounded");require(pipelineSnapshot.midRangeMap().relativeSurfaceY().length==MidRangeMapSnapshot.COLUMN_COUNT,"map bounded");require(pipelineSnapshot.entities().count()==1,"entity captured");require(pipelineSnapshot.inventory().iron()==4&&pipelineSnapshot.inventory().wool()==16,"resources captured");require((pipelineSnapshot.sensorValidityFlags()&SensorValidity.ALL_PHASE1)==SensorValidity.ALL_PHASE1,"validity flags");require(pipelineSnapshot.sensorTimings().totalNanos()>=0,"timing captured");}
     private static void frozenPipelinePreservesSnapshot(){Minecraft minecraft=Minecraft.getMinecraft();ObservationPipeline pipeline=new ObservationPipeline(minecraft,1);pipeline.tick(10,false);ObservationSnapshot before=pipeline.latest();require(before!=null,"freeze baseline");pipeline.tick(11,true);require(pipeline.latest().sequenceNumber()==before.sequenceNumber(),"frozen sequence stable");}
 

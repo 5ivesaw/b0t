@@ -22,6 +22,7 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/forge/inspection/InspectorController.class",
     "dev/fivesaw/sawbot/forge/inspection/SnapshotExportService.class",
     "dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class",
+    "dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.class",
 }
 
 

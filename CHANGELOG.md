@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0-alpha.2 — Immediate LOS/OCC visual-state correction
+
+- Made LOS/OCC visibility the primary colour source for entity boxes, labels, and tracers.
+- LOS now renders bright green and OCC renders bright purple on the same observation that changes the text.
+- Removed selected-entity yellow as a colour override; selection now uses a separate yellow accent outline.
+- Increased occluded box/tracer opacity so OCC state remains obvious without hiding the entity status.
+- Added an orange warning state for logically inconsistent LOS/occlusion flags.
+- Added team relation to world labels while preserving visibility-colour semantics.
+- Added regression checks proving text and visual colour derive from the same current entity observation.
+
 ## 0.3.0-alpha.1 — Phase 2 runtime correction
 
 - Recomputed entity line of sight every observation from seven current bounding-box ray samples.

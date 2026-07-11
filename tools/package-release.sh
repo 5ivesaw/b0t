@@ -46,7 +46,7 @@ Phase 2 sensor-inspector candidate for Minecraft Forge 1.8.9.
 
 ## Scope
 
-This release adds independently toggleable terrain, collision/support, entity boxes, entity tracers, and landmark overlays; selected block and tracked-entity inspection; eight compact HUD pages; immutable current-versus-previous snapshot comparison; bounded asynchronous human-readable JSON export; and one-observation-tick stepping while frozen. It also corrects moving tracer anchoring, dynamic LOS/OCC transitions, and underground spawn-landmark placement. It preserves Observation Contract v0.2 and the accepted Phase 1 sensors.
+This release adds independently toggleable terrain, collision/support, entity boxes, entity tracers, and landmark overlays; selected block and tracked-entity inspection; eight compact HUD pages; immutable current-versus-previous snapshot comparison; bounded asynchronous human-readable JSON export; and one-observation-tick stepping while frozen. It also corrects moving tracer anchoring, dynamic LOS/OCC transitions, underground spawn-landmark placement, and stale or masked LOS/OCC visual colours. LOS renders green and OCC renders purple from the same current observation used by the text label; selection uses a separate accent outline. It preserves Observation Contract v0.2 and the accepted Phase 1 sensors.
 
 It intentionally contains no neural model, autonomous actuator loop, Bedwars policy, screen capture, OCR, packet advantage, reach modification, aim assist, scaffold controller, or public-server automation.
 NOTES
