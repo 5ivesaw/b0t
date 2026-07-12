@@ -221,3 +221,34 @@ Implemented in candidate `0.8.0-alpha.0`:
 Evidence: `docs/PHASE7_REPORT.md`, `docs/ADAPTIVE_NAVIGATION.md`,
 `docs/HYBRID_ARCHITECTURE.md`, `docs/NAVIGATION_BODY.md`, and
 `NavigationBodyContractTest`.
+
+## Phase 8 — Real-time bridging specialist
+
+Implemented in candidate `0.9.0-alpha.0`:
+
+- [x] Brain/body boundary keeps bridge destination/strategy outside the mechanical
+      specialist.
+- [x] Bounded straight and staircase-diagonal support corridors replan from the
+      player's actual current feet cell.
+- [x] Only full solid hotbar `ItemBlock` stacks are eligible; the largest stack is
+      selected and the original slot is restored on release.
+- [x] Visible yaw/pitch alignment remains bounded per client tick.
+- [x] Placement requires a legal adjacent support face, normal reach, and matching
+      ray trace.
+- [x] Exactly one deliberate client right-click attempt is followed by bounded
+      world-state confirmation.
+- [x] Forward/sneak advance is allowed only after the target support is observed.
+- [x] Navigation may hand off after `NO_PATH`/`BLOCKED`; manual `R` is a private/local
+      mechanical test harness only.
+- [x] HUD and world renderer expose plan, current support, state, attempts,
+      confirmations, placements, failures, replans, retargets, slot, source, and reason.
+- [x] F9, F12, physical takeover, disable, freeze, GUI pause, model disconnect,
+      exceptions, and world unload release inputs and restore the original slot.
+- [x] Corridor/body tests cover straight/diagonal bounds, three-block placement,
+      confirmation, block consumption, no-block stop, void stop, slot restoration,
+      and complete input release.
+
+**Gate: SOURCE/OFFLINE PASS; INTEGRATED RUNTIME ACCEPTANCE DEFERRED TO THE NEXT MAJOR REVIEW.**
+
+Evidence: `docs/PHASE8_REPORT.md`, `docs/BRIDGING_BODY.md`,
+`docs/HYBRID_ARCHITECTURE.md`, and `BridgingBodyContractTest`.

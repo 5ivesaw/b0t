@@ -17,3 +17,4 @@ key.sawbotv1.export=Export Current Snapshot
 key.sawbotv1.telemetry=Start/stop structured telemetry
 
 key.sawbotv1.waypoint=Set/Clear Learned Navigation Waypoint
+key.sawbotv1.bridge=Toggle bridge specialist intent

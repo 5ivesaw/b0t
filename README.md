@@ -1,56 +1,68 @@
 # SawBotV1
 
-SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a visible, inspectable neural agent. Minecraft is the body: the mod reads structured internal state, never screen pixels, and applies only legitimate client controls in local/private test environments.
+SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a
+visible, inspectable hybrid agent. Minecraft is the body: the mod reads structured
+internal state, never screen pixels, and applies only legitimate client controls in
+local/private test environments.
 
 ## Current gate
 
-Phases 0–2 passed target-machine runtime acceptance. Phase 3 telemetry, Phase 4 bridge/actuator infrastructure, and the Phase 5 learned-action experiment remain preserved. This repository contains **Phase 7 — Real-Time Adaptive Navigation** (`0.8.0-alpha.0`).
+Phases 0–2 passed target-machine runtime acceptance. Later runtime refinement is
+intentionally grouped into a future integration pass while the body architecture is
+built out. This repository contains **Phase 8 — Real-Time Bridging Specialist**
+(`0.9.0-alpha.0`).
 
 The runtime separates intelligence from mechanics:
 
 - learned brain: goals, priorities, targets, tactics, risk, and specialist selection
-- deterministic body: pathfinding, real-time movement control, camera control, jumping, safety, stuck recovery, and input ownership
-
-The navigation body no longer treats a route as a list of mandatory block centres. It continuously re-anchors to the player's actual position, follows a safe route corridor, skips unnecessary nodes, validates live geometry, probes several local headings each tick, and hot-swaps rolling current-position replans without routine stop/start movement.
+- deterministic bodies: navigation, bridging, movement, camera, placement geometry,
+  safety, confirmation, recovery, and input ownership
 
 Implemented contracts and systems:
 
 - Observation `sawbot.observation/0.3`
 - Action `sawbot.action/0.1`
 - Telemetry `sawbot.telemetry/0.1`
-- Bridge `sawbot.bridge/0.1`
+- Brain bridge `sawbot.bridge/0.1`
 - Bounded sensors, inspector, overlays, freeze/step, and export
 - Structured telemetry validation, replay, CRC, and recovery
-- Non-blocking model bridge and safe fallback actuator
-- Anytime bounded A* and provisional frontier routes
-- 20 Hz live corridor validation and local steering candidates
-- Current-position rolling replanning and active-route hot swapping
-- Sustained movement, responsive visible turning, jumping, sprinting, and recovery
-- Physical-input restoration and explicit F9/F12 feedback
+- Non-blocking local model transport and safe fallback actuator
+- Anytime bounded A*, live route validation, rolling current-position replanning,
+  sustained movement, visible turning, jumping, and recovery
+- Legal short-gap bridging with block selection, visible alignment, normal reach and
+  ray-trace validation, deliberate placement, world confirmation, cautious advance,
+  and full release
+- Explicit F9/F12/physical-input ownership priority
 - Automatic GitHub build, tag, and release
 
-## Phase 7 direct navigation
+## Phase 8 body controls
 
-1. Aim at a reachable block and press `G`.
-2. Press `F10`.
-3. The navigation specialist plans and follows the visible adaptive corridor.
-4. Press `F9`, provide physical input, or press `F12` to return control immediately.
-5. Re-enable after moving manually: the next route starts from the new current position.
-6. Use `Shift+G` to clear the goal.
+1. Aim at a reachable block and press `G` to set the destination.
+2. Press `F10` to enable the body.
+3. Navigation follows live terrain toward the destination.
+4. If navigation reaches a bounded unsupported gap and reports `NO_PATH`/`BLOCKED`,
+   the bridging specialist may take ownership, place confirmed support, cross, and
+   return control to navigation.
+5. `R` explicitly arms/disarms bridging for private/local mechanical testing.
+6. `Shift+R` clears manual bridge intent.
+7. `F9`, physical input, or `F12` releases every owned input immediately.
 
-The Phase 5 model remains a historical experiment. Future learned brains select high-level goals while deterministic specialists execute mechanics.
+The brain chooses whether and where to bridge. The body never chooses the Bedwars
+objective or strategic destination.
 
 ## Build
 
-A push to `main` verifies, builds, remaps, tags `v0.8.0-alpha.0`, and publishes the exact tested release artifact.
+A push to `main` verifies, builds, remaps, tags `v0.9.0-alpha.0`, and publishes the
+exact tested release artifact.
 
 ```powershell
 git add -A
-git commit -m "Implement Phase 7 real-time adaptive navigation"
+git commit -m "Implement Phase 8 real-time bridging specialist"
 git push origin main
 ```
 
-Toolchain: Gradle 8.8, Architectury Loom `0.10.0.5`, Java 17 for Gradle, Java 8 bytecode, Forge `1.8.9-11.15.1.2318-1.8.9`, MCP `stable_22`.
+Toolchain: Gradle 8.8, Architectury Loom `0.10.0.5`, Java 17 for Gradle,
+Java 8 bytecode, Forge `1.8.9-11.15.1.2318-1.8.9`, MCP `stable_22`.
 
 ## Controls
 
@@ -59,8 +71,10 @@ Toolchain: Gradle 8.8, Architectury Loom `0.10.0.5`, Java 17 for Gradle, Java 8 
 | F10 | Enable/disable the selected body or connected brain |
 | F9 | Immediate manual takeover |
 | F12 | Emergency release |
-| G | Set navigation waypoint above aimed block |
-| Shift+G | Clear navigation waypoint |
+| G | Set navigation/bridge destination above aimed block |
+| Shift+G | Clear destination |
+| R | Toggle manual bridging specialist intent |
+| Shift+R | Clear manual bridging intent |
 | F7 | Compact inspector |
 | H | Next inspector page |
 | P / . | Freeze/unfreeze / single observation step |
@@ -71,18 +85,18 @@ Toolchain: Gradle 8.8, Architectury Loom `0.10.0.5`, Java 17 for Gradle, Java 8 
 
 ## Reports
 
+- `docs/PHASE8_REPORT.md`
+- `docs/BRIDGING_BODY.md`
 - `docs/PHASE7_REPORT.md`
 - `docs/ADAPTIVE_NAVIGATION.md`
 - `docs/HYBRID_ARCHITECTURE.md`
 - `docs/NAVIGATION_BODY.md`
-- `docs/PHASE6_REPORT.md`
-- `docs/PHASE5_REPORT.md`
-- `docs/WAYPOINT_MODEL.md`
-- `docs/PHASE4_RUNTIME_FINDINGS.md`
-- `docs/MODEL_BRIDGE_PROTOCOL.md`
 - `docs/PHASE_GATES.md`
 - `docs/PROJECT_BRIEF.txt`
 
 ## Safety scope
 
-Autonomous input is restricted to single-player and explicitly configured owned/private environments. Public-server automation, anti-cheat bypasses, authentication bypasses, packet advantage, altered reach, impossible placement, teleportation, and silent server-only controls are prohibited.
+Autonomous input is restricted to single-player and explicitly configured
+owned/private environments. Public-server automation, anti-cheat bypasses,
+authentication bypasses, packet advantage, altered reach, impossible placement,
+teleportation, and silent server-only controls are prohibited.

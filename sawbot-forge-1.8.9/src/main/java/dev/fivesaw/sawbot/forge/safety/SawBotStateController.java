@@ -37,7 +37,7 @@ public final class SawBotStateController {
     public void enable() {
         mode = SawBotMode.ENABLED;
         lastStopReason = "enabled";
-        logger.warn("SawBotV1 Phase 7 adaptive control enabled for the configured private/local scope.");
+        logger.warn("SawBotV1 Phase 8 hybrid specialist control enabled for the configured private/local scope.");
     }
 
     /** Snapshot freezing remains independent from autonomous enable/disable state. */

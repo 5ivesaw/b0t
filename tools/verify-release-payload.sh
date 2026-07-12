@@ -8,6 +8,8 @@ required=(
   "SawBotV1-$VERSION-sources.jar"
   "SHA256SUMS.txt"
   "release-notes.md"
+  "PHASE8_REPORT.md"
+  "BRIDGING_BODY.md"
   "PHASE7_REPORT.md"
   "ADAPTIVE_NAVIGATION.md"
   "PHASE6_REPORT.md"
@@ -29,8 +31,10 @@ required=(
   "waypoint_eval_v0.1.json"
   "waypoint_failures_v0.1.jsonl"
 )
-for file in "${required[@]}"; do [[ -f "$DIST/$file" ]] || { echo "ERROR: release payload is missing $DIST/$file" >&2; exit 2; }; done
+for file in "${required[@]}"; do
+  [[ -f "$DIST/$file" ]] || { echo "ERROR: release payload is missing $DIST/$file" >&2; exit 2; }
+done
 python3 "$ROOT/tools/verify-built-jar.py" "$DIST/SawBotV1-$VERSION-mc1.8.9.jar" --expected-version "$VERSION"
 python3 "$ROOT/sawbot-trainer/waypoint/verify_phase5.py"
 (cd "$DIST" && sha256sum -c SHA256SUMS.txt)
-printf 'PASS verified Phase 7 release payload for %s\n' "$VERSION"
+printf 'PASS verified Phase 8 release payload for %s\n' "$VERSION"

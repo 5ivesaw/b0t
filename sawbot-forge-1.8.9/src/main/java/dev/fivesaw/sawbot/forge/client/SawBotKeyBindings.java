@@ -24,6 +24,7 @@ public final class SawBotKeyBindings {
     public final KeyBinding exportSnapshot = new KeyBinding("key.sawbotv1.export", Keyboard.KEY_O, CATEGORY);
     public final KeyBinding toggleTelemetry = new KeyBinding("key.sawbotv1.telemetry", Keyboard.KEY_K, CATEGORY);
     public final KeyBinding setNavigationWaypoint = new KeyBinding("key.sawbotv1.waypoint", Keyboard.KEY_G, CATEGORY);
+    public final KeyBinding toggleBridgeIntent = new KeyBinding("key.sawbotv1.bridge", Keyboard.KEY_R, CATEGORY);
 
     public void register() {
         ClientRegistry.registerKeyBinding(toggleEnabled);
@@ -43,5 +44,6 @@ public final class SawBotKeyBindings {
         ClientRegistry.registerKeyBinding(exportSnapshot);
         ClientRegistry.registerKeyBinding(toggleTelemetry);
         ClientRegistry.registerKeyBinding(setNavigationWaypoint);
+        ClientRegistry.registerKeyBinding(toggleBridgeIntent);
     }
 }

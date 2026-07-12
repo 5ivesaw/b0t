@@ -1,4 +1,4 @@
-# Repository tree — Phase 7 adaptive navigation candidate
+# Repository tree — Phase 8 bridging specialist candidate
 
 ```text
 SawBotV1/
@@ -18,19 +18,18 @@ SawBotV1/
 │   ├── HYBRID_ARCHITECTURE.md
 │   ├── ADAPTIVE_NAVIGATION.md
 │   ├── NAVIGATION_BODY.md
+│   ├── BRIDGING_BODY.md
 │   ├── PERFORMANCE_BUDGET.md
 │   ├── OBSERVATION_CONTRACT.md
 │   ├── ACTION_CONTRACT.md
 │   ├── TELEMETRY_FORMAT.md
 │   ├── PHASE_GATES.md
+│   ├── PHASE8_REPORT.md
 │   ├── PHASE7_REPORT.md
-│   ├── PHASE6_REPORT.md
-│   ├── PHASE5_REPORT.md
-│   ├── PHASE4_REPORT.md
-│   ├── PHASE3_REPORT.md
-│   └── acceptance, release, audit, and historical evidence
+│   └── prior reports, acceptance, release, audit, and historical evidence
 ├── sawbot-common/src/main/java/dev/fivesaw/sawbot/common/
 │   ├── action/
+│   ├── bridging/        # bounded corridor and placement-step contract
 │   ├── events/
 │   ├── navigation/      # cells/path, adaptive cursor, bounded anytime A*
 │   ├── observation/
@@ -40,9 +39,10 @@ SawBotV1/
 ├── sawbot-forge-1.8.9/src/main/
 │   ├── java/dev/fivesaw/sawbot/forge/
 │   │   ├── actuator/    # validated fallback low-level action execution
-│   │   ├── client/
+│   │   ├── bridging/    # legal placement/confirmation/advance body
+│   │   ├── client/      # specialist ownership and runtime priority
 │   │   ├── config/
-│   │   ├── hud/         # compact HUD + adaptive route/debug renderer
+│   │   ├── hud/         # compact HUD + navigation/bridge rendering
 │   │   ├── inspection/
 │   │   ├── map/
 │   │   ├── model/       # bounded loopback brain transport
@@ -54,24 +54,23 @@ SawBotV1/
 │   │   └── tracking/
 │   └── resources/
 ├── sawbot-tools/
-│   ├── dataset-validator/validate_telemetry.py
-│   ├── replay-inspector/inspect_telemetry.py
-│   ├── dummy-model/     # transport/actuator fixture
-│   └── benchmark/
 ├── sawbot-trainer/waypoint/  # preserved Phase 5 learned baseline
 ├── sawbot-sim/
 ├── sawbot-arenas/
 ├── prototypes/control-center.html
 ├── verification-stubs/
 ├── verification-tests/
-│   └── .../NavigationBodyContractTest.java
+│   ├── .../NavigationBodyContractTest.java
+│   └── .../BridgingBodyContractTest.java
 └── tools/
     ├── offline-verify.sh
     ├── package-release.sh
     ├── verify-built-jar.py
     ├── verify-release-payload.sh
-    ├── TEST-LATEST-TELEMETRY.bat
-    └── local bootstrap/preflight scripts
+    └── local telemetry/bootstrap/preflight scripts
 ```
 
-Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the mod build. World access remains on the Minecraft client thread. Search and live validation have explicit per-tick, total-node, path-window, and cache bounds.
+Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the mod build. World
+access and mechanical specialist execution remain on the Minecraft client thread.
+Search, corridor size, placement attempts, confirmation waits, route windows, caches,
+and per-tick turn rates have explicit bounds.

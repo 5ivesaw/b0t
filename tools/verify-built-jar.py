@@ -47,6 +47,11 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/common/navigation/AdaptivePathCursor.class",
     "dev/fivesaw/sawbot/forge/navigation/WorldNavigationGrid.class",
     "dev/fivesaw/sawbot/forge/navigation/NavigationBodyController.class",
+    "dev/fivesaw/sawbot/common/bridging/BridgeDirection.class",
+    "dev/fivesaw/sawbot/common/bridging/BridgePlacementStep.class",
+    "dev/fivesaw/sawbot/common/bridging/BridgeCorridorPlan.class",
+    "dev/fivesaw/sawbot/common/bridging/BridgeCorridorPlanner.class",
+    "dev/fivesaw/sawbot/forge/bridging/BridgingBodyController.class",
 }
 
 

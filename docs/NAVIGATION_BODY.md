@@ -45,3 +45,11 @@ inputs. The next enable never blindly resumes the old path.
 The HUD exposes route state, lookahead, deviation, replans, swaps, re-anchors,
 invalidations, detours, live reads, and recovery counters. The world overlay distinguishes
 the current node, active lookahead, and provisional anytime route.
+
+## Bridging handoff
+
+Navigation remains the default movement owner. When live navigation reports
+`NO_PATH` or `BLOCKED` toward the current semantic waypoint, the runtime may offer the
+same bounded destination to the bridging specialist. The bridge body owns inputs only
+while a missing-support corridor exists. After support is confirmed and crossed, it
+releases ownership so navigation replans from the player's new actual position.

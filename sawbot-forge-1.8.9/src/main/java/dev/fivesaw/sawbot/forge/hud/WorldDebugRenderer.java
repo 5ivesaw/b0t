@@ -11,6 +11,8 @@ import dev.fivesaw.sawbot.common.observation.SelfState;
 import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.common.navigation.NavigationCell;
+import dev.fivesaw.sawbot.common.bridging.BridgePlacementStep;
+import dev.fivesaw.sawbot.forge.bridging.BridgingBodyController;
 import dev.fivesaw.sawbot.forge.navigation.NavigationBodyController;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
@@ -34,16 +36,19 @@ public final class WorldDebugRenderer {
     private final SawBotStateController state;
     private final InspectorController inspector;
     private final NavigationBodyController navigationBody;
+    private final BridgingBodyController bridgingBody;
     private final RollingTimingWindow renderTiming;
 
     public WorldDebugRenderer(Minecraft minecraft, SawBotStateController state,
                               InspectorController inspector, NavigationBodyController navigationBody,
-                              int timingWindowSize) {
-        if (minecraft == null || state == null || inspector == null || navigationBody == null) throw new IllegalArgumentException("renderer");
+                              BridgingBodyController bridgingBody, int timingWindowSize) {
+        if (minecraft == null || state == null || inspector == null || navigationBody == null
+            || bridgingBody == null) throw new IllegalArgumentException("renderer");
         this.minecraft = minecraft;
         this.state = state;
         this.inspector = inspector;
         this.navigationBody = navigationBody;
+        this.bridgingBody = bridgingBody;
         this.renderTiming = new RollingTimingWindow(timingWindowSize);
     }
 
@@ -51,7 +56,8 @@ public final class WorldDebugRenderer {
         if (snapshot == null || minecraft.theWorld == null || minecraft.thePlayer == null) return;
         if (!state.terrainOverlayVisible() && !state.collisionOverlayVisible()
             && !state.entityOverlayVisible() && !state.landmarkOverlayVisible()
-            && !state.inspectorVisible() && navigationBody.pathCells().isEmpty()) return;
+            && !state.inspectorVisible() && navigationBody.pathCells().isEmpty()
+            && bridgingBody.planSteps().isEmpty()) return;
         long start = System.nanoTime();
         boolean matrixPushed = false;
         try {
@@ -65,6 +71,7 @@ public final class WorldDebugRenderer {
             if (state.entityOverlayVisible()) renderEntities(snapshot, manager, partialTicks);
             if (state.landmarkOverlayVisible()) renderLandmarks(snapshot, manager);
             if (!navigationBody.pathCells().isEmpty()) renderNavigationPath();
+            if (!bridgingBody.planSteps().isEmpty()) renderBridgePlan();
             if (state.inspectorVisible()) renderSelectedBlock(inspector.selectedBlock());
             if (state.observationsFrozen()) renderFrozenAnchor(snapshot, manager);
         } finally {
@@ -247,6 +254,32 @@ public final class WorldDebugRenderer {
                 NavigationCell next = cells.get(index + 1);
                 drawLine(x, y + 0.08D, z, next.centerX(), next.centerY() + 0.16D,
                     next.centerZ(), red, green, blue, 230);
+            }
+        }
+        endLines();
+    }
+
+    private void renderBridgePlan() {
+        java.util.List<BridgePlacementStep> steps = bridgingBody.planSteps();
+        if (steps.isEmpty()) return;
+        beginLines(true, 2.8F);
+        for (int index = 0; index < steps.size(); index++) {
+            BridgePlacementStep step = steps.get(index);
+            NavigationCell support = step.supportCell();
+            boolean current = index == bridgingBody.stepIndex();
+            int red = current ? 255 : 85;
+            int green = current ? 170 : 255;
+            int blue = current ? 55 : 170;
+            double x = support.x();
+            double y = support.y();
+            double z = support.z();
+            drawBox(new AxisAlignedBB(x + 0.04D, y + 0.04D, z + 0.04D,
+                x + 0.96D, y + 0.96D, z + 0.96D), red, green, blue, 220);
+            if (index + 1 < steps.size()) {
+                NavigationCell next = steps.get(index + 1).supportCell();
+                drawLine(x + 0.5D, y + 0.5D, z + 0.5D,
+                    next.x() + 0.5D, next.y() + 0.5D, next.z() + 0.5D,
+                    red, green, blue, 225);
             }
         }
         endLines();

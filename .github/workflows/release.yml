@@ -76,7 +76,7 @@ jobs:
           mkdir -p "$HOME/.gradle"
           echo "org.gradle.java.installations.paths=$JAVA8_HOME" >> "$HOME/.gradle/gradle.properties"
 
-      - name: Verify contracts, telemetry, hybrid navigation, and safety
+      - name: Verify contracts, telemetry, navigation, bridging, and safety
         run: bash tools/offline-verify.sh
 
       - name: Build release
@@ -112,6 +112,8 @@ jobs:
             "dist/SawBotV1-$VERSION-mc1.8.9.jar" \
             "dist/SawBotV1-$VERSION-sources.jar" \
             "dist/SHA256SUMS.txt" \
+            "dist/PHASE8_REPORT.md" \
+            "dist/BRIDGING_BODY.md" \
             "dist/PHASE7_REPORT.md" \
             "dist/ADAPTIVE_NAVIGATION.md" \
             "dist/PHASE6_REPORT.md" \

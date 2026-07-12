@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.0-alpha.0 — Phase 8 real-time bridging specialist
+
+- Added the first deterministic mechanical specialist beyond navigation.
+- Added bounded straight and staircase-diagonal bridge-corridor planning from the
+  player's actual current position.
+- Added full-solid hotbar block selection with original-slot restoration.
+- Added visible bounded yaw/pitch alignment, legal support-face discovery, normal
+  reach/ray-trace validation, deliberate right-click placement, and world-state
+  confirmation.
+- Added cautious sneak-held advance only after support is confirmed.
+- Added automatic navigation-to-bridging handoff on bounded `NO_PATH`/`BLOCKED`
+  gaps and explicit `R` private/local test intent.
+- Added placement, plan, support, attempt, failure, replan, retarget, and ownership
+  diagnostics plus bridge-world rendering.
+- Added complete release on F9, F12, physical takeover, disable, freeze, GUI pause,
+  model disconnect, world unload, and exceptions.
+- Added 46 bridging body/corridor contract checks while preserving navigation,
+  telemetry, transport, packaging, and safety checks.
+
 ## 0.6.0-alpha.0 — Phase 5 learned waypoint navigation
 
 - Adds the first exported learned policy and complete dataset/train/evaluate/live-inference lane.

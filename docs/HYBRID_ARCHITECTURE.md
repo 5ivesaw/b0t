@@ -19,7 +19,7 @@ Specialists execute known mechanics:
 - sustained movement and responsive camera control
 - support, collision, liquid, hazard, and void checks
 - jumping, recovery, and live route invalidation
-- future bridging placement mechanics
+- legal bridging placement, confirmation, and cautious advance mechanics
 - future inventory/shop interaction
 - future combat motor execution
 
@@ -53,3 +53,11 @@ The navigation specialist combines:
 
 This is intentionally analogous to a brain commanding a capable body: the brain says
 where and why; the specialist decides how to execute the movement reliably.
+
+
+## Bridging body v0.1
+
+The bridging specialist accepts a destination/skill intent and performs bounded
+mechanical execution: cardinal/staircase corridor generation, block-slot selection,
+visible aim, normal-reach support-face placement, world confirmation, sneak-held
+advance, replanning, and complete release. It never chooses the strategic destination.

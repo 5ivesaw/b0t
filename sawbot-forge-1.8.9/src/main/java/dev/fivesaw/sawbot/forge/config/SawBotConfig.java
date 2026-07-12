@@ -34,6 +34,12 @@ public final class SawBotConfig {
     private final int navigationPathValidationNodes;
     private final float navigationOffRouteDistance;
     private final float navigationReactiveProbeDistance;
+    private final int bridgingMaximumSteps;
+    private final int bridgingPlacementConfirmationTicks;
+    private final int bridgingMaximumPlacementAttempts;
+    private final int bridgingReplanIntervalTicks;
+    private final float bridgingMaximumYawDegreesPerTick;
+    private final float bridgingMaximumPitchDegreesPerTick;
 
     private SawBotConfig(boolean hudEnabled, int timingWindowSize, int sensorIntervalTicks,
                          int telemetryQueueCapacity, int telemetryInputWindowCapacity,
@@ -48,7 +54,10 @@ public final class SawBotConfig {
                          float navigationMaximumTurnDegreesPerTick, float navigationArrivalRadius,
                          int navigationLookaheadNodes, float navigationLookaheadDistance,
                          int navigationPathValidationNodes, float navigationOffRouteDistance,
-                         float navigationReactiveProbeDistance) {
+                         float navigationReactiveProbeDistance, int bridgingMaximumSteps,
+                         int bridgingPlacementConfirmationTicks, int bridgingMaximumPlacementAttempts,
+                         int bridgingReplanIntervalTicks, float bridgingMaximumYawDegreesPerTick,
+                         float bridgingMaximumPitchDegreesPerTick) {
         this.hudEnabled = hudEnabled;
         this.timingWindowSize = timingWindowSize;
         this.sensorIntervalTicks = sensorIntervalTicks;
@@ -78,6 +87,12 @@ public final class SawBotConfig {
         this.navigationPathValidationNodes = navigationPathValidationNodes;
         this.navigationOffRouteDistance = navigationOffRouteDistance;
         this.navigationReactiveProbeDistance = navigationReactiveProbeDistance;
+        this.bridgingMaximumSteps = bridgingMaximumSteps;
+        this.bridgingPlacementConfirmationTicks = bridgingPlacementConfirmationTicks;
+        this.bridgingMaximumPlacementAttempts = bridgingMaximumPlacementAttempts;
+        this.bridgingReplanIntervalTicks = bridgingReplanIntervalTicks;
+        this.bridgingMaximumYawDegreesPerTick = bridgingMaximumYawDegreesPerTick;
+        this.bridgingMaximumPitchDegreesPerTick = bridgingMaximumPitchDegreesPerTick;
     }
 
     public static SawBotConfig load(File file, Logger logger) {
@@ -147,12 +162,27 @@ public final class SawBotConfig {
             float reactiveProbeDistance = parseBoundedFloat(configuration.getString("reactiveProbeDistance",
                 "navigation", "1.25", "Distance sampled for each 20 Hz local steering candidate."),
                 1.25F, 0.5F, 3F);
+            int bridgeSteps = configuration.getInt("maximumSteps", "bridging", 24, 1, 64,
+                "Maximum cardinal support placements in one bounded bridge corridor.");
+            int bridgeConfirm = configuration.getInt("placementConfirmationTicks", "bridging", 8, 2, 30,
+                "Client ticks allowed for the world to confirm one legal block placement.");
+            int bridgeAttempts = configuration.getInt("maximumPlacementAttempts", "bridging", 3, 1, 6,
+                "Maximum deliberate right-click attempts before a placement is rejected.");
+            int bridgeReplan = configuration.getInt("replanIntervalTicks", "bridging", 4, 1, 20,
+                "Ticks between current-position corridor refreshes while bridging.");
+            float bridgeYaw = parseBoundedFloat(configuration.getString("maximumYawDegreesPerTick",
+                "bridging", "38.0", "Maximum visible bridging yaw change per client tick."),
+                38F, 4F, 75F);
+            float bridgePitch = parseBoundedFloat(configuration.getString("maximumPitchDegreesPerTick",
+                "bridging", "28.0", "Maximum visible bridging pitch change per client tick."),
+                28F, 4F, 60F);
             return new SawBotConfig(hudEnabled, window, interval, telemetryQueue, inputWindow,
                 compression, host, port, connectTimeout, reconnectDelay, decisionRate, actionAge,
                 sequenceLag, allowSingleplayer, allowedServers, physicalTakeover, navigationRadius,
                 navigationVertical, navigationNodes, navigationBudget, navigationReplan,
                 navigationStuck, navigationTurn, navigationArrival, lookaheadNodes,
-                lookaheadDistance, pathValidationNodes, offRouteDistance, reactiveProbeDistance);
+                lookaheadDistance, pathValidationNodes, offRouteDistance, reactiveProbeDistance,
+                bridgeSteps, bridgeConfirm, bridgeAttempts, bridgeReplan, bridgeYaw, bridgePitch);
         } catch (RuntimeException exception) {
             logger.error("Failed to load SawBotV1 configuration; using safe defaults.", exception);
             return defaults();
@@ -173,7 +203,8 @@ public final class SawBotConfig {
         return new SawBotConfig(true, 256, 2, 64, 32, 1, "127.0.0.1", 25189,
             500, 3000, 10, 250, 3, true, "127.0.0.1,localhost", true,
             40, 10, 6144, 96, 4, 16, 32F, 0.80F,
-            7, 5F, 12, 2.35F, 1.25F);
+            7, 5F, 12, 2.35F, 1.25F,
+            24, 8, 3, 4, 38F, 28F);
     }
 
     public boolean hudEnabled() { return hudEnabled; }
@@ -205,4 +236,10 @@ public final class SawBotConfig {
     public int navigationPathValidationNodes() { return navigationPathValidationNodes; }
     public float navigationOffRouteDistance() { return navigationOffRouteDistance; }
     public float navigationReactiveProbeDistance() { return navigationReactiveProbeDistance; }
+    public int bridgingMaximumSteps() { return bridgingMaximumSteps; }
+    public int bridgingPlacementConfirmationTicks() { return bridgingPlacementConfirmationTicks; }
+    public int bridgingMaximumPlacementAttempts() { return bridgingMaximumPlacementAttempts; }
+    public int bridgingReplanIntervalTicks() { return bridgingReplanIntervalTicks; }
+    public float bridgingMaximumYawDegreesPerTick() { return bridgingMaximumYawDegreesPerTick; }
+    public float bridgingMaximumPitchDegreesPerTick() { return bridgingMaximumPitchDegreesPerTick; }
 }

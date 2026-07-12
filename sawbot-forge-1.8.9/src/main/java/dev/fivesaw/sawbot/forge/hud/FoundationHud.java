@@ -18,6 +18,7 @@ import dev.fivesaw.sawbot.forge.inspection.SnapshotExportService;
 import dev.fivesaw.sawbot.forge.model.ModelBridge;
 import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
 import dev.fivesaw.sawbot.forge.actuator.SafeActionActuator;
+import dev.fivesaw.sawbot.forge.bridging.BridgingBodyController;
 import dev.fivesaw.sawbot.forge.navigation.NavigationBodyController;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
@@ -39,6 +40,7 @@ public final class FoundationHud {
     private final ModelBridge modelBridge;
     private final SafeActionActuator actuator;
     private final NavigationBodyController navigationBody;
+    private final BridgingBodyController bridgingBody;
     private final WorldDebugRenderer worldRenderer;
     private final NavigationWaypointController navigationWaypoint;
 
@@ -47,17 +49,19 @@ public final class FoundationHud {
                          InspectorController inspector, SnapshotExportService exports,
                          TelemetryService telemetry, ModelBridge modelBridge,
                          SafeActionActuator actuator, NavigationBodyController navigationBody,
-                         WorldDebugRenderer worldRenderer, NavigationWaypointController navigationWaypoint) {
+                         BridgingBodyController bridgingBody, WorldDebugRenderer worldRenderer,
+                         NavigationWaypointController navigationWaypoint) {
         this.minecraft=minecraft; this.state=state; this.tickTiming=tickTiming; this.observations=observations;
         this.inspector=inspector; this.exports=exports; this.telemetry=telemetry; this.modelBridge=modelBridge;
-        this.actuator=actuator; this.navigationBody=navigationBody; this.worldRenderer=worldRenderer; this.navigationWaypoint=navigationWaypoint;
+        this.actuator=actuator; this.navigationBody=navigationBody; this.bridgingBody=bridgingBody;
+        this.worldRenderer=worldRenderer; this.navigationWaypoint=navigationWaypoint;
     }
 
     public void render(long clientTick) {
         if(minecraft.fontRendererObj==null)return;
         int x=6,y=6;
         int statusColour=state.isEnabled()?WARNING:SAFE;
-        draw("SawBotV1  Phase 7 ADAPTIVE NAV",x,y,WHITE); y+=10;
+        draw("SawBotV1  Phase 8 BRIDGING BODY",x,y,WHITE); y+=10;
         draw("State: "+state.mode()+"  scope "+actuator.environmentDescription(),x,y,statusColour); y+=10;
         ObservationSnapshot snapshot=observations.latest();
         if(snapshot==null){draw("Eyes: waiting",x,y,WARNING);y+=10;}
@@ -80,11 +84,17 @@ public final class FoundationHud {
             draw("Nav replan/swap/reanchor/invalid "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.routeInvalidations()+"  detour/stuck "+navigationBody.localDetours()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED); y+=10;
             draw("Nav "+tail(navigationBody.reason(),58)+"  plan "+navigationBody.plannerExpandedNodes()+" open "+navigationBody.plannerOpenNodes()+" reads/live "+navigationBody.gridWorldReads()+"/"+navigationBody.gridLiveRefreshes(),x,y,MUTED); y+=10;
         }
+        if(bridgingBody.manualIntent()||bridgingBody.brainIntent()||bridgingBody.ownsInputs()||!"IDLE".equals(bridgingBody.status())){
+            draw("Bridge "+bridgingBody.status()+"  "+bridgingBody.source()+"  step "+bridgingBody.stepIndex()+"/"+bridgingBody.planSize()+"  slot "+slotDisplay(bridgingBody.selectedBlockSlot()),x,y,bridgeColour()); y+=10;
+            draw("Bridge placed/fail/replan/retarget "+bridgingBody.placedBlocks()+"/"+bridgingBody.failedPlacements()+"/"+bridgingBody.replans()+"/"+bridgingBody.retargets()+"  try/wait "+bridgingBody.placementAttempts()+"/"+bridgingBody.confirmationTicks(),x,y,MUTED); y+=10;
+            draw("Bridge "+tail(bridgingBody.reason(),72),x,y,MUTED); y+=10;
+        }
         if(state.isEnabled()||actuator.activeAction()!=null||actuator.rejectedActions()>0){
             draw("Actuator "+actuator.status()+"  "+actionCompact(actuator.activeAction())+"  "+tail(actuator.lastReason(),42),x,y,"APPLY".equals(actuator.status())?ACTION:MUTED); y+=10;
         }
         draw("P freeze  . step  F7 panel  H page  O export  K telemetry",x,y,MUTED); y+=10;
         draw("B terrain  C collision  N entities  V tracers  M landmarks  G waypoint",x,y,MUTED); y+=10;
+        draw("R bridge intent  Shift+R clear bridge intent",x,y,MUTED); y+=10;
         draw("[/] entity  F10 toggle  F9 takeover  F12 emergency",x,y,MUTED);
         if(navigationWaypoint.active()){y+=10;draw("Waypoint #"+NavigationWaypointController.USER_WAYPOINT_ID+"  "+navigationWaypoint.compactPosition()+"  Shift+G clear",x,y,ACTION);}
 
@@ -223,7 +233,8 @@ public final class FoundationHud {
     }
 
     private int renderModel(ObservationSnapshot snapshot,int x,int y){
-        ActionCommand action=navigationBody.shouldOwnNavigation()?navigationBody.previousAppliedAction():actuator.activeAction();
+        ActionCommand action=bridgingBody.ownsInputs()?bridgingBody.previousAppliedAction()
+            :(navigationBody.shouldOwnNavigation()?navigationBody.previousAppliedAction():actuator.activeAction());
         if(action==null)action=actuator.previousAppliedAction();
         draw("brain "+modelBridge.displayState()+" endpoint "+modelBridge.endpoint()+" model "+modelBridge.modelVersion(),x,y,modelBridge.isReady()?MODEL:MUTED);y+=10;
         draw("tx/rx "+modelBridge.sentObservations()+"/"+modelBridge.receivedActions()+" q "+modelBridge.observationQueueSize()+"/2 "+modelBridge.actionQueueSize()+"/8 rtt "+millis(modelBridge.latestRoundTripNanos())+" ms",x,y,WHITE);y+=10;
@@ -232,6 +243,9 @@ public final class FoundationHud {
         draw("planner expanded/open/known "+navigationBody.plannerExpandedNodes()+"/"+navigationBody.plannerOpenNodes()+"/"+navigationBody.plannerKnownNodes()+" reads/live "+navigationBody.gridWorldReads()+"/"+navigationBody.gridLiveRefreshes(),x,y,WHITE);y+=10;
         draw("replan/swap/reanchor/invalid "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.routeInvalidations()+" off/detour/stuck "+navigationBody.offRouteReplans()+"/"+navigationBody.localDetours()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED);y+=10;
         draw("corridor dev "+one((float)navigationBody.pathDeviation())+"m steer "+one(navigationBody.steeringOffsetDegrees())+" provisional "+bit(navigationBody.provisionalPath())+" reason "+tail(navigationBody.reason(),50),x,y,MUTED);y+=10;
+        draw("bridge body "+bridgingBody.status()+" source "+bridgingBody.source()+" own "+bit(bridgingBody.ownsInputs())+" step/size "+bridgingBody.stepIndex()+"/"+bridgingBody.planSize()+" slot "+slotDisplay(bridgingBody.selectedBlockSlot()),x,y,bridgeColour());y+=10;
+        draw("bridge placed/fail/replan/retarget "+bridgingBody.placedBlocks()+"/"+bridgingBody.failedPlacements()+"/"+bridgingBody.replans()+"/"+bridgingBody.retargets()+" attempt/wait "+bridgingBody.placementAttempts()+"/"+bridgingBody.confirmationTicks(),x,y,MUTED);y+=10;
+        draw("bridge reason "+tail(bridgingBody.reason(),72),x,y,MUTED);y+=10;
         draw("fallback actuator "+actuator.status()+" own "+bit(actuator.ownsContinuousInputs())+" accepted/rejected/expired "+actuator.acceptedActions()+"/"+actuator.rejectedActions()+"/"+actuator.expiredActions(),x,y,ACTION);y+=10;
         draw("executed #"+action.observationSequenceNumber()+" controller "+action.modelVersion()+" confidence "+one(action.confidence()),x,y,WHITE);y+=10;
         draw("move F/S "+one(action.forward())+"/"+one(action.strafe())+" camera Y/P "+one(action.yawDeltaDegrees())+"/"+one(action.pitchDeltaDegrees()),x,y,WHITE);y+=10;
@@ -282,6 +296,14 @@ public final class FoundationHud {
         if("RECOVER".equals(value)||"PLANNING".equals(value)||"REPLAN".equals(value)||"FOLLOW+REPLAN".equals(value)||"ANYTIME".equals(value))return WARNING;
         return ACTION;
     }
+    private int bridgeColour(){
+        String value=bridgingBody.status();
+        if("COMPLETE".equals(value)||"CONFIRMED".equals(value))return SAFE;
+        if("BLOCKED".equals(value)||"OUT_OF_BLOCKS".equals(value)||"AIM_BLOCKED".equals(value))return ERROR;
+        if("ALIGN".equals(value)||"PLACE".equals(value)||"CONFIRM".equals(value)||"PLAN".equals(value))return WARNING;
+        return ACTION;
+    }
+    private static String slotDisplay(int zeroBased){return zeroBased<0?"-":Integer.toString(zeroBased+1);}
     private static long millis(long nanos){return nanos<=0L?0L:nanos/1_000_000L;}
 
     private static String itemCategoryName(int ordinal){

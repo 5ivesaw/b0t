@@ -6,6 +6,7 @@ import dev.fivesaw.sawbot.forge.actuator.EnvironmentGuard;
 import dev.fivesaw.sawbot.forge.actuator.PhysicalInputMonitor;
 import dev.fivesaw.sawbot.forge.actuator.SafeActionActuator;
 import dev.fivesaw.sawbot.forge.config.SawBotConfig;
+import dev.fivesaw.sawbot.forge.bridging.BridgingBodyController;
 import dev.fivesaw.sawbot.forge.hud.FoundationHud;
 import dev.fivesaw.sawbot.forge.hud.WorldDebugRenderer;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
@@ -45,6 +46,7 @@ public final class ClientRuntime {
     private final ModelBridge modelBridge;
     private final SafeActionActuator actuator;
     private final NavigationBodyController navigationBody;
+    private final BridgingBodyController bridgingBody;
     private final WorldDebugRenderer worldRenderer;
     private final FoundationHud hud;
     private long clientTick;
@@ -82,10 +84,17 @@ public final class ClientRuntime {
             config.navigationLookaheadNodes(), config.navigationLookaheadDistance(),
             config.navigationPathValidationNodes(), config.navigationOffRouteDistance(),
             config.navigationReactiveProbeDistance(), logger);
+        this.bridgingBody = new BridgingBodyController(minecraft, state, environment,
+            navigationWaypoint, config.bridgingMaximumSteps(),
+            config.bridgingPlacementConfirmationTicks(),
+            config.bridgingMaximumPlacementAttempts(), config.bridgingReplanIntervalTicks(),
+            config.bridgingMaximumYawDegreesPerTick(),
+            config.bridgingMaximumPitchDegreesPerTick(), logger);
         this.worldRenderer = new WorldDebugRenderer(minecraft, state, inspector, navigationBody,
-            config.timingWindowSize());
+            bridgingBody, config.timingWindowSize());
         this.hud = new FoundationHud(minecraft, state, tickTiming, observations, inspector,
-            exports, telemetry, modelBridge, actuator, navigationBody, worldRenderer, navigationWaypoint);
+            exports, telemetry, modelBridge, actuator, navigationBody, bridgingBody,
+            worldRenderer, navigationWaypoint);
     }
 
     public void register() {
@@ -109,6 +118,7 @@ public final class ClientRuntime {
                 if (state.isEnabled()) state.onWorldUnavailable();
                 actuator.release("world unavailable");
                 navigationBody.onWorldUnavailable();
+                bridgingBody.onWorldUnavailable();
                 state.clearTelemetryRequest();
                 telemetry.onWorldUnavailable();
                 navigationWaypoint.onWorldUnavailable();
@@ -123,6 +133,7 @@ public final class ClientRuntime {
                 state.manualTakeover();
                 actuator.release("physical human input");
                 navigationBody.release("physical human input");
+                bridgingBody.release("physical human input");
                 state.setInspectorNotice("TAKEOVER: physical input", 2);
             }
 
@@ -142,17 +153,30 @@ public final class ClientRuntime {
 
             ModelActionEnvelope action = modelBridge.pollLatestAction();
             navigationBody.observeBrainAction(action);
-            if (state.isEnabled() && navigationBody.shouldOwnNavigation()) {
+            bridgingBody.observeBrainAction(action);
+            boolean bridgeOwns = state.isEnabled()
+                && bridgingBody.shouldOwnBridge(navigationBody.status());
+            if (bridgeOwns) {
+                if (actuator.ownsContinuousInputs() || actuator.activeAction() != null) {
+                    actuator.release("bridging body priority");
+                }
+                navigationBody.releaseIfOwned("bridging body priority");
+                bridgingBody.tick(clientTick, latest);
+                observations.setPreviousAppliedAction(bridgingBody.previousAppliedAction());
+            } else if (state.isEnabled() && navigationBody.shouldOwnNavigation()) {
+                bridgingBody.releaseIfOwned("navigation body priority");
                 if (actuator.ownsContinuousInputs() || actuator.activeAction() != null) {
                     actuator.release("navigation body priority");
                 }
                 navigationBody.tick(clientTick, latest);
                 observations.setPreviousAppliedAction(navigationBody.previousAppliedAction());
             } else {
+                bridgingBody.releaseIfOwned("bridge inactive");
                 navigationBody.tick(clientTick, latest);
                 if (state.isEnabled() && !modelBridge.isReady()) {
                     state.disableAndRelease("model disconnected");
                     actuator.release("model disconnected");
+                    bridgingBody.release("model disconnected");
                     state.setInspectorNotice("model offline; set G waypoint or start brain", 2);
                 } else {
                     actuator.tick(latest, action);
@@ -164,6 +188,7 @@ public final class ClientRuntime {
             state.emergencyStop();
             actuator.release("client tick exception");
             navigationBody.release("client tick exception");
+            bridgingBody.release("client tick exception");
             state.clearTelemetryRequest();
             telemetry.onWorldUnavailable();
             logger.error("Unhandled SawBotV1 client tick error; emergency stop applied.", exception);
@@ -177,6 +202,7 @@ public final class ClientRuntime {
             state.emergencyStop();
             actuator.release("emergency stop");
             navigationBody.release("emergency stop");
+            bridgingBody.release("emergency stop");
             drainNonSafetyKeyPresses();
             return;
         }
@@ -184,6 +210,7 @@ public final class ClientRuntime {
             state.manualTakeover();
             actuator.release("manual takeover");
             navigationBody.release("manual takeover");
+            bridgingBody.release("manual takeover");
             drainNonSafetyKeyPresses();
             return;
         }
@@ -193,6 +220,7 @@ public final class ClientRuntime {
                 state.disableAndRelease("toggle disable");
                 actuator.release("toggle disable");
                 navigationBody.release("toggle disable");
+                bridgingBody.release("toggle disable");
                 state.setInspectorNotice("SAWBOT DISABLED: manual control", 1);
             } else if (!environment.isAllowed()) {
                 state.setInspectorNotice("actuator blocked: " + environment.description(), 3);
@@ -212,6 +240,7 @@ public final class ClientRuntime {
             state.toggleFrozen();
             actuator.release("observation freeze changed");
             navigationBody.release("observation freeze changed");
+            bridgingBody.release("observation freeze changed");
         }
         if (keys.stepObservation.isPressed()) state.requestObservationStep();
         if (keys.toggleInspector.isPressed()) state.toggleInspector();
@@ -222,6 +251,19 @@ public final class ClientRuntime {
         if (keys.toggleLandmarkOverlay.isPressed()) state.toggleLandmarkOverlay();
         if (keys.toggleTelemetry.isPressed()) {
             state.toggleTelemetryRequest();
+        }
+        if (keys.toggleBridgeIntent.isPressed()) {
+            boolean clear = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)
+                || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
+            if (clear) {
+                bridgingBody.clearManualIntent();
+                state.setInspectorNotice("bridge specialist intent cleared", 1);
+            } else {
+                boolean enabled = bridgingBody.toggleManualIntent();
+                state.setInspectorNotice(enabled
+                    ? "BRIDGE INTENT: specialist armed toward G waypoint"
+                    : "BRIDGE INTENT: off", enabled ? 1 : 2);
+            }
         }
         if (keys.setNavigationWaypoint.isPressed()) {
             boolean clear = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)
@@ -254,6 +296,7 @@ public final class ClientRuntime {
         drain(keys.exportSnapshot);
         drain(keys.toggleTelemetry);
         drain(keys.setNavigationWaypoint);
+        drain(keys.toggleBridgeIntent);
     }
 
     private static void drain(net.minecraft.client.settings.KeyBinding keyBinding) {

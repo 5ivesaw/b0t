@@ -41,7 +41,7 @@ jobs:
           echo "Resolved $TAG"
 
   offline-verification:
-    name: Offline contracts, hybrid navigation, and safety checks
+    name: Offline contracts, navigation, bridging, and safety checks
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
@@ -71,6 +71,7 @@ jobs:
           python3 sawbot-tools/dummy-model/dummy_model.py --self-test
           python3 sawbot-trainer/waypoint/verify_phase5.py
           java -cp build/offline-classes dev.fivesaw.sawbot.verification.NavigationBodyContractTest
+          java -cp build/offline-classes dev.fivesaw.sawbot.verification.BridgingBodyContractTest
 
   forge-build:
     name: Build Forge 1.8.9 mod
@@ -125,6 +126,8 @@ jobs:
             dist/SawBotV1-${{ needs.metadata.outputs.version }}-sources.jar
             dist/SHA256SUMS.txt
             dist/release-notes.md
+            dist/PHASE8_REPORT.md
+            dist/BRIDGING_BODY.md
             dist/PHASE7_REPORT.md
             dist/ADAPTIVE_NAVIGATION.md
             dist/PHASE6_REPORT.md
@@ -211,6 +214,8 @@ jobs:
             "dist/SawBotV1-$VERSION-mc1.8.9.jar" \
             "dist/SawBotV1-$VERSION-sources.jar" \
             "dist/SHA256SUMS.txt" \
+            "dist/PHASE8_REPORT.md" \
+            "dist/BRIDGING_BODY.md" \
             "dist/PHASE7_REPORT.md" \
             "dist/ADAPTIVE_NAVIGATION.md" \
             "dist/PHASE6_REPORT.md" \

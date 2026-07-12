@@ -16,6 +16,8 @@ python3 "$ROOT/sawbot-trainer/waypoint/verify_phase5.py"
 [[ -f "$SOURCES_JAR" ]] || { echo "ERROR: sources JAR does not exist: $SOURCES_JAR" >&2; exit 3; }
 
 assets=(
+  "docs/PHASE8_REPORT.md"
+  "docs/BRIDGING_BODY.md"
   "docs/PHASE7_REPORT.md"
   "docs/ADAPTIVE_NAVIGATION.md"
   "docs/PHASE6_REPORT.md"
@@ -44,8 +46,9 @@ for asset in "${assets[@]}"; do cp "$ROOT/$asset" "$DIST/$(basename "$asset")"; 
 
 (
   cd "$DIST"
-  sha256sum SawBotV1-* PHASE7_REPORT.md ADAPTIVE_NAVIGATION.md PHASE6_REPORT.md \
-    HYBRID_ARCHITECTURE.md NAVIGATION_BODY.md PHASE5_REPORT.md WAYPOINT_MODEL.md \
+  sha256sum SawBotV1-* PHASE8_REPORT.md BRIDGING_BODY.md PHASE7_REPORT.md \
+    ADAPTIVE_NAVIGATION.md PHASE6_REPORT.md HYBRID_ARCHITECTURE.md \
+    NAVIGATION_BODY.md PHASE5_REPORT.md WAYPOINT_MODEL.md \
     PHASE4_RUNTIME_FINDINGS.md PHASE4_REPORT.md MODEL_BRIDGE_PROTOCOL.md \
     PHASE3_RUNTIME_STATUS.md PHASE3_REPORT.md TELEMETRY_FORMAT.md \
     PHASE2_ACCEPTANCE.md PHASE1_ACCEPTANCE.md PHASE0_ACCEPTANCE.md \
@@ -56,29 +59,33 @@ for asset in "${assets[@]}"; do cp "$ROOT/$asset" "$DIST/$(basename "$asset")"; 
 cat > "$DIST/release-notes.md" <<'NOTES'
 # SawBotV1 @VERSION@
 
-Phase 7 real-time adaptive-navigation candidate for Minecraft Forge 1.8.9.
+Phase 8 real-time bridging-specialist candidate for Minecraft Forge 1.8.9.
 
 ## Main change
 
-The navigation specialist now treats a route as a continuously revised safe corridor rather than a mandatory sequence of block centres.
+The hybrid body now contains a deterministic bridging specialist in addition to
+adaptive navigation. A brain or private/local test intent selects the destination;
+the specialist performs bounded legal mechanics only.
 
-This release adds bounded anytime A* frontier routes, current-position rolling replanning, active-route hot swapping, bounded path re-anchoring after displacement, safe lookahead smoothing, live block/support invalidation, several 20 Hz local steering candidates, faster bounded visible camera response, and detailed adaptive diagnostics.
+This release adds current-position bridge-corridor generation, full-solid block-stack
+selection, visible bounded aim, normal-reach support-face/ray-trace validation, one
+placement attempt at a time, world-state confirmation, cautious sneak-held advance,
+navigation handoff, complete input/slot restoration, and compact diagnostics/rendering.
 
-Routine replanning no longer releases movement. Manual takeover, emergency stop, disable, freeze, GUI pause, and world unload remain authoritative and cause the next enable to plan from the player's actual current position.
-
-The learned brain remains responsible for goals, tactics, targets, and specialist selection. Deterministic bodies execute known mechanics.
+The specialist never silently rotates, packet-places, exceeds normal reach, advances
+onto unconfirmed support, or chooses a Bedwars strategic objective.
 
 ## Primary assets
 
 - `SawBotV1-@VERSION@-mc1.8.9.jar`: installable mod.
 - `SawBotV1-@VERSION@-sources.jar`: source archive.
-- `PHASE7_REPORT.md`: implementation and verification evidence.
-- `ADAPTIVE_NAVIGATION.md`: real-time planner/follower contract.
+- `PHASE8_REPORT.md`: implementation and verification evidence.
+- `BRIDGING_BODY.md`: mechanical specialist contract.
+- `PHASE7_REPORT.md`: adaptive-navigation foundation.
 - `HYBRID_ARCHITECTURE.md`: brain/body boundary.
-- `NAVIGATION_BODY.md`: current navigation-body summary.
 - `SHA256SUMS.txt`: integrity hashes.
 NOTES
 sed -i "s/@VERSION@/$VERSION/g" "$DIST/release-notes.md"
 
-printf 'Packaged Phase 7 release assets in %s\n' "$DIST"
+printf 'Packaged Phase 8 release assets in %s\n' "$DIST"
 ls -lh "$DIST"
