@@ -27,7 +27,7 @@ import net.minecraft.util.MathHelper;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Phase 10 continuous anytime movement navigator.
+ * Phase 11 reference-driven continuous movement navigator.
  *
  * The learned brain supplies goals. This deterministic body converts those goals
  * into immutable world snapshots, plans movement operations on a bounded worker,
@@ -35,7 +35,7 @@ import org.apache.logging.log4j.Logger;
  * position every tick, and executes controls through a dedicated movement servo.
  */
 public final class NavigationBodyController {
-    private static final String BODY_VERSION = "navigation-body/1.1";
+    private static final String BODY_VERSION = "navigation-body/1.2";
     private static final int ARRIVAL_STABLE_TICKS = 4;
     private static final int RECONCILE_BACKTRACK_POSITIONS = 5;
     private static final int RECONCILE_FORWARD_POSITIONS = 28;
@@ -714,7 +714,13 @@ public final class NavigationBodyController {
         capture = null;
         segments.clear();
         progressWatchdog.reset();
+        activePathProvisional = false;
+        activePathCompletesGoal = false;
+        rollingGrid = null;
+        rollingGoal = null;
+        rollingWaypointRevision = -1L;
         freshPlanRequired = true;
+        status = "IDLE";
         reason = why == null ? "released" : why;
     }
 
@@ -839,8 +845,21 @@ public final class NavigationBodyController {
     }
     public int streamedPathUpdates() { return streamedPathUpdates; }
     public int rollingReplans() { return rollingReplans; }
+    public boolean shouldRenderDiagnostics() {
+        if (!waypoint.active()) return false;
+        if ("IDLE".equals(status) || "WAITING".equals(status)
+            || "ARRIVED".equals(status) || "PAUSED".equals(status)) {
+            return false;
+        }
+        return segments.hasActivePath() || capture != null
+            || "SEARCHING".equals(plannerWorker.state())
+            || plannerWorker.requestQueueSize() > 0;
+    }
+
     public List<SearchDebugEdge> searchDebugEdges() {
-        return plannerWorker.debugEdges();
+        return shouldRenderDiagnostics()
+            ? plannerWorker.debugEdges()
+            : Collections.<SearchDebugEdge>emptyList();
     }
     public ActionCommand previousAppliedAction() { return previousAppliedAction; }
 }

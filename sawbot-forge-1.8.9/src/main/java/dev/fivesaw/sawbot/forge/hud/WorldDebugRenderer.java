@@ -32,6 +32,9 @@ public final class WorldDebugRenderer {
     private static final int MAX_TERRAIN_BOXES = 256;
     private static final int MAX_COLLISION_BOXES = 256;
     private static final int MAX_ENTITY_TRACERS = 16;
+    private static final int MAX_SEARCH_EDGES = 160;
+    private static final int MAX_PATH_MARKERS = 48;
+    private static final int MAX_BRIDGE_MARKERS = 16;
     private static final double EPSILON = 0.002D;
     private final Minecraft minecraft;
     private final SawBotStateController state;
@@ -58,7 +61,7 @@ public final class WorldDebugRenderer {
         if (!state.terrainOverlayVisible() && !state.collisionOverlayVisible()
             && !state.entityOverlayVisible() && !state.landmarkOverlayVisible()
             && !state.inspectorVisible()
-            && bridgingBody.planSteps().isEmpty()) return;
+            && !bridgingBody.shouldRenderOverlay()) return;
         long start = System.nanoTime();
         boolean matrixPushed = false;
         try {
@@ -71,11 +74,12 @@ public final class WorldDebugRenderer {
             if (state.collisionOverlayVisible()) renderCollision(snapshot);
             if (state.entityOverlayVisible()) renderEntities(snapshot, manager, partialTicks);
             if (state.landmarkOverlayVisible()) renderLandmarks(snapshot, manager);
-            if (state.inspectorVisible()) {
+            if (state.inspectorVisible()
+                && navigationBody.shouldRenderDiagnostics()) {
                 renderNavigationSearch();
                 if (!navigationBody.pathCells().isEmpty()) renderNavigationPath();
             }
-            if (!bridgingBody.planSteps().isEmpty()) renderBridgePlan();
+            if (bridgingBody.shouldRenderOverlay()) renderBridgePlan();
             if (state.inspectorVisible()) renderSelectedBlock(inspector.selectedBlock());
             if (state.observationsFrozen()) renderFrozenAnchor(snapshot, manager);
         } finally {
@@ -241,7 +245,7 @@ public final class WorldDebugRenderer {
         java.util.List<SearchDebugEdge> edges = navigationBody.searchDebugEdges();
         if (edges.isEmpty()) return;
         beginLines(true, 1.0F);
-        int start = Math.max(0, edges.size() - 384);
+        int start = Math.max(0, edges.size() - MAX_SEARCH_EDGES);
         for (int index = start; index < edges.size(); index++) {
             SearchDebugEdge edge = edges.get(index);
             NavigationCell from = edge.from();
@@ -262,7 +266,7 @@ public final class WorldDebugRenderer {
         if (cells.isEmpty()) return;
         beginLines(true, 2.4F);
         int startIndex = Math.max(0, navigationBody.pathIndex() - 4);
-        int endIndex = Math.min(cells.size(), startIndex + 96);
+        int endIndex = Math.min(cells.size(), startIndex + MAX_PATH_MARKERS);
         for (int index = startIndex; index < endIndex; index++) {
             NavigationCell cell = cells.get(index);
             boolean current = index == navigationBody.pathIndex();
@@ -288,8 +292,11 @@ public final class WorldDebugRenderer {
     private void renderBridgePlan() {
         java.util.List<BridgePlacementStep> steps = bridgingBody.planSteps();
         if (steps.isEmpty()) return;
-        beginLines(true, 2.8F);
-        for (int index = 0; index < steps.size(); index++) {
+        beginLines(true, 2.2F);
+        int startIndex = Math.max(0, bridgingBody.stepIndex() - 1);
+        int endIndex = Math.min(steps.size(),
+            startIndex + MAX_BRIDGE_MARKERS);
+        for (int index = startIndex; index < endIndex; index++) {
             BridgePlacementStep step = steps.get(index);
             NavigationCell support = step.supportCell();
             boolean current = index == bridgingBody.stepIndex();
@@ -301,7 +308,7 @@ public final class WorldDebugRenderer {
             double z = support.z();
             drawBox(new AxisAlignedBB(x + 0.04D, y + 0.04D, z + 0.04D,
                 x + 0.96D, y + 0.96D, z + 0.96D), red, green, blue, 220);
-            if (index + 1 < steps.size()) {
+            if (index + 1 < endIndex) {
                 NavigationCell next = steps.get(index + 1).supportCell();
                 drawLine(x + 0.5D, y + 0.5D, z + 0.5D,
                     next.x() + 0.5D, next.y() + 0.5D, next.z() + 0.5D,

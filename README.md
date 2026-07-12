@@ -9,8 +9,8 @@ local/private test environments.
 
 Phases 0–2 passed target-machine runtime acceptance. Later runtime refinement is
 intentionally grouped into a future integration pass while the body architecture is
-built out. This repository contains **Phase 10 — Continuous Anytime Navigation**
-(`1.1.0-alpha.0`).
+built out. This repository contains **Phase 11 — Reference-Driven Bodies and Visualization Lifecycle**
+(`1.2.0-alpha.0`).
 
 The runtime separates intelligence from mechanics:
 
@@ -39,7 +39,7 @@ Implemented contracts and systems:
 - Explicit F9/F12/physical-input ownership priority
 - Automatic GitHub build, tag, and release
 
-## Phase 10 navigation controls
+## Phase 11 body controls
 
 1. Aim at a reachable block and press `G` to set destination waypoint `#1000`.
 2. Press `F10` to enable the deterministic navigation body.
@@ -58,12 +58,12 @@ files remain available for bridge/protocol and learned-brain development.
 
 ## Build
 
-A push to `main` verifies, builds, remaps, tags `v1.1.0-alpha.0`, and publishes the
+A push to `main` verifies, builds, remaps, tags `v1.2.0-alpha.0`, and publishes the
 exact tested release artifact.
 
 ```powershell
 git add -A
-git commit -m "Implement Phase 10 continuous anytime navigation"
+git commit -m "Implement Phase 11 reference-driven body pass"
 git push origin main
 ```
 
@@ -91,6 +91,9 @@ Java 8 bytecode, Forge `1.8.9-11.15.1.2318-1.8.9`, MCP `stable_22`.
 
 ## Reports
 
+- `docs/PHASE11_REPORT.md`
+- `docs/REFERENCE_BODY_RESEARCH.md`
+- `docs/VISUALIZATION_LIFECYCLE.md`
 - `docs/PHASE10_REPORT.md`
 - `docs/CONTINUOUS_ANYTIME_NAVIGATION.md`
 - `docs/PHASE9_REPORT.md`

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0-alpha.0 — Phase 11 reference-driven bodies and visualization lifecycle
+
+- Added a pinned reference and license audit for Baritone, mineflayer-pathfinder,
+  AltoClef, MightyMiner, and Wurst ScaffoldWalk.
+- Replaced bridge first-match face selection with all-support, multi-hit-vector,
+  reach/ray-trace filtered candidate scoring.
+- Added evaluated/visible placement diagnostics and throttled repeated aim failures.
+- Added explicit bridge overlay ownership and immediate cleanup on handoff, disable,
+  takeover, emergency stop, waypoint change/clear, completion, unload, and disconnect.
+- Added expiring bridge HUD status rather than permanent stale bridge lines.
+- Hid stale navigation diagnostics when idle, waiting, paused, or arrived.
+- Reduced render work to 160 search edges, 48 route markers, and 16 bridge markers.
+- Added waypoint-change invalidation across both navigation and bridging bodies.
+- Added bridge face-sampling and overlay-lifecycle contract tests.
+
+
 ## 1.1.0-alpha.0 — Phase 10 continuous anytime navigation
 
 - Replaced one-result planning with direction-aware incremental weighted A* that

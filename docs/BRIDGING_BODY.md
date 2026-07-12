@@ -1,6 +1,6 @@
-# Bridging Body v0.1
+# Bridging Body v0.2
 
-Version: `0.9.0-alpha.0`
+Version: `1.2.0-alpha.0`
 
 ## Purpose
 
@@ -21,7 +21,10 @@ The specialist performs:
 - one-cardinal-face placement steps only
 - full-solid hotbar block discovery
 - original-slot preservation and restoration
-- visible camera alignment toward a legal support face
+- enumerate every legal adjacent attachment support
+- sample nine hit vectors on every candidate face
+- score visible candidates by yaw, pitch, reach, and bridge direction
+- visible camera alignment toward the best legal support face
 - normal client reach and ray-trace validation
 - one deliberate right-click attempt at a time
 - world-state placement confirmation
@@ -61,7 +64,14 @@ The compact HUD exposes these states:
 - `BLOCKED`: feet/head or support geometry is not legal
 
 Diagnostics include step/plan size, selected slot, attempts, confirmation wait,
-placements, failures, replans, retargets, current target support, and reason.
+placements, failures, replans, retargets, evaluated/visible placement candidates,
+current target support, and reason.
+
+The world-space bridge overlay is lifecycle-owned. It is removed immediately on
+completion, navigation handoff, intent removal, waypoint change/clear, disable, F9,
+F12, physical takeover, world unload, or runtime failure. Rendering is bounded to 16
+markers around the current step. A short text result may remain for two seconds, but a
+stale bridge plan cannot remain in the world.
 
 ## Runtime priority
 

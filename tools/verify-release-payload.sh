@@ -8,6 +8,9 @@ required=(
   "SawBotV1-$VERSION-sources.jar"
   "SHA256SUMS.txt"
   "release-notes.md"
+  "PHASE11_REPORT.md"
+  "REFERENCE_BODY_RESEARCH.md"
+  "VISUALIZATION_LIFECYCLE.md"
   "PHASE10_REPORT.md"
   "CONTINUOUS_ANYTIME_NAVIGATION.md"
   "PHASE9_REPORT.md"
@@ -42,4 +45,4 @@ done
 python3 "$ROOT/tools/verify-built-jar.py" "$DIST/SawBotV1-$VERSION-mc1.8.9.jar" --expected-version "$VERSION"
 python3 "$ROOT/sawbot-trainer/waypoint/verify_phase5.py"
 (cd "$DIST" && sha256sum -c SHA256SUMS.txt)
-printf 'PASS verified Phase 10 release payload for %s\n' "$VERSION"
+printf 'PASS verified Phase 11 release payload for %s\n' "$VERSION"

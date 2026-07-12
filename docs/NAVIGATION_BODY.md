@@ -1,6 +1,6 @@
-# Deterministic Navigation Body v1.1
+# Deterministic Navigation Body v1.2
 
-Version: `1.1.0-alpha.0`
+Version: `1.2.0-alpha.0`
 
 ## Responsibility boundary
 
@@ -88,13 +88,14 @@ Persistent bounded LRU caches avoid rereading unchanged cells during repeated sn
 - bounded per-tick snapshot capture
 - bounded direction-aware incremental A* nodes and spatial radius
 - 48 worker expansions per publication slice
-- at most 384 retained search-debug edges
+- at most 160 rendered search-debug edges; larger worker history is never walked by the renderer
 - corridor-shaped long-range snapshots
 - small local request before full request
 - bounded live validation window
 - route world rendering only while F7 inspector is open
-- at most 96 route markers rendered near the active operation
+- at most 48 route markers rendered near the active operation
 - explicit worker shutdown on runtime shutdown
+- route/search diagnostics clear immediately on release, goal change, pause, arrival, or ownership loss
 
 ## Release and takeover
 

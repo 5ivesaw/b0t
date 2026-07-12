@@ -32,6 +32,7 @@ public final class BridgingBodyContractTest {
         bodyPlacesAndCrossesShortGap();
         bodyReportsOutOfBlocksWithoutUnsafeMovement();
         releaseRestoresOriginalHotbarSlot();
+        overlayLifecycleClearsImmediately();
         System.out.println("PASS BridgingBodyContractTest (" + checks + " checks)");
     }
 
@@ -107,6 +108,10 @@ public final class BridgingBodyContractTest {
         require(complete, "body places and crosses three-block gap");
         require(body.placedBlocks() >= 3, "body confirms placed supports");
         require(body.failedPlacements() == 0, "successful gap has no failed placements");
+        require(body.evaluatedPlacementCandidates() > 0,
+            "bridge evaluates multiple legal face samples");
+        require(body.visiblePlacementCandidates() > 0,
+            "bridge finds at least one visible reachable face");
         require(minecraft.playerController.rightClicksForTest() >= 3,
             "one-at-a-time legal controller placements occur");
         require(player.inventory.mainInventory[2].stackSize <= 13,
@@ -158,6 +163,57 @@ public final class BridgingBodyContractTest {
         require(player.inventory.currentItem == 1, "release restores original hotbar slot");
         require(!KeyBinding.isKeyDownForTest(minecraft.gameSettings.keyBindSneak.getKeyCode()),
             "release restores sneak state");
+    }
+
+    private static void overlayLifecycleClearsImmediately() {
+        Minecraft minecraft = Minecraft.getMinecraft();
+        WorldClient world = new WorldClient();
+        world.setBlockStateForTest(new BlockPos(0, 63, 0),
+            Blocks.wool.getDefaultState());
+        EntityPlayerSP player = player(0.5D, 64D, 0.5D, -90F);
+        player.inventory.mainInventory[2] =
+            new ItemStack(new ItemBlock(Blocks.wool), 16);
+        prepare(minecraft, world, player);
+
+        TestLogger logger = new TestLogger();
+        SawBotStateController state =
+            new SawBotStateController(minecraft, logger);
+        EnvironmentGuard environment =
+            new EnvironmentGuard(minecraft, true, "localhost");
+        NavigationWaypointController waypoint =
+            new NavigationWaypointController(minecraft);
+        require(waypoint.setWorldTarget(3.5D, 64D, 0.5D),
+            "overlay waypoint set");
+        BridgingBodyController body = new BridgingBodyController(
+            minecraft, state, environment, waypoint,
+            8, 6, 2, 4, 38F, 28F, logger);
+        state.enable();
+        body.tick(1L, null);
+        require(body.shouldRenderOverlay(),
+            "active bridge plan renders while specialist is active");
+        require(!body.planSteps().isEmpty(),
+            "active bridge plan exposes bounded markers");
+
+        body.deactivate("navigation body priority");
+        require(!body.shouldRenderOverlay(),
+            "priority handoff clears bridge overlay immediately");
+        require(body.planSteps().isEmpty(),
+            "deactivated bridge exposes no stale plan markers");
+        require(!body.shouldDisplayHud(),
+            "deactivated bridge removes stale HUD block");
+
+        require(waypoint.setWorldTarget(4.5D, 64D, 0.5D),
+            "replacement waypoint set");
+        body.tick(2L, null);
+        require(body.shouldRenderOverlay(),
+            "new waypoint creates a fresh overlay");
+        body.onWaypointCleared();
+        require(!body.shouldRenderOverlay(),
+            "waypoint clear removes overlay immediately");
+        require(body.planSteps().isEmpty(),
+            "waypoint clear removes old bridge path");
+        require(!body.shouldDisplayHud(),
+            "waypoint clear removes bridge HUD immediately");
     }
 
     private static EntityPlayerSP player(double x, double y, double z, float yaw) {

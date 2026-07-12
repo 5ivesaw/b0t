@@ -1,4 +1,4 @@
-# Repository tree — Phase 10 continuous anytime navigation candidate
+# Repository tree — Phase 11 reference-driven body candidate
 
 ```text
 .github/workflows/ci.yml
@@ -7,6 +7,9 @@ README.md
 CHANGELOG.md
 gradle.properties
 build.gradle
+docs/PHASE11_REPORT.md
+docs/REFERENCE_BODY_RESEARCH.md
+docs/VISUALIZATION_LIFECYCLE.md
 docs/PHASE10_REPORT.md
 docs/CONTINUOUS_ANYTIME_NAVIGATION.md
 docs/PHASE9_REPORT.md
@@ -44,4 +47,4 @@ tools/verify-built-jar.py
 tools/verify-release-payload.sh
 ```
 
-Only the primary Phase 10 and retained runtime/release files are listed here.
+Only the primary Phase 11 and retained runtime/release files are listed here.

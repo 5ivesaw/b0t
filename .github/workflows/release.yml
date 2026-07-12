@@ -112,6 +112,9 @@ jobs:
             "dist/SawBotV1-$VERSION-mc1.8.9.jar" \
             "dist/SawBotV1-$VERSION-sources.jar" \
             "dist/SHA256SUMS.txt" \
+            "dist/PHASE11_REPORT.md" \
+            "dist/REFERENCE_BODY_RESEARCH.md" \
+            "dist/VISUALIZATION_LIFECYCLE.md" \
             "dist/PHASE10_REPORT.md" \
             "dist/CONTINUOUS_ANYTIME_NAVIGATION.md" \
             "dist/PHASE9_REPORT.md" \

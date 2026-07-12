@@ -61,7 +61,7 @@ public final class FoundationHud {
         if(minecraft.fontRendererObj==null)return;
         int x=6,y=6;
         int statusColour=state.isEnabled()?WARNING:SAFE;
-        draw("SawBotV1  Phase 10 CONTINUOUS ANYTIME NAV",x,y,WHITE); y+=10;
+        draw("SawBotV1  Phase 11 BODY REFERENCE PASS",x,y,WHITE); y+=10;
         draw("State: "+state.mode()+"  scope "+actuator.environmentDescription(),x,y,statusColour); y+=10;
         ObservationSnapshot snapshot=observations.latest();
         if(snapshot==null){draw("Eyes: waiting",x,y,WARNING);y+=10;}
@@ -84,9 +84,9 @@ public final class FoundationHud {
             draw("Nav plan/rolling/update/splice "+navigationBody.replanCount()+"/"+navigationBody.rollingReplans()+"/"+navigationBody.streamedPathUpdates()+"/"+navigationBody.hotSwapCount()+"  invalid/stuck "+navigationBody.routeInvalidations()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED); y+=10;
             draw("Nav "+tail(navigationBody.reason(),52)+"  worker "+navigationBody.plannerState()+" "+millis(navigationBody.plannerComputeNanos())+"ms cap "+navigationBody.captureProgressPercent()+"% reads/hit "+navigationBody.gridWorldReads()+"/"+navigationBody.gridCacheHits(),x,y,MUTED); y+=10;
         }
-        if(bridgingBody.manualIntent()||bridgingBody.brainIntent()||bridgingBody.ownsInputs()||!"IDLE".equals(bridgingBody.status())){
+        if(bridgingBody.shouldDisplayHud()){
             draw("Bridge "+bridgingBody.status()+"  "+bridgingBody.source()+"  step "+bridgingBody.stepIndex()+"/"+bridgingBody.planSize()+"  slot "+slotDisplay(bridgingBody.selectedBlockSlot()),x,y,bridgeColour()); y+=10;
-            draw("Bridge placed/fail/replan/retarget "+bridgingBody.placedBlocks()+"/"+bridgingBody.failedPlacements()+"/"+bridgingBody.replans()+"/"+bridgingBody.retargets()+"  try/wait "+bridgingBody.placementAttempts()+"/"+bridgingBody.confirmationTicks(),x,y,MUTED); y+=10;
+            draw("Bridge placed/fail/replan/retarget "+bridgingBody.placedBlocks()+"/"+bridgingBody.failedPlacements()+"/"+bridgingBody.replans()+"/"+bridgingBody.retargets()+"  face "+bridgingBody.visiblePlacementCandidates()+"/"+bridgingBody.evaluatedPlacementCandidates()+"  try/wait "+bridgingBody.placementAttempts()+"/"+bridgingBody.confirmationTicks(),x,y,MUTED); y+=10;
             draw("Bridge "+tail(bridgingBody.reason(),72),x,y,MUTED); y+=10;
         }
         if(state.isEnabled()||actuator.activeAction()!=null||actuator.rejectedActions()>0){

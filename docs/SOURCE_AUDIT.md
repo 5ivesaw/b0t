@@ -34,3 +34,12 @@ This audit records architecture study only. No donor source has been copied into
 - ForgeHax: `https://github.com/fr1kin/ForgeHax`
 - LiquidBounce: `https://github.com/CCBlueX/LiquidBounce`
 - Wurst: `https://github.com/Wurst-Imperium/Wurst7`
+
+
+## Reference-driven body audit
+
+Phase 11 adds `docs/REFERENCE_BODY_RESEARCH.md`. Baritone, Wurst, and the
+unlicensed MightyMiner repository are architecture-only references; no source text is
+copied. Mineflayer-pathfinder and AltoClef are MIT-licensed references. Any future direct
+adaptation must preserve the required notices and remain within SawBotV1's private/local,
+visible, legitimate-control scope.

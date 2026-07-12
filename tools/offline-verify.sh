@@ -52,8 +52,8 @@ from pathlib import Path
 import json, os, re
 root = Path(os.environ['ROOT_FOR_PY'])
 version = os.environ['SAWBOT_VERIFY_VERSION']
-if version != '1.1.0-alpha.0':
-    raise SystemExit(f'Phase 10 version mismatch: {version}')
+if version != '1.2.0-alpha.0':
+    raise SystemExit(f'Phase 11 version mismatch: {version}')
 properties = (root / 'gradle.properties').read_text(encoding='utf-8')
 if f'sawbotVersion={version}' not in properties or 'loom.platform=forge' not in properties:
     raise SystemExit('gradle.properties version/platform metadata is inconsistent')
@@ -67,7 +67,10 @@ assert metadata['mcversion'] == '1.8.9'
 required = [
     '.github/workflows/ci.yml', '.github/workflows/release.yml',
     'tools/package-release.sh', 'tools/verify-release-payload.sh',
-    'tools/verify-built-jar.py', 'docs/PHASE10_REPORT.md',
+    'tools/verify-built-jar.py', 'docs/PHASE11_REPORT.md',
+    'docs/REFERENCE_BODY_RESEARCH.md',
+    'docs/VISUALIZATION_LIFECYCLE.md',
+    'docs/PHASE10_REPORT.md',
     'docs/CONTINUOUS_ANYTIME_NAVIGATION.md',
     'docs/PHASE9_REPORT.md', 'docs/SEGMENTED_NAVIGATION_CORE.md',
     'docs/BARITONE_ARCHITECTURE_RESEARCH.md', 'docs/NAVIGATION_BODY.md',
@@ -93,14 +96,16 @@ required = [
 ]
 missing = [item for item in required if not (root / item).is_file()]
 if missing:
-    raise SystemExit('Missing Phase 10 repository files: ' + ', '.join(missing))
+    raise SystemExit('Missing Phase 11 repository files: ' + ', '.join(missing))
 
 ci = (root / '.github/workflows/ci.yml').read_text(encoding='utf-8')
 manual = (root / '.github/workflows/release.yml').read_text(encoding='utf-8')
 for text, label in ((ci, 'CI'), (manual, 'manual release')):
     if '\t' in text:
         raise SystemExit(f'{label} workflow contains tabs')
-    for token in ('PHASE10_REPORT.md', 'CONTINUOUS_ANYTIME_NAVIGATION.md',
+    for token in ('PHASE11_REPORT.md', 'REFERENCE_BODY_RESEARCH.md',
+                  'VISUALIZATION_LIFECYCLE.md', 'PHASE10_REPORT.md',
+                  'CONTINUOUS_ANYTIME_NAVIGATION.md',
                   'BARITONE_ARCHITECTURE_RESEARCH.md'):
         if token not in text:
             raise SystemExit(f'{label} workflow missing {token}')
@@ -166,17 +171,30 @@ for token in ('MAX_CACHE_ENTRIES', 'BoundedMap', 'refreshStandable',
         raise SystemExit('World grid missing: ' + token)
 if 'state.inspectorVisible()' not in renderer or 'renderNavigationSearch()' not in renderer:
     raise SystemExit('Route/search rendering must be inspector-only')
-if 'startIndex + 96' not in renderer or 'edges.size() - 384' not in renderer:
-    raise SystemExit('Route/search rendering bounds are missing')
+for token in ('MAX_SEARCH_EDGES = 160', 'MAX_PATH_MARKERS = 48',
+              'MAX_BRIDGE_MARKERS = 16',
+              'bridgingBody.shouldRenderOverlay()',
+              'navigationBody.shouldRenderDiagnostics()'):
+    if token not in renderer:
+        raise SystemExit('Visualization lifecycle missing: ' + token)
 if 'navigationBody.shutdown()' not in client:
     raise SystemExit('Client runtime does not shut down navigation worker')
+for token in ('bridgingBody.deactivate("navigation body priority")',
+              'bridgingBody.deactivate("bridge inactive")',
+              'bridgingBody.onWaypointCleared()',
+              'bridgingBody.onWaypointChanged()'):
+    if token not in client:
+        raise SystemExit('Client overlay lifecycle missing: ' + token)
 
 bridge = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/bridging/BridgingBodyController.java').read_text(encoding='utf-8')
 for forbidden in ('C08PacketPlayerBlockPlacement', 'setPositionAndUpdate', 'teleport'):
     if forbidden in bridge:
         raise SystemExit('Bridging body contains forbidden mechanism: ' + forbidden)
 for token in ('findPlacementTarget', 'lineOfSightMatches', 'onPlayerRightClick',
-              'placementConfirmationTicks', 'restoreOriginalSlot'):
+              'placementConfirmationTicks', 'restoreOriginalSlot',
+              'faceSamples', 'orderedFaces', 'shouldRenderOverlay',
+              'shouldDisplayHud', 'evaluatedPlacementCandidates',
+              'visiblePlacementCandidates', 'deactivate'):
     if token not in bridge:
         raise SystemExit('Bridging body lost mechanism: ' + token)
 
@@ -190,9 +208,26 @@ for token in ('cabaletta/baritone', '054092e44eec61f6ef3818a2b4b7c56df90daf76',
     if token.lower() not in research.lower():
         raise SystemExit('Architecture provenance missing: ' + token)
 
+body_research = (root / 'docs/REFERENCE_BODY_RESEARCH.md').read_text(encoding='utf-8')
+for token in ('PrismarineJS/mineflayer-pathfinder', 'gaucho-matrero/altoclef',
+              'JellyLabScripts/MightyMiner', 'Wurst-Imperium/Wurst7',
+              '40412d6004c3554dd20eec8be464169a32c332af',
+              '749b0499a57ff3fa2f32e30441a992c3cb8d089c',
+              'no MightyMiner source is copied', 'No Wurst source is copied',
+              'Human motion', 'Visualization'):
+    if token.lower() not in body_research.lower():
+        raise SystemExit('Reference body research missing: ' + token)
+visual_lifecycle = (root / 'docs/VISUALIZATION_LIFECYCLE.md').read_text(encoding='utf-8')
+for token in ('search edges: 160', 'route markers: 48', 'bridge markers: 16',
+              'waypoint change or clear', 'bridge completion'):
+    if token.lower() not in visual_lifecycle.lower():
+        raise SystemExit('Visualization lifecycle doc missing: ' + token)
+
 for script in ('tools/package-release.sh', 'tools/verify-release-payload.sh'):
     text = (root / script).read_text(encoding='utf-8')
-    for token in ('PHASE10_REPORT.md', 'CONTINUOUS_ANYTIME_NAVIGATION.md',
+    for token in ('PHASE11_REPORT.md', 'REFERENCE_BODY_RESEARCH.md',
+                  'VISUALIZATION_LIFECYCLE.md', 'PHASE10_REPORT.md',
+                  'CONTINUOUS_ANYTIME_NAVIGATION.md',
                   'BARITONE_ARCHITECTURE_RESEARCH.md'):
         if token not in text:
             raise SystemExit(f'{script} missing {token}')
@@ -203,7 +238,7 @@ for token in ('ImmutableNavigationGrid.class', 'AnytimeMovementSearch.class',
               'NavigationSnapshotCapture.class', 'NavigationMovementExecutor.class'):
     if token not in verifier:
         raise SystemExit('JAR verifier missing ' + token)
-print('PASS Phase 10 repository, architecture, performance, and safety checks')
+print('PASS Phase 11 repository, reference, visualization, performance, and safety checks')
 PY
 
 python3 "$ROOT/sawbot-tools/dataset-validator/validate_telemetry.py" \
@@ -270,5 +305,5 @@ python3 "$ROOT/tools/verify-built-jar.py" \
   "$LIBS/SawBotV1-$VERSION-mc1.8.9.jar" --expected-version "$VERSION"
 bash "$ROOT/tools/package-release.sh" "$VERSION" >/dev/null
 bash "$ROOT/tools/verify-release-payload.sh" "$VERSION" "$ROOT/dist" >/dev/null
-printf '%s\n' 'PASS synthetic JAR, Phase 10 release packaging, hashes, and payload verification'
-printf '%s\n' 'PASS offline Phase 10 continuous anytime navigation verification'
+printf '%s\n' 'PASS synthetic JAR, Phase 11 release packaging, hashes, and payload verification'
+printf '%s\n' 'PASS offline Phase 11 reference-driven body verification'

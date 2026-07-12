@@ -15,6 +15,7 @@ import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
 import dev.fivesaw.sawbot.forge.model.ModelActionEnvelope;
 import dev.fivesaw.sawbot.forge.safety.InputRelease;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import net.minecraft.block.Block;
@@ -35,7 +36,7 @@ import net.minecraft.world.World;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Deterministic specialist for legal, visible short-gap bridging.
+ * Reference-driven deterministic specialist for legal visible bridging.
  *
  * The learned brain selects BRIDGING and the target waypoint. This body owns only
  * mechanics: bounded corridor generation, block-slot selection, visible camera
@@ -43,13 +44,14 @@ import org.apache.logging.log4j.Logger;
  * server/world confirmation, cautious movement, replanning, and complete release.
  */
 public final class BridgingBodyController {
-    private static final String BODY_VERSION = "bridging-body/0.1";
+    private static final String BODY_VERSION = "bridging-body/0.2";
     private static final long BRAIN_INTENT_NANOS = 1_500_000_000L;
     private static final double NEXT_CELL_REACHED_SQUARED = 0.46D * 0.46D;
     private static final double MAX_REACH_SQUARED = 4.45D * 4.45D;
     private static final float YAW_TOLERANCE = 2.2F;
     private static final float PITCH_TOLERANCE = 2.2F;
-    private static final int COMPLETE_HOLD_TICKS = 8;
+    private static final long VISUAL_STATUS_NANOS = 2_000_000_000L;
+    private static final double HIT_SAMPLE_OFFSET = 0.22D;
 
     private final Minecraft minecraft;
     private final SawBotStateController state;
@@ -86,8 +88,11 @@ public final class BridgingBodyController {
     private int failedPlacements;
     private int replans;
     private int retargets;
-    private int completeTicks;
     private int consecutiveBlockedTicks;
+    private boolean overlayVisible;
+    private long lastActivityNanos = Long.MIN_VALUE;
+    private int evaluatedPlacementCandidates;
+    private int visiblePlacementCandidates;
     private String status = "IDLE";
     private String reason = "startup";
     private String source = "automatic";
@@ -159,9 +164,6 @@ public final class BridgingBodyController {
      */
     public boolean shouldOwnBridge(String navigationStatus) {
         if (!waypoint.active() || minecraft.thePlayer == null || minecraft.theWorld == null) return false;
-        if (plannedWaypointRevision != waypoint.revision()) {
-            completeTicks = 0;
-        }
         if (brainIntent && System.nanoTime() > brainIntentDeadlineNanos) {
             brainIntent = false;
             if (!manualIntent) source = "automatic";
@@ -169,26 +171,23 @@ public final class BridgingBodyController {
         boolean explicit = manualIntent || brainIntent;
         boolean automatic = "NO_PATH".equals(navigationStatus) || "BLOCKED".equals(navigationStatus);
         if (!explicit && !automatic) return false;
-        if (completeTicks > 0) return false;
         return corridorNeedsPlacement();
     }
 
     public void tick(long clientTick, ObservationSnapshot latest) {
         if (!state.mayApplyAutonomousActions()) {
-            releaseOwnedInputs("disabled/frozen");
-            status = "IDLE";
+            deactivate("disabled/frozen");
             return;
         }
         if (!environment.isAllowed()) {
-            release("environment blocked");
+            deactivate("environment blocked");
             state.disableAndRelease("environment blocked");
             status = "BLOCKED";
+            markActivity();
             return;
         }
         if (!waypoint.active()) {
-            release("no waypoint");
-            clearPlan("waiting for waypoint");
-            status = "WAITING";
+            deactivate("waiting for waypoint");
             return;
         }
         if (minecraft.currentScreen != null || minecraft.thePlayer == null || minecraft.theWorld == null) {
@@ -201,13 +200,6 @@ public final class BridgingBodyController {
         EntityPlayerSP player = minecraft.thePlayer;
         WorldClient world = (WorldClient)minecraft.theWorld;
         confirmPendingPlacement(world);
-        if (completeTicks > 0) {
-            completeTicks--;
-            releaseOwnedInputs("bridge complete");
-            status = "COMPLETE";
-            previousAppliedAction = bodyAction(latest, false, false, false, false, 0F, 0F);
-            return;
-        }
 
         if (plan == null || plannedWaypointRevision != waypoint.revision()
             || clientTick - lastPlanTick >= replanIntervalTicks) {
@@ -217,12 +209,7 @@ public final class BridgingBodyController {
 
         BridgePlacementStep step = nextRelevantStep(player, world);
         if (step == null) {
-            completeTicks = COMPLETE_HOLD_TICKS;
-            status = "COMPLETE";
-            reason = "corridor supported";
-            releaseOwnedInputs(reason);
-            state.setInspectorNotice("BRIDGE COMPLETE: navigation may resume", 1);
-            previousAppliedAction = bodyAction(latest, false, false, false, false, 0F, 0F);
+            finishBridge(latest);
             return;
         }
 
@@ -256,9 +243,20 @@ public final class BridgingBodyController {
         }
         selectHotbarSlot(player, blockSlot);
 
-        PlacementTarget placement = findPlacementTarget(world, targetSupport, step.direction());
+        PlacementTarget placement =
+            findPlacementTarget(player, world, targetSupport, step.direction());
         if (placement == null) {
-            failStep("no adjacent legal support face", false);
+            status = "AIM_BLOCKED";
+            reason = "no visible reachable support face "
+                + visiblePlacementCandidates + "/" + evaluatedPlacementCandidates;
+            releaseOwnedInputs(reason);
+            consecutiveBlockedTicks++;
+            if (consecutiveBlockedTicks >= placementConfirmationTicks) {
+                failedPlacements++;
+                lastPlanTick = Long.MIN_VALUE;
+                consecutiveBlockedTicks = 0;
+            }
+            markActivity();
             previousAppliedAction = bodyAction(latest, false, false, false, true, 0F, 0F);
             return;
         }
@@ -271,6 +269,7 @@ public final class BridgingBodyController {
         float yawApplied = turnYaw(player, desired[0]);
         float pitchApplied = turnPitch(player, desired[1]);
         status = "ALIGN";
+        markActivity();
         reason = "step " + (stepIndex + 1) + "/" + plan.size()
             + " face " + attachmentFace;
 
@@ -283,14 +282,16 @@ public final class BridgingBodyController {
             }
             if (!lineOfSightMatches(player, world, placement)) {
                 status = "AIM_BLOCKED";
-                reason = "ray trace does not match support face";
+                reason = "support face lost after alignment";
                 consecutiveBlockedTicks++;
+                markActivity();
                 if (consecutiveBlockedTicks >= placementConfirmationTicks) {
                     failStep(reason, false);
                 }
             } else if (confirmationTicks > 0) {
                 confirmationTicks--;
                 status = "CONFIRM";
+                markActivity();
                 reason = "waiting for placed block " + confirmationTicks + "t";
                 if (confirmationTicks == 0) {
                     if (isSolidSupport(world, targetSupport)) {
@@ -308,6 +309,7 @@ public final class BridgingBodyController {
                 placementAttempts++;
                 confirmationTicks = placementConfirmationTicks;
                 status = "PLACE";
+                markActivity();
                 reason = "attempt " + placementAttempts + "/" + maximumPlacementAttempts;
                 consecutiveBlockedTicks = 0;
             }
@@ -335,6 +337,8 @@ public final class BridgingBodyController {
         replans++;
         reason = why + "; " + plan.reason();
         status = plan.size() == 0 ? "NO_CORRIDOR" : "PLAN";
+        overlayVisible = plan.size() > 0;
+        markActivity();
     }
 
     private boolean corridorNeedsPlacement() {
@@ -412,6 +416,7 @@ public final class BridgingBodyController {
             set(settings.keyBindUseItem, false);
         }
         status = forward ? "ADVANCE" : "CONFIRMED";
+        markActivity();
         reason = "support ready at step " + (stepIndex + 1) + "/" + plan.size();
         if (!forward) {
             stepIndex++;
@@ -442,6 +447,7 @@ public final class BridgingBodyController {
         placementAttempts = 0;
         consecutiveBlockedTicks = 0;
         status = "CONFIRMED";
+        markActivity();
         reason = "support confirmed at " + step.supportCell();
         previousAppliedAction = bodyAction(latest, false, false, true, true, 0F, 0F);
     }
@@ -465,28 +471,101 @@ public final class BridgingBodyController {
         releaseOwnedInputs(why);
         status = "BLOCKED";
         reason = why;
+        markActivity();
         if (forceReplan) {
             lastPlanTick = Long.MIN_VALUE;
             resetPlacementAttempt();
         }
     }
 
-    private PlacementTarget findPlacementTarget(World world, BlockPos target,
+    private PlacementTarget findPlacementTarget(EntityPlayerSP player, World world,
+                                                 BlockPos target,
                                                  BridgeDirection preferredDirection) {
+        evaluatedPlacementCandidates = 0;
+        visiblePlacementCandidates = 0;
+        Vec3 eyes = player.getPositionEyes(1F);
         EnumFacing preferred = facingFromDirection(preferredDirection);
-        EnumFacing[] order = {
-            preferred, EnumFacing.NORTH, EnumFacing.SOUTH, EnumFacing.WEST, EnumFacing.EAST, EnumFacing.DOWN
-        };
-        for (EnumFacing faceFromSupport : order) {
+        List<EnumFacing> faces = orderedFaces(preferred);
+        PlacementTarget best = null;
+        double bestScore = Double.POSITIVE_INFINITY;
+
+        for (EnumFacing faceFromSupport : faces) {
             BlockPos support = new BlockPos(
                 target.getX() - faceFromSupport.getFrontOffsetX(),
                 target.getY() - faceFromSupport.getFrontOffsetY(),
                 target.getZ() - faceFromSupport.getFrontOffsetZ());
             if (!isSolidSupport(world, support)) continue;
-            Vec3 hit = faceCenter(support, faceFromSupport);
-            return new PlacementTarget(support, faceFromSupport, hit);
+
+            for (Vec3 hit : faceSamples(support, faceFromSupport)) {
+                evaluatedPlacementCandidates++;
+                double dx = hit.xCoord - eyes.xCoord;
+                double dy = hit.yCoord - eyes.yCoord;
+                double dz = hit.zCoord - eyes.zCoord;
+                double distanceSquared = dx * dx + dy * dy + dz * dz;
+                if (distanceSquared > MAX_REACH_SQUARED) continue;
+
+                PlacementTarget candidate =
+                    new PlacementTarget(support, faceFromSupport, hit);
+                if (!lineOfSightMatches(player, world, candidate)) continue;
+                visiblePlacementCandidates++;
+
+                float[] rotation = rotationTo(player, hit);
+                double yawCost =
+                    Math.abs(wrapDegrees(rotation[0] - player.rotationYaw));
+                double pitchCost =
+                    Math.abs(rotation[1] - player.rotationPitch);
+                double score = yawCost + pitchCost * 0.65D
+                    + Math.sqrt(distanceSquared) * 1.5D;
+                if (faceFromSupport == preferred) score -= 12D;
+                if (faceFromSupport == EnumFacing.DOWN) score += 8D;
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = candidate;
+                }
+            }
         }
-        return null;
+        return best;
+    }
+
+    private static List<EnumFacing> orderedFaces(EnumFacing preferred) {
+        List<EnumFacing> faces = new ArrayList<EnumFacing>(6);
+        faces.add(preferred);
+        EnumFacing[] defaults = {
+            EnumFacing.NORTH, EnumFacing.SOUTH, EnumFacing.WEST,
+            EnumFacing.EAST, EnumFacing.DOWN, EnumFacing.UP
+        };
+        for (EnumFacing face : defaults) {
+            if (!faces.contains(face)) faces.add(face);
+        }
+        return faces;
+    }
+
+    private static List<Vec3> faceSamples(BlockPos support, EnumFacing face) {
+        List<Vec3> samples = new ArrayList<Vec3>(9);
+        double[] offsets = {0D, -HIT_SAMPLE_OFFSET, HIT_SAMPLE_OFFSET};
+        for (double first : offsets) {
+            for (double second : offsets) {
+                double x = support.getX() + 0.5D;
+                double y = support.getY() + 0.5D;
+                double z = support.getZ() + 0.5D;
+                if (face == EnumFacing.UP || face == EnumFacing.DOWN) {
+                    x += first;
+                    z += second;
+                } else if (face == EnumFacing.EAST
+                    || face == EnumFacing.WEST) {
+                    y += first;
+                    z += second;
+                } else {
+                    x += first;
+                    y += second;
+                }
+                x += face.getFrontOffsetX() * 0.498D;
+                y += face.getFrontOffsetY() * 0.498D;
+                z += face.getFrontOffsetZ() * 0.498D;
+                samples.add(new Vec3(x, y, z));
+            }
+        }
+        return samples;
     }
 
     private boolean lineOfSightMatches(EntityPlayerSP player, World world,
@@ -543,10 +622,16 @@ public final class BridgingBodyController {
     }
 
     public void release(String why) {
+        deactivate(why);
+        manualIntent = false;
+        brainIntent = false;
+        source = "automatic";
+    }
+
+    public void deactivate(String why) {
         releaseOwnedInputs(why);
-        resetPlacementAttempt();
-        completeTicks = 0;
         pendingPlacementSupport = null;
+        clearPlan(why == null ? "inactive" : why);
     }
 
     private void releaseOwnedInputs(String why) {
@@ -570,12 +655,60 @@ public final class BridgingBodyController {
         if (ownsInputs) releaseOwnedInputs(why);
     }
 
-    public void onWorldUnavailable() {
-        release("world unavailable");
-        clearPlan("world unavailable");
+    public void onWaypointChanged() {
+        deactivate("waypoint changed");
+    }
+
+    public void onWaypointCleared() {
+        deactivate("waypoint cleared");
         manualIntent = false;
         brainIntent = false;
         source = "automatic";
+    }
+
+    public void onWorldUnavailable() {
+        deactivate("world unavailable");
+        manualIntent = false;
+        brainIntent = false;
+        source = "automatic";
+    }
+
+    private void finishBridge(ObservationSnapshot latest) {
+        releaseOwnedInputs("bridge complete");
+        plan = null;
+        overlayVisible = false;
+        stepIndex = 0;
+        plannedWaypointRevision = waypoint.revision();
+        lastPlanTick = Long.MIN_VALUE;
+        resetPlacementAttempt();
+        status = "COMPLETE";
+        reason = "corridor supported";
+        markActivity();
+        state.setInspectorNotice(
+            "BRIDGE COMPLETE: navigation may resume", 1);
+        previousAppliedAction =
+            bodyAction(latest, false, false, false, false, 0F, 0F);
+    }
+
+    private void markActivity() {
+        lastActivityNanos = System.nanoTime();
+    }
+
+    public boolean shouldDisplayHud() {
+        if (manualIntent || brainIntent || ownsInputs) return true;
+        return lastActivityNanos != Long.MIN_VALUE
+            && System.nanoTime() - lastActivityNanos <= VISUAL_STATUS_NANOS
+            && !"IDLE".equals(status);
+    }
+
+    public boolean shouldRenderOverlay() {
+        if (!overlayVisible || plan == null || plan.size() == 0
+            || !waypoint.active()) return false;
+        return ownsInputs || manualIntent || brainIntent
+            || "PLAN".equals(status) || "ALIGN".equals(status)
+            || "PLACE".equals(status) || "CONFIRM".equals(status)
+            || "ADVANCE".equals(status) || "CONFIRMED".equals(status)
+            || "AIM_BLOCKED".equals(status) || "BLOCKED".equals(status);
     }
 
     private void restoreOriginalSlot() {
@@ -589,6 +722,7 @@ public final class BridgingBodyController {
 
     private void clearPlan(String why) {
         plan = null;
+        overlayVisible = false;
         stepIndex = 0;
         plannedWaypointRevision = -1L;
         lastPlanTick = Long.MIN_VALUE;
@@ -596,7 +730,6 @@ public final class BridgingBodyController {
         attachmentSupport = null;
         attachmentFace = null;
         attachmentHitVec = null;
-        completeTicks = 0;
         resetPlacementAttempt();
         reason = why;
         status = "IDLE";
@@ -731,7 +864,8 @@ public final class BridgingBodyController {
     public int stepIndex() { return stepIndex; }
     public int planSize() { return plan == null ? 0 : plan.size(); }
     public List<BridgePlacementStep> planSteps() {
-        return plan == null ? Collections.<BridgePlacementStep>emptyList() : plan.steps();
+        return shouldRenderOverlay() && plan != null
+            ? plan.steps() : Collections.<BridgePlacementStep>emptyList();
     }
     public BlockPos targetSupport() { return targetSupport; }
     public BlockPos attachmentSupport() { return attachmentSupport; }
@@ -743,6 +877,8 @@ public final class BridgingBodyController {
     public int retargets() { return retargets; }
     public int placementAttempts() { return placementAttempts; }
     public int confirmationTicks() { return confirmationTicks; }
+    public int evaluatedPlacementCandidates() { return evaluatedPlacementCandidates; }
+    public int visiblePlacementCandidates() { return visiblePlacementCandidates; }
     public ActionCommand previousAppliedAction() { return previousAppliedAction; }
 
     private static final class PlacementTarget {

@@ -16,6 +16,9 @@ python3 "$ROOT/sawbot-trainer/waypoint/verify_phase5.py"
 [[ -f "$SOURCES_JAR" ]] || { echo "ERROR: sources JAR does not exist: $SOURCES_JAR" >&2; exit 3; }
 
 assets=(
+  "docs/PHASE11_REPORT.md"
+  "docs/REFERENCE_BODY_RESEARCH.md"
+  "docs/VISUALIZATION_LIFECYCLE.md"
   "docs/PHASE10_REPORT.md"
   "docs/CONTINUOUS_ANYTIME_NAVIGATION.md"
   "docs/PHASE9_REPORT.md"
@@ -61,11 +64,17 @@ done
 cat > "$DIST/release-notes.md" <<'NOTES'
 # SawBotV1 @VERSION@
 
-Phase 10 continuous-anytime-navigation candidate for Minecraft Forge 1.8.9.
+Phase 11 reference-driven-body candidate for Minecraft Forge 1.8.9.
 
 ## Main change
 
-The navigation body is now an operation-based segmented system instead of a rigid
+Mechanical body work is now reference-driven and license-audited. Bridge placement
+evaluates every legal adjacent support and multiple hit vectors, then chooses a visible
+normal-reach candidate instead of trusting one exact face center. Debug overlays now
+follow body ownership and disappear immediately when the body releases, completes, or
+loses its waypoint.
+
+The navigation body remains an operation-based segmented system instead of a rigid
 client-thread block list. Minecraft state is captured into bounded immutable snapshots;
 one latest-wins worker performs weighted A* over traverse, diagonal, ascent, and descent
 operations. The body can begin on a validated micro-route, plan local/full replacement
@@ -83,6 +92,9 @@ brain remains responsible for selecting goals and tactics, not low-level path me
 
 - `SawBotV1-@VERSION@-mc1.8.9.jar`: installable mod.
 - `SawBotV1-@VERSION@-sources.jar`: source archive.
+- `PHASE11_REPORT.md`: reference-driven body and visualization evidence.
+- `REFERENCE_BODY_RESEARCH.md`: reviewed projects and clean-room boundary.
+- `VISUALIZATION_LIFECYCLE.md`: overlay ownership, expiry, and render caps.
 - `PHASE10_REPORT.md`: continuous anytime navigation implementation evidence.
 - `CONTINUOUS_ANYTIME_NAVIGATION.md`: current rolling planner/executor contract.
 - `PHASE9_REPORT.md`: previous segmented-core implementation evidence.
@@ -94,5 +106,5 @@ brain remains responsible for selecting goals and tactics, not low-level path me
 NOTES
 sed -i "s/@VERSION@/$VERSION/g" "$DIST/release-notes.md"
 
-printf 'Packaged Phase 10 release assets in %s\n' "$DIST"
+printf 'Packaged Phase 11 release assets in %s\n' "$DIST"
 ls -lh "$DIST"

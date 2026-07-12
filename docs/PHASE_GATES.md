@@ -301,3 +301,20 @@ Evidence: `docs/PHASE10_REPORT.md`,
 `docs/CONTINUOUS_ANYTIME_NAVIGATION.md`, `docs/PHASE9_REPORT.md`,
 `docs/BARITONE_ARCHITECTURE_RESEARCH.md`, and
 `SegmentedNavigationContractTest`.
+
+
+## Phase 11 — Reference-driven bodies and visualization lifecycle
+
+Implemented in candidate `1.2.0-alpha.0`:
+
+- pinned reference/license audit for mechanical body systems
+- multi-support, multi-hit-vector legal bridge placement selection
+- immediate bridge-plan cleanup on ownership and waypoint lifecycle changes
+- stale navigation diagnostic suppression
+- hard render caps for search, route, and bridge overlays
+- bridge face-sampling and overlay-lifecycle contract coverage
+
+Evidence: `docs/PHASE11_REPORT.md`, `docs/REFERENCE_BODY_RESEARCH.md`,
+`docs/VISUALIZATION_LIFECYCLE.md`.
+
+Runtime acceptance is intentionally grouped with the later body-integration pass.

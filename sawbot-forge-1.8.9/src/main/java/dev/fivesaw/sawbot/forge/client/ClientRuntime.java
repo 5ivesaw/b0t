@@ -178,19 +178,19 @@ public final class ClientRuntime {
                 bridgingBody.tick(clientTick, latest);
                 observations.setPreviousAppliedAction(bridgingBody.previousAppliedAction());
             } else if (state.isEnabled() && navigationBody.shouldOwnNavigation()) {
-                bridgingBody.releaseIfOwned("navigation body priority");
+                bridgingBody.deactivate("navigation body priority");
                 if (actuator.ownsContinuousInputs() || actuator.activeAction() != null) {
                     actuator.release("navigation body priority");
                 }
                 navigationBody.tick(clientTick, latest);
                 observations.setPreviousAppliedAction(navigationBody.previousAppliedAction());
             } else {
-                bridgingBody.releaseIfOwned("bridge inactive");
+                bridgingBody.deactivate("bridge inactive");
                 navigationBody.tick(clientTick, latest);
                 if (state.isEnabled() && !modelBridge.isReady()) {
                     state.disableAndRelease("model disconnected");
                     actuator.release("model disconnected");
-                    bridgingBody.release("model disconnected");
+                    bridgingBody.deactivate("model disconnected");
                     state.setInspectorNotice("model offline; set G waypoint or start brain", 2);
                 } else {
                     actuator.tick(latest, action);
@@ -284,8 +284,12 @@ public final class ClientRuntime {
                 || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
             if (clear) {
                 navigationWaypoint.clear();
+                navigationBody.release("waypoint cleared");
+                bridgingBody.onWaypointCleared();
                 state.setInspectorNotice("waypoint cleared", 1);
             } else if (navigationWaypoint.setFromCrosshair()) {
+                navigationBody.release("waypoint changed");
+                bridgingBody.onWaypointChanged();
                 state.setInspectorNotice("waypoint #" + NavigationWaypointController.USER_WAYPOINT_ID
                     + " set " + navigationWaypoint.compactPosition(), 1);
             } else {
