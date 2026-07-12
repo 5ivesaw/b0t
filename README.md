@@ -4,9 +4,14 @@ SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a 
 
 ## Current gate
 
-Phases 0–2 passed target-machine runtime acceptance. Phase 3 structured telemetry and Phase 4 bridge/actuator infrastructure are implemented. This repository contains the **Phase 5 — First Learned Behaviour candidate** (`0.6.0-alpha.0`).
+Phases 0–2 passed target-machine runtime acceptance. Phase 3 telemetry, Phase 4 bridge/actuator infrastructure, and the Phase 5 learned-action experiment remain preserved. This repository contains **Phase 6 — Hybrid Navigation Body** (`0.7.0-alpha.0`).
 
-The first exported neural policy navigates toward a user-selected semantic waypoint without a runtime pathfinder or teacher. Its held-out evaluation succeeds in 698/800 scenarios (87.25%) versus 29/800 (3.625%) for the random baseline.
+The runtime now separates intelligence from mechanics:
+
+- learned brain: goals, priorities, targets, tactics, risk, and specialist selection
+- deterministic body: pathfinding, movement holding, camera control, jumping, safety, stuck recovery, and input ownership
+
+The first deterministic body performs bounded incremental waypoint navigation. `G` sets waypoint `#1000`; F10 starts navigation without requiring the external model. A connected brain may request the same skill through the existing Action Contract.
 
 Implemented contracts and systems:
 
@@ -14,31 +19,30 @@ Implemented contracts and systems:
 - Action `sawbot.action/0.1`
 - Telemetry `sawbot.telemetry/0.1`
 - Bridge `sawbot.bridge/0.1`
-- Bounded internal sensors, compact inspector, overlays, freeze/step, and export
-- Structured human trajectory recording, validation, replay, CRC, and recovery
-- Non-blocking local model bridge and client-thread safe actuator
-- Environment guard, action deadlines, physical takeover, F9, and F12
-- Deterministic teacher dataset, tiny MLP, held-out evaluation, and live learned waypoint model
-- Single-push automatic GitHub build/tag/release
+- Bounded sensors, inspector, overlays, freeze/step, and export
+- Structured telemetry validation, replay, CRC, and recovery
+- Non-blocking model bridge and safe fallback actuator
+- Incremental A*, sustained movement, visible turning, step-up, arrival, stuck recovery, and path rendering
+- Physical-input restoration and explicit F9/F12 feedback
+- Automatic GitHub build, tag, and release
 
-There is still no Bedwars strategy, runtime pathfinder, aim helper, scaffold controller, packet advantage, screenshot/OCR pipeline, or public-server automation.
+## Phase 6 direct navigation
 
-## Phase 5 quick start
+1. Aim at a reachable block and press `G`.
+2. Press `F10`.
+3. The deterministic body plans and follows the visible route.
+4. Press `F9`, provide physical input, or press `F12` to return control immediately.
+5. Use `Shift+G` to clear the goal.
 
-1. Aim at a reachable block and press `G` to set user waypoint `#1000`.
-2. Run `sawbot-trainer\waypoint\RUN-WAYPOINT-MODEL.bat`.
-3. Wait for model state `READY`.
-4. Press `F10` to enable.
-5. Press `F9` or any physical movement/mouse input for takeover; `F12` is emergency release.
-6. Use `Shift+G` to clear the waypoint.
+The Phase 5 model remains a historical experiment, not the primary navigator.
 
 ## Build
 
-A push to `main` verifies, builds, remaps, tags `v0.6.0-alpha.0`, and publishes the exact tested release artifact.
+A push to `main` verifies, builds, remaps, tags `v0.7.0-alpha.0`, and publishes the exact tested release artifact.
 
 ```powershell
 git add -A
-git commit -m "Implement Phase 5 learned waypoint navigation"
+git commit -m "Implement Phase 6 hybrid navigation body"
 git push origin main
 ```
 
@@ -48,11 +52,11 @@ Toolchain: Gradle 8.8, Architectury Loom `0.10.0.5`, Java 17 for Gradle, Java 8 
 
 | Key | Function |
 |---|---|
-| F10 | Enable/disable safe actuator when model is ready |
+| F10 | Enable/disable the selected body or connected brain |
 | F9 | Immediate manual takeover |
 | F12 | Emergency release |
-| G | Set learned-navigation waypoint above aimed block |
-| Shift+G | Clear learned-navigation waypoint |
+| G | Set deterministic-navigation waypoint above aimed block |
+| Shift+G | Clear navigation waypoint |
 | F7 | Compact inspector |
 | H | Next inspector page |
 | P / . | Freeze/unfreeze / single observation step |
@@ -63,6 +67,9 @@ Toolchain: Gradle 8.8, Architectury Loom `0.10.0.5`, Java 17 for Gradle, Java 8 
 
 ## Reports
 
+- `docs/PHASE6_REPORT.md`
+- `docs/HYBRID_ARCHITECTURE.md`
+- `docs/NAVIGATION_BODY.md`
 - `docs/PHASE5_REPORT.md`
 - `docs/WAYPOINT_MODEL.md`
 - `docs/PHASE4_RUNTIME_FINDINGS.md`

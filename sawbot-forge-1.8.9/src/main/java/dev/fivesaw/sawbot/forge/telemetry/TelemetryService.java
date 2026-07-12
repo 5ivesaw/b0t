@@ -56,9 +56,11 @@ public final class TelemetryService implements AutoCloseable {
     public void synchronizeRequested(boolean shouldRecord, ObservationSnapshot current) {
         refreshStatus();
         requested = shouldRecord;
-        if (!shouldRecord) failureLatched = false;
         if (shouldRecord) {
-            if (!failureLatched && session == null && current != null) start(current);
+            if (session == null && current != null) {
+                if (failureLatched) prepareRetry();
+                start(current);
+            }
         } else if (session != null && !session.isClosing()) {
             stop("user stop");
         }

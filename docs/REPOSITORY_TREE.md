@@ -1,12 +1,8 @@
-# Repository tree — Phase 4 GitHub-ready candidate
+# Repository tree — Phase 6 hybrid navigation candidate
 
 ```text
 SawBotV1/
-├── .github/
-│   ├── workflows/{ci.yml,release.yml}
-│   ├── ISSUE_TEMPLATE/bug_report.yml
-│   ├── dependabot.yml
-│   └── release.yml
+├── .github/workflows/{ci.yml,release.yml}
 ├── README.md
 ├── GITHUB_UPLOAD_QUICKSTART.md
 ├── CHANGELOG.md
@@ -19,60 +15,61 @@ SawBotV1/
 ├── docs/
 │   ├── PROJECT_BRIEF.txt
 │   ├── ARCHITECTURE.md
+│   ├── HYBRID_ARCHITECTURE.md
+│   ├── NAVIGATION_BODY.md
 │   ├── PERFORMANCE_BUDGET.md
 │   ├── OBSERVATION_CONTRACT.md
 │   ├── ACTION_CONTRACT.md
 │   ├── TELEMETRY_FORMAT.md
 │   ├── PHASE_GATES.md
-│   ├── PHASE0_ACCEPTANCE.md
-│   ├── PHASE1_ACCEPTANCE.md
-│   ├── PHASE2_ACCEPTANCE.md
+│   ├── PHASE6_REPORT.md
+│   ├── PHASE5_REPORT.md
+│   ├── PHASE4_REPORT.md
 │   ├── PHASE3_REPORT.md
-│   ├── GITHUB_RELEASES.md
-│   └── remaining reports, design, audit, and historical evidence
+│   └── acceptance, release, audit, and historical evidence
 ├── sawbot-common/src/main/java/dev/fivesaw/sawbot/common/
 │   ├── action/
 │   ├── events/
+│   ├── navigation/      # immutable cells/path + bounded incremental A*
 │   ├── observation/
-│   ├── telemetry/        # immutable input windows and trajectory steps
+│   ├── telemetry/
 │   ├── protocol/
 │   └── versioning/
 ├── sawbot-forge-1.8.9/src/main/
 │   ├── java/dev/fivesaw/sawbot/forge/
+│   │   ├── actuator/    # validated fallback low-level action execution
 │   │   ├── client/
 │   │   ├── config/
-│   │   ├── hud/          # compact text HUD + world debug renderer
-│   │   ├── inspection/   # selection, pages, JSON export
+│   │   ├── hud/         # compact HUD + world route/debug renderer
+│   │   ├── inspection/
 │   │   ├── map/
+│   │   ├── model/       # bounded loopback brain transport
+│   │   ├── navigation/  # world grid + deterministic navigation body
 │   │   ├── performance/
 │   │   ├── safety/
 │   │   ├── sensors/
-│   │   ├── telemetry/    # bounded async structured trajectory writer
+│   │   ├── telemetry/
 │   │   └── tracking/
 │   └── resources/
 ├── sawbot-tools/
 │   ├── dataset-validator/validate_telemetry.py
 │   ├── replay-inspector/inspect_telemetry.py
-│   ├── telemetry-inspector/   # later interactive tooling
+│   ├── dummy-model/     # transport/actuator fixture
 │   └── benchmark/
-├── sawbot-trainer/       # gated until telemetry runtime acceptance
-├── sawbot-sim/           # gated placeholder
-├── sawbot-arenas/        # gated placeholder
+├── sawbot-trainer/waypoint/  # preserved Phase 5 learned baseline
+├── sawbot-sim/
+├── sawbot-arenas/
 ├── prototypes/control-center.html
 ├── verification-stubs/
 ├── verification-tests/
+│   └── .../NavigationBodyContractTest.java
 └── tools/
     ├── offline-verify.sh
     ├── package-release.sh
     ├── verify-built-jar.py
     ├── verify-release-payload.sh
     ├── TEST-LATEST-TELEMETRY.bat
-    ├── test-latest-telemetry.ps1
     └── local bootstrap/preflight scripts
 ```
 
-Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the Gradle mod build. Telemetry tools and the Phase 4 dummy model are development/runtime test tools and are not packed into the Minecraft JAR. Neural training, simulator, arena, and Bedwars policy implementations remain gated.
-
-- `sawbot-tools/dummy-model/`: Phase 4 local bridge server and deterministic actuator demo.
-- `sawbot-forge-1.8.9/.../model/`: bounded local transport.
-- `sawbot-forge-1.8.9/.../actuator/`: environment guard, physical takeover, validation, and legitimate-control actuator.
+Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the mod build. The navigation planner is pure deterministic Java; the world adapter and body execute on the Minecraft client thread with explicit per-tick and total-node bounds. The Phase 5 waypoint MLP remains a historical training/bridge baseline and is not the primary navigator.

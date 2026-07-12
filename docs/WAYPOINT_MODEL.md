@@ -1,3 +1,7 @@
+# Historical Phase 5 Learned Waypoint Experiment
+
+> This checkpoint is retained as a training/bridge baseline. It is no longer the primary navigation runtime. Phase 6 uses the deterministic navigation body described in `NAVIGATION_BODY.md`, while future neural systems choose high-level intent.
+
 # Learned Waypoint Model
 
 ## Controls

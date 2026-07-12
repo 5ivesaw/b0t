@@ -3,7 +3,10 @@ package dev.fivesaw.sawbot.forge.safety;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 
+/** Restores each binding to its real hardware state instead of forcing user input false. */
 public final class InputRelease {
     private InputRelease() { }
 
@@ -11,20 +14,25 @@ public final class InputRelease {
         if (minecraft == null) return;
         GameSettings settings = minecraft.gameSettings;
         if (settings == null) return;
-        release(settings.keyBindForward);
-        release(settings.keyBindBack);
-        release(settings.keyBindLeft);
-        release(settings.keyBindRight);
-        release(settings.keyBindJump);
-        release(settings.keyBindSneak);
-        release(settings.keyBindSprint);
-        release(settings.keyBindAttack);
-        release(settings.keyBindUseItem);
-        release(settings.keyBindDrop);
-        release(settings.keyBindInventory);
+        restorePhysical(settings.keyBindForward);
+        restorePhysical(settings.keyBindBack);
+        restorePhysical(settings.keyBindLeft);
+        restorePhysical(settings.keyBindRight);
+        restorePhysical(settings.keyBindJump);
+        restorePhysical(settings.keyBindSneak);
+        restorePhysical(settings.keyBindSprint);
+        restorePhysical(settings.keyBindAttack);
+        restorePhysical(settings.keyBindUseItem);
+        restorePhysical(settings.keyBindDrop);
+        restorePhysical(settings.keyBindInventory);
     }
 
-    private static void release(KeyBinding binding) {
-        if (binding != null) KeyBinding.setKeyBindState(binding.getKeyCode(), false);
+    public static void restorePhysical(KeyBinding binding) {
+        if (binding == null) return;
+        int code = binding.getKeyCode();
+        boolean physical;
+        if (code >= 0) physical = Keyboard.isKeyDown(code);
+        else physical = Mouse.isButtonDown(code + 100);
+        KeyBinding.setKeyBindState(code, physical);
     }
 }

@@ -10,7 +10,7 @@ import net.minecraft.util.BlockPos;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.world.World;
 
-/** Client-thread user waypoint used by the first learned navigation policy. */
+/** Client-thread semantic target used by deterministic bodies and learned brains. */
 public final class NavigationWaypointController {
     public static final int USER_WAYPOINT_ID = 1000;
 
@@ -40,6 +40,18 @@ public final class NavigationWaypointController {
         z = block.getZ() + 0.5D;
         active = true;
         revision++;
+        return true;
+    }
+
+    /** Sets an explicit world-space navigation target for a brain or test harness. */
+    public boolean setWorldTarget(double x, double y, double z) {
+        if (minecraft.theWorld == null) return false;
+        this.dimensionId = minecraft.theWorld.provider.getDimensionId();
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.active = true;
+        this.revision++;
         return true;
     }
 

@@ -174,3 +174,25 @@ Runtime acceptance is intentionally deferred to the next major integration revie
 **Gate: SOURCE/EVALUATION PASS; INTEGRATED RUNTIME ACCEPTANCE DEFERRED.**
 
 Evidence: `docs/PHASE5_REPORT.md`, `docs/WAYPOINT_MODEL.md`, committed dataset/checkpoint/evaluation, and `verify_phase5.py`.
+
+## Phase 6 — Hybrid navigation body
+
+Implemented in candidate `0.7.0-alpha.0`:
+
+- [x] Brain/body architectural boundary documented.
+- [x] Incremental bounded A* with deterministic tie-breaking.
+- [x] Standability, support, headroom, liquid, hazard, and diagonal-corner checks.
+- [x] Sustained input ownership instead of short action pulses.
+- [x] Responsive visible turning, step-up jump, and straight-segment sprint.
+- [x] Stable arrival, stuck detection, recovery, and replanning.
+- [x] Route/current-node rendering and compact live planner diagnostics.
+- [x] G-waypoint navigation can run without an external model.
+- [x] High-level brain navigation intent remains supported.
+- [x] Synthetic input release restores physical key state.
+- [x] F9/F12 notices remain visible for five seconds.
+- [x] One-press telemetry retry and per-step encoding isolation.
+- [x] Offline planner, world-grid, body, release, and existing contract verification.
+
+**Gate: SOURCE/OFFLINE PASS; TARGET-MACHINE ACCEPTANCE DEFERRED TO THE NEXT MAJOR REVIEW.**
+
+Evidence: `docs/PHASE6_REPORT.md`, `docs/HYBRID_ARCHITECTURE.md`, `docs/NAVIGATION_BODY.md`, and `NavigationBodyContractTest`.

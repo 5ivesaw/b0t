@@ -21,6 +21,14 @@ public final class SawBotConfig {
     private final boolean actuatorAllowSingleplayer;
     private final String actuatorAllowedServers;
     private final boolean physicalInputTakeover;
+    private final int navigationHorizontalRadius;
+    private final int navigationVerticalRadius;
+    private final int navigationMaximumExpandedNodes;
+    private final int navigationExpansionsPerTick;
+    private final int navigationReplanIntervalTicks;
+    private final int navigationStuckWindowTicks;
+    private final float navigationMaximumTurnDegreesPerTick;
+    private final float navigationArrivalRadius;
 
     private SawBotConfig(boolean hudEnabled, int timingWindowSize, int sensorIntervalTicks,
                          int telemetryQueueCapacity, int telemetryInputWindowCapacity,
@@ -28,7 +36,11 @@ public final class SawBotConfig {
                          int modelConnectTimeoutMillis, int modelReconnectDelayMillis,
                          int modelDecisionRateHz, int actionMaximumAgeMillis,
                          int actionMaximumSequenceLag, boolean actuatorAllowSingleplayer,
-                         String actuatorAllowedServers, boolean physicalInputTakeover) {
+                         String actuatorAllowedServers, boolean physicalInputTakeover,
+                         int navigationHorizontalRadius, int navigationVerticalRadius,
+                         int navigationMaximumExpandedNodes, int navigationExpansionsPerTick,
+                         int navigationReplanIntervalTicks, int navigationStuckWindowTicks,
+                         float navigationMaximumTurnDegreesPerTick, float navigationArrivalRadius) {
         this.hudEnabled = hudEnabled;
         this.timingWindowSize = timingWindowSize;
         this.sensorIntervalTicks = sensorIntervalTicks;
@@ -45,6 +57,14 @@ public final class SawBotConfig {
         this.actuatorAllowSingleplayer = actuatorAllowSingleplayer;
         this.actuatorAllowedServers = actuatorAllowedServers;
         this.physicalInputTakeover = physicalInputTakeover;
+        this.navigationHorizontalRadius = navigationHorizontalRadius;
+        this.navigationVerticalRadius = navigationVerticalRadius;
+        this.navigationMaximumExpandedNodes = navigationMaximumExpandedNodes;
+        this.navigationExpansionsPerTick = navigationExpansionsPerTick;
+        this.navigationReplanIntervalTicks = navigationReplanIntervalTicks;
+        this.navigationStuckWindowTicks = navigationStuckWindowTicks;
+        this.navigationMaximumTurnDegreesPerTick = navigationMaximumTurnDegreesPerTick;
+        this.navigationArrivalRadius = navigationArrivalRadius;
     }
 
     public static SawBotConfig load(File file, Logger logger) {
@@ -69,7 +89,7 @@ public final class SawBotConfig {
                 "TCP port for sawbot.bridge/0.1.");
             int connectTimeout = configuration.getInt("connectTimeoutMillis", "modelBridge", 500, 50, 5000,
                 "Background socket connection timeout; never blocks the client thread.");
-            int reconnectDelay = configuration.getInt("reconnectDelayMillis", "modelBridge", 1000, 100, 10000,
+            int reconnectDelay = configuration.getInt("reconnectDelayMillis", "modelBridge", 3000, 100, 10000,
                 "Delay between local model reconnect attempts.");
             int decisionRate = configuration.getInt("decisionRateHz", "modelBridge", 10, 1, 20,
                 "Maximum observation publication rate expected by the local model.");
@@ -83,9 +103,29 @@ public final class SawBotConfig {
                 "127.0.0.1,localhost", "Comma-separated exact private/LAN hosts. Public servers are blocked by default.");
             boolean physicalTakeover = configuration.getBoolean("physicalInputTakeover", "actuator", true,
                 "Any physical movement/mouse/click input immediately returns control to the human.");
+            int navigationRadius = configuration.getInt("horizontalRadius", "navigation", 32, 8, 64,
+                "Maximum horizontal A* search radius around the player.");
+            int navigationVertical = configuration.getInt("verticalRadius", "navigation", 8, 2, 16,
+                "Maximum vertical A* search range around the player.");
+            int navigationNodes = configuration.getInt("maximumExpandedNodes", "navigation", 4096, 256, 16384,
+                "Hard node-expansion cap for one local route plan.");
+            int navigationBudget = configuration.getInt("expansionsPerTick", "navigation", 64, 8, 256,
+                "Client-thread A* expansions permitted per tick.");
+            int navigationReplan = configuration.getInt("replanIntervalTicks", "navigation", 20, 4, 100,
+                "Minimum cooldown before retrying an unavailable path.");
+            int navigationStuck = configuration.getInt("stuckWindowTicks", "navigation", 20, 8, 80,
+                "Ticks of commanded movement used by deterministic stuck detection.");
+            float navigationTurn = parseBoundedFloat(configuration.getString("maximumTurnDegreesPerTick",
+                "navigation", "18.0", "Maximum visible camera yaw change applied by the navigation body each client tick."),
+                18F, 2F, 45F);
+            float navigationArrival = parseBoundedFloat(configuration.getString("arrivalRadius",
+                "navigation", "0.75", "Horizontal distance considered a stable waypoint arrival."),
+                0.75F, 0.35F, 1.5F);
             return new SawBotConfig(hudEnabled, window, interval, telemetryQueue, inputWindow,
                 compression, host, port, connectTimeout, reconnectDelay, decisionRate, actionAge,
-                sequenceLag, allowSingleplayer, allowedServers, physicalTakeover);
+                sequenceLag, allowSingleplayer, allowedServers, physicalTakeover, navigationRadius,
+                navigationVertical, navigationNodes, navigationBudget, navigationReplan,
+                navigationStuck, navigationTurn, navigationArrival);
         } catch (RuntimeException exception) {
             logger.error("Failed to load SawBotV1 configuration; using safe defaults.", exception);
             return defaults();
@@ -94,9 +134,18 @@ public final class SawBotConfig {
         }
     }
 
+    private static float parseBoundedFloat(String value, float fallback, float minimum, float maximum) {
+        try {
+            return Math.max(minimum, Math.min(maximum, Float.parseFloat(value)));
+        } catch (RuntimeException ignored) {
+            return fallback;
+        }
+    }
+
     private static SawBotConfig defaults() {
         return new SawBotConfig(true, 256, 2, 64, 32, 1, "127.0.0.1", 25189,
-            500, 1000, 10, 250, 3, true, "127.0.0.1,localhost", true);
+            500, 3000, 10, 250, 3, true, "127.0.0.1,localhost", true,
+            32, 8, 4096, 64, 20, 20, 18F, 0.75F);
     }
 
     public boolean hudEnabled() { return hudEnabled; }
@@ -115,4 +164,12 @@ public final class SawBotConfig {
     public boolean actuatorAllowSingleplayer() { return actuatorAllowSingleplayer; }
     public String actuatorAllowedServers() { return actuatorAllowedServers; }
     public boolean physicalInputTakeover() { return physicalInputTakeover; }
+    public int navigationHorizontalRadius() { return navigationHorizontalRadius; }
+    public int navigationVerticalRadius() { return navigationVerticalRadius; }
+    public int navigationMaximumExpandedNodes() { return navigationMaximumExpandedNodes; }
+    public int navigationExpansionsPerTick() { return navigationExpansionsPerTick; }
+    public int navigationReplanIntervalTicks() { return navigationReplanIntervalTicks; }
+    public int navigationStuckWindowTicks() { return navigationStuckWindowTicks; }
+    public float navigationMaximumTurnDegreesPerTick() { return navigationMaximumTurnDegreesPerTick; }
+    public float navigationArrivalRadius() { return navigationArrivalRadius; }
 }

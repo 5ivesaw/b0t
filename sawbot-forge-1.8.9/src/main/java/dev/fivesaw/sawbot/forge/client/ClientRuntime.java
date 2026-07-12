@@ -13,6 +13,7 @@ import dev.fivesaw.sawbot.forge.inspection.SnapshotExportService;
 import dev.fivesaw.sawbot.forge.model.ModelActionEnvelope;
 import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
 import dev.fivesaw.sawbot.forge.model.ModelBridge;
+import dev.fivesaw.sawbot.forge.navigation.NavigationBodyController;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
 import dev.fivesaw.sawbot.forge.sensors.ObservationPipeline;
@@ -43,6 +44,7 @@ public final class ClientRuntime {
     private final PhysicalInputMonitor physicalInput;
     private final ModelBridge modelBridge;
     private final SafeActionActuator actuator;
+    private final NavigationBodyController navigationBody;
     private final WorldDebugRenderer worldRenderer;
     private final FoundationHud hud;
     private long clientTick;
@@ -72,10 +74,15 @@ public final class ClientRuntime {
             SawBotMod.VERSION, config.modelDecisionRateHz(), logger);
         this.actuator = new SafeActionActuator(minecraft, state, environment,
             config.actionMaximumAgeMillis(), config.actionMaximumSequenceLag(), logger);
-        this.worldRenderer = new WorldDebugRenderer(minecraft, state, inspector,
+        this.navigationBody = new NavigationBodyController(minecraft, state, environment,
+            navigationWaypoint, config.navigationHorizontalRadius(), config.navigationVerticalRadius(),
+            config.navigationMaximumExpandedNodes(), config.navigationExpansionsPerTick(),
+            config.navigationReplanIntervalTicks(), config.navigationStuckWindowTicks(),
+            config.navigationMaximumTurnDegreesPerTick(), config.navigationArrivalRadius(), logger);
+        this.worldRenderer = new WorldDebugRenderer(minecraft, state, inspector, navigationBody,
             config.timingWindowSize());
         this.hud = new FoundationHud(minecraft, state, tickTiming, observations, inspector,
-            exports, telemetry, modelBridge, actuator, worldRenderer, navigationWaypoint);
+            exports, telemetry, modelBridge, actuator, navigationBody, worldRenderer, navigationWaypoint);
     }
 
     public void register() {
@@ -98,6 +105,7 @@ public final class ClientRuntime {
             if (minecraft.theWorld == null || minecraft.thePlayer == null) {
                 if (state.isEnabled()) state.onWorldUnavailable();
                 actuator.release("world unavailable");
+                navigationBody.onWorldUnavailable();
                 state.clearTelemetryRequest();
                 telemetry.onWorldUnavailable();
                 navigationWaypoint.onWorldUnavailable();
@@ -111,6 +119,7 @@ public final class ClientRuntime {
                 && physicalInput.hasTakeoverInput()) {
                 state.manualTakeover();
                 actuator.release("physical human input");
+                navigationBody.release("physical human input");
                 state.setInspectorNotice("TAKEOVER: physical input", 2);
             }
 
@@ -126,25 +135,32 @@ public final class ClientRuntime {
             }
 
             telemetry.synchronizeRequested(state.telemetryRequested(), latest);
-            if (telemetry.failureLatched()) {
-                state.clearTelemetryRequest();
-                state.setInspectorNotice("telemetry failed; K retries after status clears");
-            }
             telemetry.onObservation(latest);
 
-            if (state.isEnabled() && !modelBridge.isReady()) {
-                state.disableAndRelease("model disconnected");
-                actuator.release("model disconnected");
-                state.setInspectorNotice("model offline; start dummy/model then F10");
+            ModelActionEnvelope action = modelBridge.pollLatestAction();
+            navigationBody.observeBrainAction(action);
+            if (state.isEnabled() && navigationBody.shouldOwnNavigation()) {
+                if (actuator.ownsContinuousInputs() || actuator.activeAction() != null) {
+                    actuator.release("navigation body priority");
+                }
+                navigationBody.tick(clientTick, latest);
+                observations.setPreviousAppliedAction(navigationBody.previousAppliedAction());
             } else {
-                ModelActionEnvelope action = modelBridge.pollLatestAction();
-                actuator.tick(latest, action);
-                observations.setPreviousAppliedAction(actuator.previousAppliedAction());
+                navigationBody.tick(clientTick, latest);
+                if (state.isEnabled() && !modelBridge.isReady()) {
+                    state.disableAndRelease("model disconnected");
+                    actuator.release("model disconnected");
+                    state.setInspectorNotice("model offline; set G waypoint or start brain", 2);
+                } else {
+                    actuator.tick(latest, action);
+                    observations.setPreviousAppliedAction(actuator.previousAppliedAction());
+                }
             }
             processInspectorActions();
         } catch (RuntimeException exception) {
             state.emergencyStop();
             actuator.release("client tick exception");
+            navigationBody.release("client tick exception");
             state.clearTelemetryRequest();
             telemetry.onWorldUnavailable();
             logger.error("Unhandled SawBotV1 client tick error; emergency stop applied.", exception);
@@ -157,12 +173,14 @@ public final class ClientRuntime {
         if (keys.emergencyStop.isPressed()) {
             state.emergencyStop();
             actuator.release("emergency stop");
+            navigationBody.release("emergency stop");
             drainNonSafetyKeyPresses();
             return;
         }
         if (keys.manualTakeover.isPressed()) {
             state.manualTakeover();
             actuator.release("manual takeover");
+            navigationBody.release("manual takeover");
             drainNonSafetyKeyPresses();
             return;
         }
@@ -171,19 +189,26 @@ public final class ClientRuntime {
             if (state.isEnabled()) {
                 state.disableAndRelease("toggle disable");
                 actuator.release("toggle disable");
+                navigationBody.release("toggle disable");
+                state.setInspectorNotice("SAWBOT DISABLED: manual control", 1);
             } else if (!environment.isAllowed()) {
-                state.setInspectorNotice("actuator blocked: " + environment.description());
+                state.setInspectorNotice("actuator blocked: " + environment.description(), 3);
+            } else if (navigationWaypoint.active()) {
+                physicalInput.arm();
+                state.enable();
+                state.setInspectorNotice("NAV ENABLED: deterministic body", 1);
             } else if (!modelBridge.isReady()) {
-                state.setInspectorNotice("model offline at " + modelBridge.endpoint());
+                state.setInspectorNotice("set G waypoint or start brain at " + modelBridge.endpoint(), 2);
             } else {
                 physicalInput.arm();
                 state.enable();
-                state.setInspectorNotice("actuator enabled: " + modelBridge.modelVersion(), 1);
+                state.setInspectorNotice("BRAIN ENABLED: " + modelBridge.modelVersion(), 1);
             }
         }
         if (keys.toggleFreeze.isPressed()) {
             state.toggleFrozen();
             actuator.release("observation freeze changed");
+            navigationBody.release("observation freeze changed");
         }
         if (keys.stepObservation.isPressed()) state.requestObservationStep();
         if (keys.toggleInspector.isPressed()) state.toggleInspector();
@@ -193,13 +218,6 @@ public final class ClientRuntime {
         if (keys.toggleEntityTracers.isPressed()) state.toggleEntityTracers();
         if (keys.toggleLandmarkOverlay.isPressed()) state.toggleLandmarkOverlay();
         if (keys.toggleTelemetry.isPressed()) {
-            if (telemetry.failureLatched() || "error".equals(telemetry.status())) {
-                state.clearTelemetryRequest();
-                if (!telemetry.prepareRetry()) {
-                    state.setInspectorNotice("telemetry writer closing; press K again");
-                    return;
-                }
-            }
             state.toggleTelemetryRequest();
         }
         if (keys.setNavigationWaypoint.isPressed()) {

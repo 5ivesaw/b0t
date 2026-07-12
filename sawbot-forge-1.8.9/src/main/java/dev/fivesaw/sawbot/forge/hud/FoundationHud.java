@@ -18,6 +18,7 @@ import dev.fivesaw.sawbot.forge.inspection.SnapshotExportService;
 import dev.fivesaw.sawbot.forge.model.ModelBridge;
 import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
 import dev.fivesaw.sawbot.forge.actuator.SafeActionActuator;
+import dev.fivesaw.sawbot.forge.navigation.NavigationBodyController;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
 import dev.fivesaw.sawbot.forge.sensors.ObservationPipeline;
@@ -37,6 +38,7 @@ public final class FoundationHud {
     private final TelemetryService telemetry;
     private final ModelBridge modelBridge;
     private final SafeActionActuator actuator;
+    private final NavigationBodyController navigationBody;
     private final WorldDebugRenderer worldRenderer;
     private final NavigationWaypointController navigationWaypoint;
 
@@ -44,18 +46,18 @@ public final class FoundationHud {
                          RollingTimingWindow tickTiming, ObservationPipeline observations,
                          InspectorController inspector, SnapshotExportService exports,
                          TelemetryService telemetry, ModelBridge modelBridge,
-                         SafeActionActuator actuator, WorldDebugRenderer worldRenderer,
-                         NavigationWaypointController navigationWaypoint) {
+                         SafeActionActuator actuator, NavigationBodyController navigationBody,
+                         WorldDebugRenderer worldRenderer, NavigationWaypointController navigationWaypoint) {
         this.minecraft=minecraft; this.state=state; this.tickTiming=tickTiming; this.observations=observations;
         this.inspector=inspector; this.exports=exports; this.telemetry=telemetry; this.modelBridge=modelBridge;
-        this.actuator=actuator; this.worldRenderer=worldRenderer; this.navigationWaypoint=navigationWaypoint;
+        this.actuator=actuator; this.navigationBody=navigationBody; this.worldRenderer=worldRenderer; this.navigationWaypoint=navigationWaypoint;
     }
 
     public void render(long clientTick) {
         if(minecraft.fontRendererObj==null)return;
         int x=6,y=6;
         int statusColour=state.isEnabled()?WARNING:SAFE;
-        draw("SawBotV1  Phase 5",x,y,WHITE); y+=10;
+        draw("SawBotV1  Phase 6 HYBRID",x,y,WHITE); y+=10;
         draw("State: "+state.mode()+"  scope "+actuator.environmentDescription(),x,y,statusColour); y+=10;
         ObservationSnapshot snapshot=observations.latest();
         if(snapshot==null){draw("Eyes: waiting",x,y,WARNING);y+=10;}
@@ -72,7 +74,11 @@ public final class FoundationHud {
             draw("HP "+one(snapshot.selfState().health())+"  wool "+snapshot.inventory().wool()+"  ping "+(snapshot.serverTiming().pingValid()?snapshot.serverTiming().estimatedPingMillis()+" ms":"unknown"),x,y,MUTED); y+=10;
         }
         draw("Handler "+micros(tickTiming.averageNanos())+"/"+micros(tickTiming.maximumNanos())+" us  render "+micros(worldRenderer.averageRenderNanos())+"/"+micros(worldRenderer.maximumRenderNanos())+" us",x,y,MUTED); y+=10;
-        draw("Model "+modelBridge.displayState()+"  "+modelBridge.modelVersion()+"  rtt "+millis(modelBridge.latestRoundTripNanos())+" ms  rx "+modelBridge.receivedActions(),x,y,modelBridge.isReady()?MODEL:MUTED); y+=10;
+        draw("Brain "+modelBridge.displayState()+"  "+modelBridge.modelVersion()+"  rtt "+millis(modelBridge.latestRoundTripNanos())+" ms  rx "+modelBridge.receivedActions(),x,y,modelBridge.isReady()?MODEL:MUTED); y+=10;
+        if(navigationWaypoint.active()||!"IDLE".equals(navigationBody.status())){
+            draw("Nav "+navigationBody.status()+"  "+navigationBody.source()+"  path "+navigationBody.pathIndex()+"/"+navigationBody.pathCells().size()+"  replans "+navigationBody.replanCount()+"  stuck "+navigationBody.stuckRecoveries(),x,y,navColour()); y+=10;
+            draw("Nav reason "+tail(navigationBody.reason(),72)+"  plan "+navigationBody.plannerExpandedNodes()+" open "+navigationBody.plannerOpenNodes()+" reads "+navigationBody.gridWorldReads(),x,y,MUTED); y+=10;
+        }
         if(state.isEnabled()||actuator.activeAction()!=null||actuator.rejectedActions()>0){
             draw("Actuator "+actuator.status()+"  "+actionCompact(actuator.activeAction())+"  "+tail(actuator.lastReason(),42),x,y,"APPLY".equals(actuator.status())?ACTION:MUTED); y+=10;
         }
@@ -216,17 +222,18 @@ public final class FoundationHud {
     }
 
     private int renderModel(ObservationSnapshot snapshot,int x,int y){
-        ActionCommand action=actuator.activeAction();
+        ActionCommand action=navigationBody.shouldOwnNavigation()?navigationBody.previousAppliedAction():actuator.activeAction();
         if(action==null)action=actuator.previousAppliedAction();
-        draw("bridge "+modelBridge.displayState()+" endpoint "+modelBridge.endpoint()+" model "+modelBridge.modelVersion(),x,y,modelBridge.isReady()?MODEL:MUTED);y+=10;
+        draw("brain "+modelBridge.displayState()+" endpoint "+modelBridge.endpoint()+" model "+modelBridge.modelVersion(),x,y,modelBridge.isReady()?MODEL:MUTED);y+=10;
         draw("tx/rx "+modelBridge.sentObservations()+"/"+modelBridge.receivedActions()+" q "+modelBridge.observationQueueSize()+"/2 "+modelBridge.actionQueueSize()+"/8 rtt "+millis(modelBridge.latestRoundTripNanos())+" ms",x,y,WHITE);y+=10;
         draw("bridge drop obs/action "+modelBridge.droppedObservations()+"/"+modelBridge.droppedActions()+" reconnect "+modelBridge.reconnects()+" invalid "+modelBridge.invalidFrames(),x,y,WHITE);y+=10;
-        draw("actuator "+actuator.status()+" own "+bit(actuator.ownsContinuousInputs())+" accepted/rejected/expired "+actuator.acceptedActions()+"/"+actuator.rejectedActions()+"/"+actuator.expiredActions()+" remain "+actuator.remainingTicks(),x,y,ACTION);y+=10;
-        draw("action #"+action.observationSequenceNumber()+" model "+action.modelVersion()+" confidence "+one(action.confidence()),x,y,WHITE);y+=10;
+        draw("nav body "+navigationBody.status()+" source "+navigationBody.source()+" own "+bit(navigationBody.ownsMovement())+" path "+navigationBody.pathIndex()+"/"+navigationBody.pathCells().size(),x,y,navColour());y+=10;
+        draw("planner expanded/open/known "+navigationBody.plannerExpandedNodes()+"/"+navigationBody.plannerOpenNodes()+"/"+navigationBody.plannerKnownNodes()+" reads "+navigationBody.gridWorldReads(),x,y,WHITE);y+=10;
+        draw("replans/stuck "+navigationBody.replanCount()+"/"+navigationBody.stuckRecoveries()+" reason "+tail(navigationBody.reason(),58),x,y,MUTED);y+=10;
+        draw("fallback actuator "+actuator.status()+" own "+bit(actuator.ownsContinuousInputs())+" accepted/rejected/expired "+actuator.acceptedActions()+"/"+actuator.rejectedActions()+"/"+actuator.expiredActions(),x,y,ACTION);y+=10;
+        draw("executed #"+action.observationSequenceNumber()+" controller "+action.modelVersion()+" confidence "+one(action.confidence()),x,y,WHITE);y+=10;
         draw("move F/S "+one(action.forward())+"/"+one(action.strafe())+" camera Y/P "+one(action.yawDeltaDegrees())+"/"+one(action.pitchDeltaDegrees()),x,y,WHITE);y+=10;
-        draw("p J/Sp/Sn/A/U/D/I "+one(action.jumpProbability())+"/"+one(action.sprintProbability())+"/"+one(action.sneakProbability())+"/"+one(action.attackProbability())+"/"+one(action.useOrPlaceProbability())+"/"+one(action.dropProbability())+"/"+one(action.inventoryToggleProbability()),x,y,WHITE);y+=10;
-        draw("slot "+action.hotbarSlot()+" skill "+action.selectedSkill()+" target "+action.selectedTargetTrackingId()+" waypoint "+action.selectedWaypointId(),x,y,WHITE);y+=10;
-        draw("objective "+action.tacticalObjective()+" abort "+action.abortCondition()+" reason "+tail(actuator.lastReason(),50),x,y,MUTED);y+=10;
+        draw("skill "+action.selectedSkill()+" target "+action.selectedTargetTrackingId()+" waypoint "+action.selectedWaypointId()+" objective "+action.tacticalObjective(),x,y,WHITE);y+=10;
         return y;
     }
 
@@ -265,6 +272,13 @@ public final class FoundationHud {
         if(action.useOrPlaceProbability()>=0.5F)bits.append('U');
         if(action.dropProbability()>=0.5F)bits.append('D');
         return "#"+action.observationSequenceNumber()+" f"+one(action.forward())+" s"+one(action.strafe())+" y"+one(action.yawDeltaDegrees())+" "+(bits.length()==0?"-":bits.toString());
+    }
+    private int navColour(){
+        String value=navigationBody.status();
+        if("ARRIVED".equals(value))return SAFE;
+        if("NO_PATH".equals(value)||"BLOCKED".equals(value))return ERROR;
+        if("RECOVER".equals(value)||"PLANNING".equals(value))return WARNING;
+        return ACTION;
     }
     private static long millis(long nanos){return nanos<=0L?0L:nanos/1_000_000L;}
 

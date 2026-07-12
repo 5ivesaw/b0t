@@ -8,6 +8,9 @@ required=(
   "SawBotV1-$VERSION-sources.jar"
   "SHA256SUMS.txt"
   "release-notes.md"
+  "PHASE6_REPORT.md"
+  "HYBRID_ARCHITECTURE.md"
+  "NAVIGATION_BODY.md"
   "PHASE5_REPORT.md"
   "WAYPOINT_MODEL.md"
   "PHASE4_RUNTIME_FINDINGS.md"
@@ -28,5 +31,4 @@ for file in "${required[@]}"; do [[ -f "$DIST/$file" ]] || { echo "ERROR: releas
 python3 "$ROOT/tools/verify-built-jar.py" "$DIST/SawBotV1-$VERSION-mc1.8.9.jar" --expected-version "$VERSION"
 python3 "$ROOT/sawbot-trainer/waypoint/verify_phase5.py"
 (cd "$DIST" && sha256sum -c SHA256SUMS.txt)
-printf 'PASS verified Phase 5 release payload for %s
-' "$VERSION"
+printf 'PASS verified Phase 6 release payload for %s\n' "$VERSION"

@@ -186,13 +186,13 @@ public final class SafeActionActuator {
     private void releaseContinuous() {
         if (!ownsContinuousInputs) return;
         GameSettings settings = minecraft.gameSettings;
-        set(settings.keyBindForward, false);
-        set(settings.keyBindBack, false);
-        set(settings.keyBindLeft, false);
-        set(settings.keyBindRight, false);
-        set(settings.keyBindJump, false);
-        set(settings.keyBindSneak, false);
-        set(settings.keyBindSprint, false);
+        InputRelease.restorePhysical(settings.keyBindForward);
+        InputRelease.restorePhysical(settings.keyBindBack);
+        InputRelease.restorePhysical(settings.keyBindLeft);
+        InputRelease.restorePhysical(settings.keyBindRight);
+        InputRelease.restorePhysical(settings.keyBindJump);
+        InputRelease.restorePhysical(settings.keyBindSneak);
+        InputRelease.restorePhysical(settings.keyBindSprint);
         ownsContinuousInputs = false;
     }
 

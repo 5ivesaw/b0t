@@ -95,7 +95,6 @@ final class TelemetrySession {
                 Files.createDirectories(partialPath.getParent());
                 try (OutputStream output = new BufferedOutputStream(Files.newOutputStream(partialPath), 65536)) {
                     TelemetryFileFormat.writeHeader(output, System.currentTimeMillis(), initialSnapshot);
-                    int consecutiveEncodingFailures = 0;
                     while (!closeRequested || !queue.isEmpty()) {
                         TrajectoryStep step;
                         try {
@@ -108,16 +107,11 @@ final class TelemetrySession {
                         byte[] payload;
                         try {
                             payload = TelemetryBinaryCodec.encodeStep(step);
-                            consecutiveEncodingFailures = 0;
                         } catch (RuntimeException encodingFailure) {
                             encodingRejectedSteps++;
                             droppedSteps++;
-                            consecutiveEncodingFailures++;
                             logger.error("SawBotV1 telemetry rejected observation #"
-                                + step.observation().sequenceNumber() + "; capture continues.", encodingFailure);
-                            if (consecutiveEncodingFailures >= 4) {
-                                throw new IllegalStateException("four consecutive telemetry encoding failures", encodingFailure);
-                            }
+                                + step.observation().sequenceNumber() + "; capture remains active.", encodingFailure);
                             continue;
                         }
                         TelemetryFileFormat.EncodedRecord record = TelemetryFileFormat.encodeRecord(

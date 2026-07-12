@@ -10,6 +10,8 @@ import dev.fivesaw.sawbot.common.observation.ObservationSnapshot;
 import dev.fivesaw.sawbot.common.observation.SelfState;
 import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
+import dev.fivesaw.sawbot.common.navigation.NavigationCell;
+import dev.fivesaw.sawbot.forge.navigation.NavigationBodyController;
 import dev.fivesaw.sawbot.forge.performance.RollingTimingWindow;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
 import net.minecraft.client.Minecraft;
@@ -31,14 +33,17 @@ public final class WorldDebugRenderer {
     private final Minecraft minecraft;
     private final SawBotStateController state;
     private final InspectorController inspector;
+    private final NavigationBodyController navigationBody;
     private final RollingTimingWindow renderTiming;
 
     public WorldDebugRenderer(Minecraft minecraft, SawBotStateController state,
-                              InspectorController inspector, int timingWindowSize) {
-        if (minecraft == null || state == null || inspector == null) throw new IllegalArgumentException("renderer");
+                              InspectorController inspector, NavigationBodyController navigationBody,
+                              int timingWindowSize) {
+        if (minecraft == null || state == null || inspector == null || navigationBody == null) throw new IllegalArgumentException("renderer");
         this.minecraft = minecraft;
         this.state = state;
         this.inspector = inspector;
+        this.navigationBody = navigationBody;
         this.renderTiming = new RollingTimingWindow(timingWindowSize);
     }
 
@@ -46,7 +51,7 @@ public final class WorldDebugRenderer {
         if (snapshot == null || minecraft.theWorld == null || minecraft.thePlayer == null) return;
         if (!state.terrainOverlayVisible() && !state.collisionOverlayVisible()
             && !state.entityOverlayVisible() && !state.landmarkOverlayVisible()
-            && !state.inspectorVisible()) return;
+            && !state.inspectorVisible() && navigationBody.pathCells().isEmpty()) return;
         long start = System.nanoTime();
         boolean matrixPushed = false;
         try {
@@ -59,6 +64,7 @@ public final class WorldDebugRenderer {
             if (state.collisionOverlayVisible()) renderCollision(snapshot);
             if (state.entityOverlayVisible()) renderEntities(snapshot, manager, partialTicks);
             if (state.landmarkOverlayVisible()) renderLandmarks(snapshot, manager);
+            if (!navigationBody.pathCells().isEmpty()) renderNavigationPath();
             if (state.inspectorVisible()) renderSelectedBlock(inspector.selectedBlock());
             if (state.observationsFrozen()) renderFrozenAnchor(snapshot, manager);
         } finally {
@@ -217,6 +223,31 @@ public final class WorldDebugRenderer {
                 ? 0xFF55FFAA : 0xFFAA55FF;
             renderLabel("WP#" + landmark.landmarkId() + " " + landmark.type(), x, y, z, manager, colour);
         }
+    }
+
+
+    private void renderNavigationPath() {
+        java.util.List<NavigationCell> cells = navigationBody.pathCells();
+        if (cells.isEmpty()) return;
+        beginLines(true, 2.4F);
+        for (int index = 0; index < cells.size(); index++) {
+            NavigationCell cell = cells.get(index);
+            boolean current = index == navigationBody.pathIndex();
+            int red = current ? 255 : 85;
+            int green = current ? 255 : 220;
+            int blue = current ? 85 : 255;
+            double x = cell.centerX();
+            double y = cell.centerY() + 0.08D;
+            double z = cell.centerZ();
+            drawBox(new AxisAlignedBB(x - 0.12D, y - 0.04D, z - 0.12D,
+                x + 0.12D, y + 0.20D, z + 0.12D), red, green, blue, 220);
+            if (index + 1 < cells.size()) {
+                NavigationCell next = cells.get(index + 1);
+                drawLine(x, y + 0.08D, z, next.centerX(), next.centerY() + 0.16D,
+                    next.centerZ(), red, green, blue, 230);
+            }
+        }
+        endLines();
     }
 
     private void renderSelectedBlock(BlockInspection block) {

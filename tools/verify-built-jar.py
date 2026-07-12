@@ -39,6 +39,13 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/forge/actuator/PhysicalInputMonitor.class",
     "dev/fivesaw/sawbot/forge/actuator/ActionContextValidator.class",
     "dev/fivesaw/sawbot/forge/map/NavigationWaypointController.class",
+    "dev/fivesaw/sawbot/common/navigation/NavigationCell.class",
+    "dev/fivesaw/sawbot/common/navigation/NavigationGrid.class",
+    "dev/fivesaw/sawbot/common/navigation/NavigationPath.class",
+    "dev/fivesaw/sawbot/common/navigation/NavigationPlanState.class",
+    "dev/fivesaw/sawbot/common/navigation/IncrementalAStarPlanner.class",
+    "dev/fivesaw/sawbot/forge/navigation/WorldNavigationGrid.class",
+    "dev/fivesaw/sawbot/forge/navigation/NavigationBodyController.class",
 }
 
 

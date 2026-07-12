@@ -21,7 +21,7 @@ public final class SawBotStateController {
     private String inspectorNotice = "";
     private long inspectorNoticeTimestampNanos;
     private int inspectorNoticeSeverity;
-    private static final long NOTICE_LIFETIME_NANOS = 3_000_000_000L;
+    private static final long NOTICE_LIFETIME_NANOS = 5_000_000_000L;
 
     public SawBotStateController(Minecraft minecraft, Logger logger) {
         if (minecraft == null || logger == null) throw new IllegalArgumentException("minecraft/logger");
@@ -37,7 +37,7 @@ public final class SawBotStateController {
     public void enable() {
         mode = SawBotMode.ENABLED;
         lastStopReason = "enabled";
-        logger.warn("SawBotV1 Phase 4 actuator enabled for the configured private/local scope.");
+        logger.warn("SawBotV1 Phase 6 hybrid control enabled for the configured private/local scope.");
     }
 
     /** Snapshot freezing remains independent from autonomous enable/disable state. */

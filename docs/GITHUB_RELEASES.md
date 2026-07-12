@@ -2,73 +2,60 @@
 
 ## Normal process
 
-A push to `main` is now the complete release operation:
+A push to `main` is the complete release operation:
 
 ```powershell
 git add -A
-git commit -m "Describe the SawBotV1 update"
+git commit -m "Implement Phase 6 hybrid navigation body"
 git push origin main
 ```
 
-No manual tag command and no second workflow launch are required.
+No manual tag command or second workflow launch is required.
 
 ## Pipeline
 
-`CI and automatic release` runs these jobs:
+`CI and automatic release` performs:
 
-1. **Resolve repository version** reads and validates `sawbotVersion` from `gradle.properties`.
-2. **Offline contracts and safety checks** compiles Java 8-compatible source against the verification APIs, runs the regression suite, validates exported JSON, and audits repository structure.
-3. **Build Forge 1.8.9 mod** installs Java 8 and Java 17, builds and remaps the real mod, validates its metadata/classes, and packages a release-shaped artifact.
-4. **Publish release automatically** runs only for successful pushes to `main`. It downloads the exact artifact produced by the tested build, verifies checksums again, creates the version tag, and publishes the GitHub Release.
+1. Resolve and validate `sawbotVersion` from `gradle.properties`.
+2. Compile Java 8-compatible source against the offline verification APIs.
+3. Run foundation, telemetry, bridge, actuator, safety, and deterministic navigation-body checks.
+4. Build/remap the real Forge 1.8.9 mod with Java 8 toolchain output.
+5. Verify the JAR metadata and required classes.
+6. Package and checksum the exact tested artifact.
+7. On a successful `main` push, create the immutable version tag and GitHub Release.
 
-Pull requests and non-main branches run verification/builds but do not publish releases.
+Pull requests and non-main branches verify/build but do not publish.
 
 ## Version rule
 
-The source of truth is:
-
 ```properties
-sawbotVersion=0.6.0-alpha.0
+sawbotVersion=0.7.0-alpha.0
 ```
 
-The automatic release is tagged:
-
-```text
-v0.6.0-alpha.0
-```
-
-Published versions are immutable. Reusing a version causes an explicit failure. This prevents a release tag from referring to different code at different times.
+The automatic tag is `v0.7.0-alpha.0`. Published versions are immutable; duplicate versions fail explicitly.
 
 ## Authentication and recursion safety
 
-The release job uses the repository's short-lived `GITHUB_TOKEN` and requests only `contents: write`. The tag and release are created by the same tested workflow. GitHub does not start a second workflow from ordinary events created with `GITHUB_TOKEN`, so the automatically created tag does not produce a release loop.
+The release job uses the repository's short-lived `GITHUB_TOKEN` with only `contents: write`. The tested workflow creates the tag/release, and the generated tag does not start a release loop.
 
-If repository policy blocks write access, enable **Read and write permissions** under **Settings → Actions → General → Workflow permissions**.
+If repository policy blocks publication, enable **Read and write permissions** under **Settings → Actions → General → Workflow permissions**.
 
 ## Manual recovery
 
-`Manual Release Recovery` is retained for exceptional cases such as a release that failed after a successful build. It can use the repository version or an explicitly supplied version. It refuses to overwrite an existing release.
+`Manual Release Recovery` is retained only for exceptional failures after a successful source update. It refuses to overwrite an existing release.
 
-## Release assets
+## Phase 6 primary assets
 
 - Installable Forge JAR
 - Sources JAR
 - `SHA256SUMS.txt`
-- `PHASE3_REPORT.md`
-- `TELEMETRY_FORMAT.md`
-- `PHASE2_REPORT.md`
-- `PHASE2_RUNTIME_FEEDBACK.md`
-- `PHASE1_ACCEPTANCE.md`
-- `PHASE0_ACCEPTANCE.md`
+- `PHASE6_REPORT.md`
+- `HYBRID_ARCHITECTURE.md`
+- `NAVIGATION_BODY.md`
+- Phase 5 historical checkpoint/evaluation assets
+- Phase 4 bridge/actuator reports
+- Phase 3 telemetry reports and format
+- Phase 0–2 acceptance evidence
 - `GITHUB_RELEASES.md`
-- `PHASE2_UI_REVERT.md`
 
-## Integrity checks
-
-`tools/verify-built-jar.py` rejects a release when required metadata/classes are missing, the embedded version is wrong, or Java source leaks into the installable JAR.
-
-`tools/package-release.sh` creates the release payload and hashes.
-
-`tools/verify-release-payload.sh` checks every required file, validates the installable JAR, and verifies `SHA256SUMS.txt` after artifact transfer.
-
-The Phase 4 release payload also contains `PHASE4_REPORT.md`, `MODEL_BRIDGE_PROTOCOL.md`, and `PHASE3_RUNTIME_STATUS.md`.
+`tools/verify-built-jar.py` validates metadata and required classes. `tools/package-release.sh` builds the payload and hashes. `tools/verify-release-payload.sh` rechecks every required file, JAR, and checksum after artifact transfer.

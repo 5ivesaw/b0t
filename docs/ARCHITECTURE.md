@@ -134,3 +134,21 @@ The live model has no Minecraft imports, world handle, collision query, route se
 **Status:** Accepted
 
 The first policy is intentionally small and inspectable: 18 normalized features, 32 `tanh` units, and 7 logits. It proves the complete data → train → evaluate → export → local bridge → safe actuator path before bridging or Bedwars logic is attempted. Reproducibility assets and failure examples are versioned; the release build verifies rather than retrains the model.
+
+## ADR-0014 — Hybrid learned brain with deterministic specialist bodies
+
+**Status:** Accepted, superseding the Phase 5 low-level-action interpretation.
+
+**Decision:** Learned systems select goals, tactics, targets, risk, and specialist skills. Deterministic controllers execute known mechanics such as path search, sustained movement, camera interpolation, collision/void safety, jump timing, bridging geometry, inventory operations, and input ownership.
+
+**Reason:** Phase 5 target-machine behavior showed that forcing a small neural classifier to rediscover every motor primitive produced pulsed movement, spin loops, weak route reasoning, and poor debuggability. Conventional algorithms solve these mechanics more reliably, with less data and lower compute, while preserving neural intelligence where judgment is required.
+
+**Boundary:** A specialist body may not invent Bedwars strategy or silently choose a new objective. It executes the bounded intent supplied by the user, test harness, or learned brain.
+
+## ADR-0015 — Incremental client-thread route planning
+
+**Status:** Accepted.
+
+**Decision:** World geometry is sampled only on the Minecraft client thread through a bounded cache. A* advances with a configurable expansion budget per tick and a hard total-node cap.
+
+**Reason:** Worker threads must not access live Minecraft world objects. One-shot large searches could stall the i5-6200U client. Incremental planning keeps both thread safety and frame-time cost explicit.

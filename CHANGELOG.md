@@ -142,3 +142,13 @@
 - Added standalone control-centre prototype.
 - Added GitHub Actions CI and release publishing with validated JARs, sources, and checksums.
 - Replaced deprecated ForgeGradle 2.1 with Gradle 8.8 and Architectury Loom while retaining Java 8 output and Forge 1.8.9 runtime compatibility.
+
+## 0.7.0-alpha.0 — Phase 6 hybrid navigation body
+
+- Replaced low-level learned waypoint action spam with a deterministic specialist navigation body.
+- Added bounded incremental A*, route following, sustained movement, responsive visible yaw control, step-up jumping, sprinting, arrival hysteresis, stuck recovery, and replanning.
+- Added world-space route/current-node rendering and compact planner/controller diagnostics.
+- Allowed direct G-waypoint navigation without a model process while retaining high-level brain waypoint intent.
+- Restored real physical key state when synthetic ownership ends, preventing normal walking/flying interruption.
+- Added persistent F9/F12/takeover feedback and stable offline brain presentation.
+- Simplified telemetry restart and prevented malformed individual steps from killing an entire capture.
