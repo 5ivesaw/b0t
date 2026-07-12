@@ -1,4 +1,4 @@
-# Repository tree — Phase 9 segmented navigation candidate
+# Repository tree — Phase 10 continuous anytime navigation candidate
 
 ```text
 .github/workflows/ci.yml
@@ -7,6 +7,8 @@ README.md
 CHANGELOG.md
 gradle.properties
 build.gradle
+docs/PHASE10_REPORT.md
+docs/CONTINUOUS_ANYTIME_NAVIGATION.md
 docs/PHASE9_REPORT.md
 docs/SEGMENTED_NAVIGATION_CORE.md
 docs/BARITONE_ARCHITECTURE_RESEARCH.md
@@ -15,6 +17,8 @@ docs/HYBRID_ARCHITECTURE.md
 docs/BRIDGING_BODY.md
 docs/PHASE_GATES.md
 sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/ImmutableNavigationGrid.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/AnytimeMovementSearch.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/SearchDebugEdge.java
 sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementAStarPlanner.java
 sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementPath.java
 sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementPlanResult.java
@@ -40,4 +44,4 @@ tools/verify-built-jar.py
 tools/verify-release-payload.sh
 ```
 
-Only the primary Phase 9 and retained runtime/release files are listed here.
+Only the primary Phase 10 and retained runtime/release files are listed here.

@@ -275,3 +275,29 @@ Implemented in candidate `1.0.0-alpha.0`:
 Evidence: `docs/PHASE9_REPORT.md`, `docs/SEGMENTED_NAVIGATION_CORE.md`,
 `docs/BARITONE_ARCHITECTURE_RESEARCH.md`, `docs/NAVIGATION_BODY.md`, and
 `SegmentedNavigationContractTest`.
+
+
+## Phase 10 — Continuous anytime navigation
+
+Implemented in candidate `1.1.0-alpha.0`:
+
+- [x] Direction-aware incremental weighted A* retains alternative arrival headings.
+- [x] Search runs in bounded 48-expansion slices on the existing worker.
+- [x] Safe best-so-far paths stream before the full search completes.
+- [x] Search continues improving after movement begins.
+- [x] Rolling searches originate from the player's actual current feet cell.
+- [x] Streamed replacements stage and splice into live execution.
+- [x] Collision alone never triggers jump.
+- [x] Vertical movement is limited to legal cardinal one-block transitions.
+- [x] Intermediate route cells no longer pulse W off.
+- [x] F7 shows bounded search exploration and best-frontier lines.
+- [x] Search/result/debug structures remain strictly bounded and non-blocking.
+- [x] Contract tests cover early publication, eventual completion, diagnostic bounds,
+      and impossible two-block ascent rejection.
+
+**Gate: SOURCE/OFFLINE PASS; TARGET-MACHINE RUNTIME ACCEPTANCE PENDING.**
+
+Evidence: `docs/PHASE10_REPORT.md`,
+`docs/CONTINUOUS_ANYTIME_NAVIGATION.md`, `docs/PHASE9_REPORT.md`,
+`docs/BARITONE_ARCHITECTURE_RESEARCH.md`, and
+`SegmentedNavigationContractTest`.

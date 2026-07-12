@@ -9,8 +9,8 @@ local/private test environments.
 
 Phases 0–2 passed target-machine runtime acceptance. Later runtime refinement is
 intentionally grouped into a future integration pass while the body architecture is
-built out. This repository contains **Phase 9 — Segmented Navigation Core**
-(`1.0.0-alpha.0`).
+built out. This repository contains **Phase 10 — Continuous Anytime Navigation**
+(`1.1.0-alpha.0`).
 
 The runtime separates intelligence from mechanics:
 
@@ -27,24 +27,25 @@ Implemented contracts and systems:
 - Bounded sensors, inspector, overlays, freeze/step, and export
 - Structured telemetry validation, replay, CRC, and recovery
 - Non-blocking local model transport and safe fallback actuator
-- Immutable client-thread navigation snapshots and a single bounded planner worker
-- Weighted A* over explicit traverse, diagonal, ascent, and descent operations
-- Current/replacement path segments, safe splicing, planning ahead, rewind/skip,
-  corridor projection, current-position replanning, live invalidation, and timeouts
-- Continuous movement ownership, fast visible camera control, validated route
-  lookahead, sprint/jump execution, and stuck recovery
+- Immutable client-thread navigation snapshots and one bounded anytime planner worker
+- Direction-aware weighted A* expanded in small slices with safe best-so-far path streaming
+- Rolling current-position replanning, current/replacement segments, safe splicing,
+  rewind/skip, corridor projection, live invalidation, and timeouts
+- Continuous movement ownership without per-cell W pulsing, fast visible camera control,
+  legal one-block ascent, validated lookahead, sprint execution, and stuck recovery
 - Legal short-gap bridging with block selection, visible alignment, normal reach and
   ray-trace validation, deliberate placement, world confirmation, cautious advance,
   and full release
 - Explicit F9/F12/physical-input ownership priority
 - Automatic GitHub build, tag, and release
 
-## Phase 9 navigation controls
+## Phase 10 navigation controls
 
 1. Aim at a reachable block and press `G` to set destination waypoint `#1000`.
 2. Press `F10` to enable the deterministic navigation body.
 3. The body begins with an immediate validated micro-route when possible, captures a
-   small local snapshot, and plans a wider replacement segment in the background.
+   small local snapshot, begins following a safe best-so-far route, and keeps improving
+   wider alternatives in the background.
 4. Knockback, manual displacement, server correction, terrain change, or reaching a
    later operation causes bounded route reconciliation, splicing, or replanning from
    the actual player position instead of returning to obsolete nodes.
@@ -57,12 +58,12 @@ files remain available for bridge/protocol and learned-brain development.
 
 ## Build
 
-A push to `main` verifies, builds, remaps, tags `v1.0.0-alpha.0`, and publishes the
+A push to `main` verifies, builds, remaps, tags `v1.1.0-alpha.0`, and publishes the
 exact tested release artifact.
 
 ```powershell
 git add -A
-git commit -m "Implement Phase 9 segmented navigation core"
+git commit -m "Implement Phase 10 continuous anytime navigation"
 git push origin main
 ```
 
@@ -90,6 +91,8 @@ Java 8 bytecode, Forge `1.8.9-11.15.1.2318-1.8.9`, MCP `stable_22`.
 
 ## Reports
 
+- `docs/PHASE10_REPORT.md`
+- `docs/CONTINUOUS_ANYTIME_NAVIGATION.md`
 - `docs/PHASE9_REPORT.md`
 - `docs/SEGMENTED_NAVIGATION_CORE.md`
 - `docs/BARITONE_ARCHITECTURE_RESEARCH.md`

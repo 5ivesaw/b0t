@@ -16,6 +16,8 @@ python3 "$ROOT/sawbot-trainer/waypoint/verify_phase5.py"
 [[ -f "$SOURCES_JAR" ]] || { echo "ERROR: sources JAR does not exist: $SOURCES_JAR" >&2; exit 3; }
 
 assets=(
+  "docs/PHASE10_REPORT.md"
+  "docs/CONTINUOUS_ANYTIME_NAVIGATION.md"
   "docs/PHASE9_REPORT.md"
   "docs/SEGMENTED_NAVIGATION_CORE.md"
   "docs/BARITONE_ARCHITECTURE_RESEARCH.md"
@@ -59,7 +61,7 @@ done
 cat > "$DIST/release-notes.md" <<'NOTES'
 # SawBotV1 @VERSION@
 
-Phase 9 segmented-navigation-core candidate for Minecraft Forge 1.8.9.
+Phase 10 continuous-anytime-navigation candidate for Minecraft Forge 1.8.9.
 
 ## Main change
 
@@ -81,7 +83,9 @@ brain remains responsible for selecting goals and tactics, not low-level path me
 
 - `SawBotV1-@VERSION@-mc1.8.9.jar`: installable mod.
 - `SawBotV1-@VERSION@-sources.jar`: source archive.
-- `PHASE9_REPORT.md`: implementation and verification evidence.
+- `PHASE10_REPORT.md`: continuous anytime navigation implementation evidence.
+- `CONTINUOUS_ANYTIME_NAVIGATION.md`: current rolling planner/executor contract.
+- `PHASE9_REPORT.md`: previous segmented-core implementation evidence.
 - `SEGMENTED_NAVIGATION_CORE.md`: current navigation contract.
 - `BARITONE_ARCHITECTURE_RESEARCH.md`: design provenance and clean-room boundary.
 - `NAVIGATION_BODY.md`: deterministic body details.
@@ -90,5 +94,5 @@ brain remains responsible for selecting goals and tactics, not low-level path me
 NOTES
 sed -i "s/@VERSION@/$VERSION/g" "$DIST/release-notes.md"
 
-printf 'Packaged Phase 9 release assets in %s\n' "$DIST"
+printf 'Packaged Phase 10 release assets in %s\n' "$DIST"
 ls -lh "$DIST"

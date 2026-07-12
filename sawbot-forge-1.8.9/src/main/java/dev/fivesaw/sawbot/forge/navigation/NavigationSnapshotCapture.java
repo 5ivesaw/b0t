@@ -17,6 +17,8 @@ public final class NavigationSnapshotCapture {
     private final WorldNavigationGrid worldGrid;
     private final long generation;
     private final long waypointRevision;
+    private final long localRequestId;
+    private final long fullRequestId;
     private final NavigationCell start;
     private final NavigationCell finalGoal;
     private final NavigationCell segmentGoalCandidate;
@@ -45,12 +47,29 @@ public final class NavigationSnapshotCapture {
                                      int maximumExpandedNodes,
                                      float heuristicWeight,
                                      int localRadius, int corridorMargin) {
+        this(worldGrid, generation, waypointRevision, generation * 2L,
+            generation * 2L + 1L, start, finalGoal, horizontalRadius,
+            verticalRadius, maximumExpandedNodes, heuristicWeight,
+            localRadius, corridorMargin);
+    }
+
+    public NavigationSnapshotCapture(WorldNavigationGrid worldGrid,
+                                     long generation, long waypointRevision,
+                                     long localRequestId, long fullRequestId,
+                                     NavigationCell start,
+                                     NavigationCell finalGoal,
+                                     int horizontalRadius, int verticalRadius,
+                                     int maximumExpandedNodes,
+                                     float heuristicWeight,
+                                     int localRadius, int corridorMargin) {
         if (worldGrid == null || start == null || finalGoal == null) {
             throw new IllegalArgumentException("snapshot capture component");
         }
         this.worldGrid = worldGrid;
         this.generation = generation;
         this.waypointRevision = waypointRevision;
+        this.localRequestId = localRequestId;
+        this.fullRequestId = fullRequestId;
         this.start = start;
         this.finalGoal = finalGoal;
         this.horizontalRadius = horizontalRadius;
@@ -132,7 +151,7 @@ public final class NavigationSnapshotCapture {
             candidate.z(), 2, 2);
         if (localStart == null || localGoal == null || localStart.equals(localGoal)) return null;
         boolean reachesFinal = segmentCompletesFinalGoal && localGoal.equals(finalGoal);
-        return new NavigationPlannerWorker.PlanRequest(generation * 2L,
+        return new NavigationPlannerWorker.PlanRequest(localRequestId,
             waypointRevision, true, reachesFinal, grid, localStart, localGoal,
             localRadius + 1, Math.min(verticalRadius, 4),
             Math.min(maximumExpandedNodes, 1536), heuristicWeight,
@@ -151,7 +170,7 @@ public final class NavigationSnapshotCapture {
         boolean complete = segmentCompletesFinalGoal
             && fullGoal.horizontalManhattan(finalGoal) <= 1
             && Math.abs(fullGoal.y() - finalGoal.y()) <= 1;
-        return new NavigationPlannerWorker.PlanRequest(generation * 2L + 1L,
+        return new NavigationPlannerWorker.PlanRequest(fullRequestId,
             waypointRevision, false, complete, grid, fullStart, fullGoal,
             horizontalRadius, verticalRadius, maximumExpandedNodes,
             heuristicWeight, grid.sampledCells());

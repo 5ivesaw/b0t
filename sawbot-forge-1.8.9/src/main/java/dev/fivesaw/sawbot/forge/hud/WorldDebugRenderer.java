@@ -11,6 +11,7 @@ import dev.fivesaw.sawbot.common.observation.SelfState;
 import dev.fivesaw.sawbot.forge.inspection.BlockInspection;
 import dev.fivesaw.sawbot.forge.inspection.InspectorController;
 import dev.fivesaw.sawbot.common.navigation.NavigationCell;
+import dev.fivesaw.sawbot.common.navigation.SearchDebugEdge;
 import dev.fivesaw.sawbot.common.bridging.BridgePlacementStep;
 import dev.fivesaw.sawbot.forge.bridging.BridgingBodyController;
 import dev.fivesaw.sawbot.forge.navigation.NavigationBodyController;
@@ -70,8 +71,9 @@ public final class WorldDebugRenderer {
             if (state.collisionOverlayVisible()) renderCollision(snapshot);
             if (state.entityOverlayVisible()) renderEntities(snapshot, manager, partialTicks);
             if (state.landmarkOverlayVisible()) renderLandmarks(snapshot, manager);
-            if (state.inspectorVisible() && !navigationBody.pathCells().isEmpty()) {
-                renderNavigationPath();
+            if (state.inspectorVisible()) {
+                renderNavigationSearch();
+                if (!navigationBody.pathCells().isEmpty()) renderNavigationPath();
             }
             if (!bridgingBody.planSteps().isEmpty()) renderBridgePlan();
             if (state.inspectorVisible()) renderSelectedBlock(inspector.selectedBlock());
@@ -234,6 +236,26 @@ public final class WorldDebugRenderer {
         }
     }
 
+
+    private void renderNavigationSearch() {
+        java.util.List<SearchDebugEdge> edges = navigationBody.searchDebugEdges();
+        if (edges.isEmpty()) return;
+        beginLines(true, 1.0F);
+        int start = Math.max(0, edges.size() - 384);
+        for (int index = start; index < edges.size(); index++) {
+            SearchDebugEdge edge = edges.get(index);
+            NavigationCell from = edge.from();
+            NavigationCell to = edge.to();
+            int red = edge.frontier() ? 255 : 85;
+            int green = edge.frontier() ? 255 : 150;
+            int blue = edge.frontier() ? 85 : 255;
+            int alpha = edge.frontier() ? 230 : 72;
+            drawLine(from.centerX(), from.centerY() + 0.03D, from.centerZ(),
+                to.centerX(), to.centerY() + 0.03D, to.centerZ(),
+                red, green, blue, alpha);
+        }
+        endLines();
+    }
 
     private void renderNavigationPath() {
         java.util.List<NavigationCell> cells = navigationBody.pathCells();

@@ -46,6 +46,8 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/common/navigation/IncrementalAStarPlanner.class",
     "dev/fivesaw/sawbot/common/navigation/AdaptivePathCursor.class",
     "dev/fivesaw/sawbot/common/navigation/ImmutableNavigationGrid.class",
+    "dev/fivesaw/sawbot/common/navigation/AnytimeMovementSearch.class",
+    "dev/fivesaw/sawbot/common/navigation/SearchDebugEdge.class",
     "dev/fivesaw/sawbot/common/navigation/MovementAStarPlanner.class",
     "dev/fivesaw/sawbot/common/navigation/MovementPath.class",
     "dev/fivesaw/sawbot/common/navigation/MovementPlanResult.class",

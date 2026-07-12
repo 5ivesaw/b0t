@@ -52,8 +52,8 @@ from pathlib import Path
 import json, os, re
 root = Path(os.environ['ROOT_FOR_PY'])
 version = os.environ['SAWBOT_VERIFY_VERSION']
-if version != '1.0.0-alpha.0':
-    raise SystemExit(f'Phase 9 version mismatch: {version}')
+if version != '1.1.0-alpha.0':
+    raise SystemExit(f'Phase 10 version mismatch: {version}')
 properties = (root / 'gradle.properties').read_text(encoding='utf-8')
 if f'sawbotVersion={version}' not in properties or 'loom.platform=forge' not in properties:
     raise SystemExit('gradle.properties version/platform metadata is inconsistent')
@@ -67,13 +67,16 @@ assert metadata['mcversion'] == '1.8.9'
 required = [
     '.github/workflows/ci.yml', '.github/workflows/release.yml',
     'tools/package-release.sh', 'tools/verify-release-payload.sh',
-    'tools/verify-built-jar.py', 'docs/PHASE9_REPORT.md',
-    'docs/SEGMENTED_NAVIGATION_CORE.md',
+    'tools/verify-built-jar.py', 'docs/PHASE10_REPORT.md',
+    'docs/CONTINUOUS_ANYTIME_NAVIGATION.md',
+    'docs/PHASE9_REPORT.md', 'docs/SEGMENTED_NAVIGATION_CORE.md',
     'docs/BARITONE_ARCHITECTURE_RESEARCH.md', 'docs/NAVIGATION_BODY.md',
     'docs/HYBRID_ARCHITECTURE.md', 'docs/PHASE8_REPORT.md',
     'docs/BRIDGING_BODY.md', 'docs/GITHUB_RELEASES.md',
     'verification-tests/src/dev/fivesaw/sawbot/verification/SegmentedNavigationContractTest.java',
     'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/ImmutableNavigationGrid.java',
+    'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/AnytimeMovementSearch.java',
+    'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/SearchDebugEdge.java',
     'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementAStarPlanner.java',
     'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementPath.java',
     'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementPlanResult.java',
@@ -90,14 +93,14 @@ required = [
 ]
 missing = [item for item in required if not (root / item).is_file()]
 if missing:
-    raise SystemExit('Missing Phase 9 repository files: ' + ', '.join(missing))
+    raise SystemExit('Missing Phase 10 repository files: ' + ', '.join(missing))
 
 ci = (root / '.github/workflows/ci.yml').read_text(encoding='utf-8')
 manual = (root / '.github/workflows/release.yml').read_text(encoding='utf-8')
 for text, label in ((ci, 'CI'), (manual, 'manual release')):
     if '\t' in text:
         raise SystemExit(f'{label} workflow contains tabs')
-    for token in ('PHASE9_REPORT.md', 'SEGMENTED_NAVIGATION_CORE.md',
+    for token in ('PHASE10_REPORT.md', 'CONTINUOUS_ANYTIME_NAVIGATION.md',
                   'BARITONE_ARCHITECTURE_RESEARCH.md'):
         if token not in text:
             raise SystemExit(f'{label} workflow missing {token}')
@@ -109,7 +112,7 @@ for token in ('SegmentedNavigationContractTest', 'automatic-release:',
 if 'workflow_dispatch:' not in manual or 'Manual Release Recovery' not in manual:
     raise SystemExit('Manual release recovery workflow is malformed')
 
-planner = (root / 'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementAStarPlanner.java').read_text(encoding='utf-8')
+planner = (root / 'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/AnytimeMovementSearch.java').read_text(encoding='utf-8')
 worker = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationPlannerWorker.java').read_text(encoding='utf-8')
 capture = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationSnapshotCapture.java').read_text(encoding='utf-8')
 coordinator = (root / 'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/PathSegmentCoordinator.java').read_text(encoding='utf-8')
@@ -121,17 +124,22 @@ client = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/clie
 
 for token in ('PriorityQueue', 'maximumExpandedNodes', 'heuristicWeight',
               'NavigationMovementType.ASCEND', 'NavigationMovementType.DESCEND',
-              'TURN_PENALTY', 'traversalPenalty', 'requestId'):
+              'BASE_TURN_PENALTY', 'traversalPenalty', 'NodeKey',
+              'SearchDebugEdge', 'MIN_PUBLISH_EXPANSIONS', 'requestId'):
     if token not in planner:
-        raise SystemExit('Movement planner missing: ' + token)
-for token in ('ArrayBlockingQueue<PlanRequest>(1)', 'setDaemon(true)',
-              'latestSubmittedId', 'superseded', 'shutdown()', 'worker.join'):
+        raise SystemExit('Anytime movement search missing: ' + token)
+for token in ('ArrayBlockingQueue<PlanRequest>(1)',
+              'ArrayBlockingQueue<PlanEnvelope>(6)', 'setDaemon(true)',
+              'AnytimeMovementSearch', 'EXPANSIONS_PER_SLICE = 48',
+              'latestSubmittedId', 'streamedUpdates', 'debugEdges',
+              'superseded', 'shutdown()', 'worker.join'):
     if token not in worker:
         raise SystemExit('Planner worker missing: ' + token)
 if 'net.minecraft' in worker:
     raise SystemExit('Planner worker must not import Minecraft classes')
 for token in ('LOCAL_CAPTURE', 'FULL_CAPTURE', 'takeLocalRequest',
-              'takeFullRequest', 'ImmutableNavigationGrid.Builder', 'maximumCells'):
+              'takeFullRequest', 'localRequestId', 'fullRequestId',
+              'ImmutableNavigationGrid.Builder', 'maximumCells'):
     if token not in capture:
         raise SystemExit('Snapshot capture missing: ' + token)
 for token in ('staged', 'trySplice', 'reconcileNearby', 'rewinds', 'skips',
@@ -139,23 +147,27 @@ for token in ('staged', 'trySplice', 'reconcileNearby', 'rewinds', 'skips',
     if token not in coordinator:
         raise SystemExit('Path coordinator missing: ' + token)
 for token in ('selectAimPoint', 'movement operation timeout', 'restorePhysical',
-              'sameHeading', 'isCorridorSafe', 'maximumTurnDegreesPerTick'):
+              'sameHeading', 'isCorridorSafe', 'maximumTurnDegreesPerTick',
+              'ascend is not a legal one-block transition'):
     if token not in executor:
         raise SystemExit('Movement executor missing: ' + token)
+if 'player.isCollidedHorizontally || recovery' in executor:
+    raise SystemExit('Movement executor still performs blind collision jumps')
 for token in ('NavigationPlannerWorker', 'NavigationSnapshotCapture',
               'PathSegmentCoordinator', 'buildDirectMicroPath', 'reconcileNearby',
-              'maybePlanAhead', 'validateMovementWindow', 'stuckRecoveries',
-              'shutdown()'):
+              'rememberRollingGrid', 'FOLLOW+ANYTIME', 'rolling search from live position',
+              'streamedPathUpdates', 'maybePlanAhead', 'validateMovementWindow',
+              'stuckRecoveries', 'shutdown()'):
     if token not in body:
         raise SystemExit('Navigation body missing: ' + token)
 for token in ('MAX_CACHE_ENTRIES', 'BoundedMap', 'refreshStandable',
               'validateMovementWindow', 'probeDirection', 'cacheHits'):
     if token not in grid:
         raise SystemExit('World grid missing: ' + token)
-if 'state.inspectorVisible() && !navigationBody.pathCells().isEmpty()' not in renderer:
-    raise SystemExit('Route rendering must be inspector-only')
-if 'startIndex + 96' not in renderer:
-    raise SystemExit('Route rendering marker cap is missing')
+if 'state.inspectorVisible()' not in renderer or 'renderNavigationSearch()' not in renderer:
+    raise SystemExit('Route/search rendering must be inspector-only')
+if 'startIndex + 96' not in renderer or 'edges.size() - 384' not in renderer:
+    raise SystemExit('Route/search rendering bounds are missing')
 if 'navigationBody.shutdown()' not in client:
     raise SystemExit('Client runtime does not shut down navigation worker')
 
@@ -180,17 +192,18 @@ for token in ('cabaletta/baritone', '054092e44eec61f6ef3818a2b4b7c56df90daf76',
 
 for script in ('tools/package-release.sh', 'tools/verify-release-payload.sh'):
     text = (root / script).read_text(encoding='utf-8')
-    for token in ('PHASE9_REPORT.md', 'SEGMENTED_NAVIGATION_CORE.md',
+    for token in ('PHASE10_REPORT.md', 'CONTINUOUS_ANYTIME_NAVIGATION.md',
                   'BARITONE_ARCHITECTURE_RESEARCH.md'):
         if token not in text:
             raise SystemExit(f'{script} missing {token}')
 verifier = (root / 'tools/verify-built-jar.py').read_text(encoding='utf-8')
-for token in ('ImmutableNavigationGrid.class', 'MovementAStarPlanner.class',
+for token in ('ImmutableNavigationGrid.class', 'AnytimeMovementSearch.class',
+              'SearchDebugEdge.class', 'MovementAStarPlanner.class',
               'PathSegmentCoordinator.class', 'NavigationPlannerWorker.class',
               'NavigationSnapshotCapture.class', 'NavigationMovementExecutor.class'):
     if token not in verifier:
         raise SystemExit('JAR verifier missing ' + token)
-print('PASS Phase 9 repository, architecture, performance, and safety checks')
+print('PASS Phase 10 repository, architecture, performance, and safety checks')
 PY
 
 python3 "$ROOT/sawbot-tools/dataset-validator/validate_telemetry.py" \
@@ -257,5 +270,5 @@ python3 "$ROOT/tools/verify-built-jar.py" \
   "$LIBS/SawBotV1-$VERSION-mc1.8.9.jar" --expected-version "$VERSION"
 bash "$ROOT/tools/package-release.sh" "$VERSION" >/dev/null
 bash "$ROOT/tools/verify-release-payload.sh" "$VERSION" "$ROOT/dist" >/dev/null
-printf '%s\n' 'PASS synthetic JAR, Phase 9 release packaging, hashes, and payload verification'
-printf '%s\n' 'PASS offline Phase 9 segmented navigation verification'
+printf '%s\n' 'PASS synthetic JAR, Phase 10 release packaging, hashes, and payload verification'
+printf '%s\n' 'PASS offline Phase 10 continuous anytime navigation verification'

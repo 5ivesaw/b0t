@@ -1,25 +1,31 @@
 package dev.fivesaw.sawbot.forge.navigation;
 
+import dev.fivesaw.sawbot.common.navigation.AnytimeMovementSearch;
 import dev.fivesaw.sawbot.common.navigation.ImmutableNavigationGrid;
-import dev.fivesaw.sawbot.common.navigation.MovementAStarPlanner;
 import dev.fivesaw.sawbot.common.navigation.MovementPlanResult;
 import dev.fivesaw.sawbot.common.navigation.NavigationCell;
+import dev.fivesaw.sawbot.common.navigation.SearchDebugEdge;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Single bounded latest-wins planner worker.
+ * Single bounded latest-wins anytime planner worker.
  *
- * It never sees Minecraft objects. Every request owns an immutable world copy,
- * and the client thread only performs non-blocking offer/poll operations.
+ * Each request is expanded in small slices. Safe best-so-far paths are published
+ * between slices while the same search keeps improving, so movement does not
+ * have to wait for a full route calculation. The worker never sees Minecraft
+ * objects and communicates only through bounded non-blocking queues.
  */
 public final class NavigationPlannerWorker {
+    private static final int EXPANSIONS_PER_SLICE = 48;
+
     private final ArrayBlockingQueue<PlanRequest> requests =
         new ArrayBlockingQueue<PlanRequest>(1);
     private final ArrayBlockingQueue<PlanEnvelope> results =
-        new ArrayBlockingQueue<PlanEnvelope>(2);
-    private final MovementAStarPlanner planner = new MovementAStarPlanner();
+        new ArrayBlockingQueue<PlanEnvelope>(6);
     private final Logger logger;
     private final Thread worker;
     private volatile boolean running = true;
@@ -29,9 +35,12 @@ public final class NavigationPlannerWorker {
     private volatile int completed;
     private volatile int superseded;
     private volatile int droppedResults;
+    private volatile int streamedUpdates;
     private volatile long lastComputeNanos;
     private volatile int lastExpandedNodes;
     private volatile int lastKnownNodes;
+    private volatile List<SearchDebugEdge> debugEdges =
+        Collections.<SearchDebugEdge>emptyList();
 
     public NavigationPlannerWorker(Logger logger) {
         if (logger == null) throw new IllegalArgumentException("logger");
@@ -72,29 +81,40 @@ public final class NavigationPlannerWorker {
                     superseded++;
                     continue;
                 }
-                state = "SEARCHING";
-                MovementPlanResult result = planner.plan(request.grid(),
-                    request.start(), request.goal(), request.horizontalRadius(),
-                    request.verticalRadius(), request.maximumExpandedNodes(),
-                    request.heuristicWeight(), request.requestId(),
-                    request.completeGoal());
-                lastComputeNanos = result.computeNanos();
-                lastExpandedNodes = result.expandedNodes();
-                lastKnownNodes = result.knownNodes();
+                state = "ANYTIME";
+                AnytimeMovementSearch search = new AnytimeMovementSearch(
+                    request.grid(), request.start(), request.goal(),
+                    request.horizontalRadius(), request.verticalRadius(),
+                    request.maximumExpandedNodes(), request.heuristicWeight(),
+                    request.requestId(), request.completeGoal());
+
+                boolean terminalPublished = false;
+                while (running && request.requestId() == latestSubmittedId
+                    && !search.finished()) {
+                    AnytimeMovementSearch.SearchUpdate update =
+                        search.step(EXPANSIONS_PER_SLICE);
+                    updateMetrics(search, update);
+                    if (update.publish() && update.result() != null) {
+                        publish(new PlanEnvelope(request, update.result(),
+                            !update.terminal()));
+                        terminalPublished |= update.terminal();
+                    }
+                    Thread.yield();
+                }
+
                 if (request.requestId() != latestSubmittedId) {
                     superseded++;
                     continue;
                 }
-                PlanEnvelope envelope = new PlanEnvelope(request, result);
-                if (!results.offer(envelope)) {
-                    results.poll();
-                    droppedResults++;
-                    if (!results.offer(envelope)) {
-                        droppedResults++;
-                    }
+                AnytimeMovementSearch.SearchUpdate terminal = search.step(1);
+                updateMetrics(search, terminal);
+                if (!terminalPublished && terminal.result() != null) {
+                    publish(new PlanEnvelope(request, terminal.result(), false));
                 }
                 completed++;
-                state = result.succeeded() ? "READY" : "FAILED";
+                state = search.goalReached() ? "READY"
+                    : (terminal.result() != null && terminal.result().succeeded()
+                        ? "PARTIAL" : "FAILED");
             } catch (InterruptedException interrupted) {
                 if (!running) break;
             } catch (RuntimeException exception) {
@@ -105,9 +125,29 @@ public final class NavigationPlannerWorker {
         state = "STOPPED";
     }
 
+    private void updateMetrics(AnytimeMovementSearch search,
+                               AnytimeMovementSearch.SearchUpdate update) {
+        debugEdges = search.debugEdges();
+        lastExpandedNodes = search.expandedNodes();
+        lastKnownNodes = search.knownNodes();
+        if (update.result() != null) {
+            lastComputeNanos = update.result().computeNanos();
+        }
+    }
+
+    private void publish(PlanEnvelope envelope) {
+        if (!results.offer(envelope)) {
+            results.poll();
+            droppedResults++;
+            if (!results.offer(envelope)) droppedResults++;
+        }
+        if (envelope.improving()) streamedUpdates++;
+    }
+
     public void shutdown() {
         running = false;
         requests.clear();
+        results.clear();
         worker.interrupt();
         try {
             worker.join(750L);
@@ -123,9 +163,11 @@ public final class NavigationPlannerWorker {
     public int completed() { return completed; }
     public int superseded() { return superseded; }
     public int droppedResults() { return droppedResults; }
+    public int streamedUpdates() { return streamedUpdates; }
     public long lastComputeNanos() { return lastComputeNanos; }
     public int lastExpandedNodes() { return lastExpandedNodes; }
     public int lastKnownNodes() { return lastKnownNodes; }
+    public List<SearchDebugEdge> debugEdges() { return debugEdges; }
 
     public static final class PlanRequest {
         private final long requestId;
@@ -182,13 +224,17 @@ public final class NavigationPlannerWorker {
     public static final class PlanEnvelope {
         private final PlanRequest request;
         private final MovementPlanResult result;
+        private final boolean improving;
 
-        PlanEnvelope(PlanRequest request, MovementPlanResult result) {
+        PlanEnvelope(PlanRequest request, MovementPlanResult result,
+                     boolean improving) {
             this.request = request;
             this.result = result;
+            this.improving = improving;
         }
 
         public PlanRequest request() { return request; }
         public MovementPlanResult result() { return result; }
+        public boolean improving() { return improving; }
     }
 }

@@ -61,7 +61,7 @@ public final class FoundationHud {
         if(minecraft.fontRendererObj==null)return;
         int x=6,y=6;
         int statusColour=state.isEnabled()?WARNING:SAFE;
-        draw("SawBotV1  Phase 9 SEGMENTED NAVIGATION",x,y,WHITE); y+=10;
+        draw("SawBotV1  Phase 10 CONTINUOUS ANYTIME NAV",x,y,WHITE); y+=10;
         draw("State: "+state.mode()+"  scope "+actuator.environmentDescription(),x,y,statusColour); y+=10;
         ObservationSnapshot snapshot=observations.latest();
         if(snapshot==null){draw("Eyes: waiting",x,y,WARNING);y+=10;}
@@ -81,7 +81,7 @@ public final class FoundationHud {
         draw("Brain "+modelBridge.displayState()+"  "+modelBridge.modelVersion()+"  rtt "+millis(modelBridge.latestRoundTripNanos())+" ms  rx "+modelBridge.receivedActions(),x,y,modelBridge.isReady()?MODEL:MUTED); y+=10;
         if(navigationWaypoint.active()||!"IDLE".equals(navigationBody.status())){
             draw("Nav "+navigationBody.status()+"  "+navigationBody.source()+"  "+navigationBody.currentMovementType()+"  op/rem "+navigationBody.pathIndex()+"/"+navigationBody.remainingMovements()+"  seg "+(navigationBody.currentSegmentIndex()+1)+"/"+navigationBody.totalSegments(),x,y,navColour()); y+=10;
-            draw("Nav plan/splice/reanchor/corridor "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.corridorRecoveries()+"  invalid/stuck "+navigationBody.routeInvalidations()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED); y+=10;
+            draw("Nav plan/rolling/update/splice "+navigationBody.replanCount()+"/"+navigationBody.rollingReplans()+"/"+navigationBody.streamedPathUpdates()+"/"+navigationBody.hotSwapCount()+"  invalid/stuck "+navigationBody.routeInvalidations()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED); y+=10;
             draw("Nav "+tail(navigationBody.reason(),52)+"  worker "+navigationBody.plannerState()+" "+millis(navigationBody.plannerComputeNanos())+"ms cap "+navigationBody.captureProgressPercent()+"% reads/hit "+navigationBody.gridWorldReads()+"/"+navigationBody.gridCacheHits(),x,y,MUTED); y+=10;
         }
         if(bridgingBody.manualIntent()||bridgingBody.brainIntent()||bridgingBody.ownsInputs()||!"IDLE".equals(bridgingBody.status())){
@@ -241,7 +241,7 @@ public final class FoundationHud {
         draw("bridge drop obs/action "+modelBridge.droppedObservations()+"/"+modelBridge.droppedActions()+" reconnect "+modelBridge.reconnects()+" invalid "+modelBridge.invalidFrames(),x,y,WHITE);y+=10;
         draw("nav body "+navigationBody.status()+" source "+navigationBody.source()+" own "+bit(navigationBody.ownsMovement())+" movement "+navigationBody.currentMovementType()+" op/rem "+navigationBody.pathIndex()+"/"+navigationBody.remainingMovements(),x,y,navColour());y+=10;
         draw("segment "+(navigationBody.currentSegmentIndex()+1)+"/"+navigationBody.totalSegments()+" next "+bit(navigationBody.nextSegmentAvailable())+" replacement "+bit(navigationBody.replacementPending())+" provisional "+bit(navigationBody.provisionalPath()),x,y,WHITE);y+=10;
-        draw("planner "+navigationBody.plannerState()+" submitted/completed/superseded "+navigationBody.plannerSubmitted()+"/"+navigationBody.plannerCompleted()+"/"+navigationBody.plannerSuperseded()+" compute "+millis(navigationBody.plannerComputeNanos())+" ms",x,y,WHITE);y+=10;
+        draw("planner "+navigationBody.plannerState()+" submitted/completed/superseded "+navigationBody.plannerSubmitted()+"/"+navigationBody.plannerCompleted()+"/"+navigationBody.plannerSuperseded()+" stream/rolling "+navigationBody.streamedPathUpdates()+"/"+navigationBody.rollingReplans()+" compute "+millis(navigationBody.plannerComputeNanos())+" ms",x,y,WHITE);y+=10;
         draw("expanded/known "+navigationBody.plannerExpandedNodes()+"/"+navigationBody.plannerKnownNodes()+" capture "+navigationBody.captureProgressPercent()+"% reads/cache/live "+navigationBody.gridWorldReads()+"/"+navigationBody.gridCacheHits()+"/"+navigationBody.gridLiveRefreshes(),x,y,MUTED);y+=10;
         draw("replan/splice/reanchor/corridor "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.corridorRecoveries()+" invalid/off/stuck/fail "+navigationBody.routeInvalidations()+"/"+navigationBody.offRouteReplans()+"/"+navigationBody.stuckRecoveries()+"/"+navigationBody.failedPlans(),x,y,MUTED);y+=10;
         draw("corridor dev "+one((float)navigationBody.pathDeviation())+"m yaw error "+one(navigationBody.steeringOffsetDegrees())+" stale "+navigationBody.stalePlanResults()+" reason "+tail(navigationBody.reason(),44),x,y,MUTED);y+=10;

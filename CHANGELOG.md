@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0-alpha.0 — Phase 10 continuous anytime navigation
+
+- Replaced one-result planning with direction-aware incremental weighted A* that
+  publishes safe best-so-far paths every bounded search slice.
+- Added rolling replanning from the player’s real current cell while movement
+  continues on the accepted path.
+- Added streamed path improvements, staged replacement, and live path splicing.
+- Added bounded F7 search-frontier rendering so explored alternatives and the
+  current best frontier are visible without enabling it during ordinary play.
+- Removed blind collision-triggered jumping; jump is now limited to planned legal
+  one-block ascent and bounded stuck recovery.
+- Added explicit rejection of vertical diagonal and two-block ascent transitions.
+- Removed intermediate per-cell movement release that could pulse W and slow travel.
+- Kept graph search off the client thread, reduced worker slices to 48 expansions,
+  and bounded diagnostics to 384 edges.
+- Expanded segmented-navigation verification to cover early publication, continued
+  improvement, bounded diagnostics, and impossible two-block ascent rejection.
+
 ## 1.0.0-alpha.0 — Phase 9 segmented navigation core
 
 - Replaced the rigid client-thread route follower with an operation-based segmented

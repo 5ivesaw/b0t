@@ -16,7 +16,9 @@ import net.minecraft.util.MathHelper;
  * It owns only the keys needed by the current movement operation. It never
  * chooses a route or goal and always restores real physical key state on release.
  * Straight and gentle-turn operations use a validated look-ahead point so the
- * player flows through a route corridor instead of stopping at block centres.
+ * player flows through a route corridor without pulsing movement at every cell.
+ * Collision alone never triggers a blind jump; only a planned legal one-block
+ * ascent or bounded recovery may press jump.
  */
 public final class NavigationMovementExecutor {
     private static final double DESTINATION_RADIUS_SQUARED = 0.48D * 0.48D;
@@ -72,8 +74,10 @@ public final class NavigationMovementExecutor {
         double horizontalDistanceSquared = targetDx * targetDx + targetDz * targetDz;
         double verticalDistance = Math.abs(target.centerY() - player.posY);
         NavigationCell feet = feetCell(player);
+        boolean finalOperation = nextMovement == null;
         if (target.equals(feet)
-            || (horizontalDistanceSquared <= DESTINATION_RADIUS_SQUARED
+            || (finalOperation
+                && horizontalDistanceSquared <= DESTINATION_RADIUS_SQUARED
                 && verticalDistance <= 0.85D)) {
             apply(false, false, false, false, false);
             state = "SUCCESS";
@@ -96,20 +100,32 @@ public final class NavigationMovementExecutor {
 
         double probeDistance = Math.min(1.35D,
             Math.max(0.55D, Math.sqrt(horizontalDistanceSquared)));
-        WorldNavigationGrid.MotionProbe probe = grid.probeDirection(player.posX,
-            player.posY, player.posZ, desiredYaw, probeDistance, false);
-        if (!probe.safe() && movement.type() != NavigationMovementType.ASCEND) {
-            apply(false, false, false, false, false);
-            state = "LOCAL_BLOCKED";
-            return ExecutionFrame.blocked("immediate corridor blocked");
+        if (movement.type() == NavigationMovementType.ASCEND) {
+            if (movement.dy() != 1 || (movement.dx() != 0 && movement.dz() != 0)
+                || !grid.refreshStandable(target.x(), target.y(), target.z())
+                || !grid.canTransition(movement.from(), target)) {
+                apply(false, false, false, false, false);
+                state = "ASCEND_BLOCKED";
+                return ExecutionFrame.blocked(
+                    "ascend is not a legal one-block transition");
+            }
+        } else {
+            WorldNavigationGrid.MotionProbe probe = grid.probeDirection(
+                player.posX, player.posY, player.posZ, desiredYaw,
+                probeDistance, false);
+            if (!probe.safe()) {
+                apply(false, false, false, false, false);
+                state = "LOCAL_BLOCKED";
+                return ExecutionFrame.blocked("immediate corridor blocked");
+            }
         }
 
         boolean aligned = Math.abs(remainingYawError) <= (recovery ? 82F : 58F);
         boolean useForward = aligned;
         boolean useLeft = recovery && recoveryDirection < 0;
         boolean useRight = recovery && recoveryDirection > 0;
-        boolean useJump = player.onGround && (movement.requiresJump()
-            || player.isCollidedHorizontally || recovery);
+        boolean useJump = player.onGround
+            && (movement.requiresJump() || recovery);
         boolean straightContinuation = sameHeading(movement, nextMovement);
         float risk = grid.traversalPenalty(target.x(), target.y(), target.z());
         boolean useSprint = useForward && !useJump && movement.allowsSprint()

@@ -1,5 +1,6 @@
 package dev.fivesaw.sawbot.verification;
 
+import dev.fivesaw.sawbot.common.navigation.AnytimeMovementSearch;
 import dev.fivesaw.sawbot.common.navigation.ImmutableNavigationGrid;
 import dev.fivesaw.sawbot.common.navigation.MovementAStarPlanner;
 import dev.fivesaw.sawbot.common.navigation.MovementPath;
@@ -18,7 +19,7 @@ import net.minecraft.util.BlockPos;
 import net.minecraft.world.World;
 import org.apache.logging.log4j.Logger;
 
-/** Contract tests for the Phase 9 immutable planner and segmented executor core. */
+/** Contract tests for the Phase 10 continuous anytime planner and executor core. */
 public final class SegmentedNavigationContractTest {
     private static int checks;
 
@@ -28,6 +29,8 @@ public final class SegmentedNavigationContractTest {
         immutableGridCopiesBuilderState();
         movementPlannerProducesTypedOperations();
         movementPlannerRoutesAroundUnsafeCells();
+        plannerRejectsImpossibleTwoBlockAscend();
+        anytimeSearchPublishesWhileStillSearching();
         coordinatorRewindsSkipsAndUsesCorridorProjection();
         coordinatorSplicesReplacementAtSharedPosition();
         snapshotCaptureProducesLocalThenFullRequests();
@@ -100,6 +103,45 @@ public final class SegmentedNavigationContractTest {
         }
     }
 
+    private static void plannerRejectsImpossibleTwoBlockAscend() {
+        ImmutableNavigationGrid.Builder builder = new ImmutableNavigationGrid.Builder(
+            0, 63, -2, 5, 68, 2);
+        set(builder, 0, 64, 0);
+        set(builder, 1, 64, 0);
+        set(builder, 2, 66, 0);
+        ImmutableNavigationGrid grid = builder.build();
+        MovementPlanResult result = new MovementAStarPlanner().plan(grid,
+            cell(0, 64, 0), cell(2, 66, 0), 8, 4, 512, 1.10F, 13L, true);
+        require(!result.succeeded(),
+            "planner refuses an impossible two-block vertical jump");
+    }
+
+    private static void anytimeSearchPublishesWhileStillSearching() {
+        ImmutableNavigationGrid.Builder builder = new ImmutableNavigationGrid.Builder(
+            0, 63, -2, 110, 66, 2);
+        for (int x = 0; x <= 110; x++) {
+            for (int z = -2; z <= 2; z++) set(builder, x, 64, z);
+        }
+        ImmutableNavigationGrid grid = builder.build();
+        AnytimeMovementSearch search = new AnytimeMovementSearch(grid,
+            cell(0, 64, 0), cell(110, 64, 0), 120, 3, 8192, 1.12F,
+            14L, true);
+        AnytimeMovementSearch.SearchUpdate first = search.step(48);
+        require(first.publish(), "anytime search publishes a safe early route");
+        require(first.result() != null && first.result().succeeded(),
+            "early anytime route is executable");
+        require(!first.result().path().complete(),
+            "early anytime route is marked provisional");
+        require(!search.finished(), "search keeps improving after first publication");
+        int guard = 0;
+        while (!search.finished() && guard++ < 200) search.step(128);
+        require(search.goalReached(), "anytime search eventually reaches the goal");
+        require(!search.debugEdges().isEmpty(),
+            "bounded search frontier diagnostics are retained");
+        require(search.debugEdges().size() <= 385,
+            "search diagnostics remain strictly bounded");
+    }
+
     private static void coordinatorRewindsSkipsAndUsesCorridorProjection() {
         MovementPath path = straightPath(0, 8, 30L);
         PathSegmentCoordinator coordinator = new PathSegmentCoordinator();
@@ -168,8 +210,8 @@ public final class SegmentedNavigationContractTest {
     private static void plannerWorkerProcessesImmutableRequestOffThread()
             throws InterruptedException {
         ImmutableNavigationGrid.Builder builder = new ImmutableNavigationGrid.Builder(
-            0, 63, -2, 18, 66, 2);
-        for (int x = 0; x <= 18; x++) {
+            0, 63, -2, 110, 66, 2);
+        for (int x = 0; x <= 110; x++) {
             for (int z = -2; z <= 2; z++) set(builder, x, 64, z);
         }
         ImmutableNavigationGrid grid = builder.build();
@@ -177,8 +219,8 @@ public final class SegmentedNavigationContractTest {
         try {
             NavigationPlannerWorker.PlanRequest request =
                 new NavigationPlannerWorker.PlanRequest(90L, 1L, false, true,
-                    grid, cell(0, 64, 0), cell(18, 64, 0), 24, 4,
-                    2048, 1.10F, grid.sampledCells());
+                    grid, cell(0, 64, 0), cell(110, 64, 0), 120, 4,
+                    8192, 1.10F, grid.sampledCells());
             require(worker.submit(request), "bounded worker accepts immutable request");
             NavigationPlannerWorker.PlanEnvelope envelope = null;
             long deadline = System.nanoTime() + 2_000_000_000L;
@@ -189,7 +231,14 @@ public final class SegmentedNavigationContractTest {
             require(envelope != null, "worker returns result without client blocking");
             require(envelope.result().succeeded(), "worker route succeeds");
             require(envelope.request().requestId() == 90L, "worker keeps request identity");
+            while (worker.completed() < 1 && System.nanoTime() < deadline) {
+                Thread.sleep(5L);
+            }
             require(worker.completed() == 1, "worker completion metric increments");
+            require(worker.streamedUpdates() >= 1,
+                "worker streams best-so-far route updates");
+            require(!worker.debugEdges().isEmpty(),
+                "worker exposes bounded search frontier diagnostics");
             require(worker.lastComputeNanos() > 0L, "worker reports compute time");
         } finally {
             worker.shutdown();

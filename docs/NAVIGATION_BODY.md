@@ -1,6 +1,6 @@
-# Deterministic Navigation Body v1.0
+# Deterministic Navigation Body v1.1
 
-Version: `1.0.0-alpha.0`
+Version: `1.1.0-alpha.0`
 
 ## Responsibility boundary
 
@@ -19,8 +19,11 @@ Minecraft world access remains on the client thread:
 2. create a validated direct micro-route when a short corridor is already known safe
 3. capture a small local immutable grid under a strict per-tick cell budget
 4. submit a provisional local request through a bounded queue
-5. continue a corridor-shaped full snapshot incrementally
-6. submit the replacement/full segment to one daemon planner worker
+5. publish safe best-so-far routes in 48-expansion worker slices
+6. continue the same search while the executor begins moving
+7. continue a corridor-shaped full snapshot incrementally
+8. submit the replacement/full segment to one daemon planner worker
+9. reuse the immutable corridor for rolling searches from the live current cell
 
 The worker consumes arrays only. It never receives `World`, player, block-state, or
 other Minecraft objects.
@@ -60,7 +63,8 @@ gentle-turn operations use a live-validated next-operation lookahead point, so m
 flows through a corridor instead of stopping at every block centre.
 
 Camera changes remain visible and bounded. Sprint is used only on low-risk aligned
-continuations. Ascents, collision, and recovery can request jump. Every movement has a
+continuations. Only a planned legal one-block ascent or bounded recovery may request
+jump; collision by itself never does. Every movement has a
 bounded timeout in addition to the progress watchdog.
 
 ## Live world changes
@@ -79,10 +83,12 @@ Persistent bounded LRU caches avoid rereading unchanged cells during repeated sn
 - no graph search on the Minecraft client thread
 - one planner worker only
 - one queued latest request; obsolete requests are superseded
-- two-result bounded output queue
+- six-result bounded output queue for streamed improvements
 - immutable worker input
 - bounded per-tick snapshot capture
-- bounded A* nodes and spatial radius
+- bounded direction-aware incremental A* nodes and spatial radius
+- 48 worker expansions per publication slice
+- at most 384 retained search-debug edges
 - corridor-shaped long-range snapshots
 - small local request before full request
 - bounded live validation window

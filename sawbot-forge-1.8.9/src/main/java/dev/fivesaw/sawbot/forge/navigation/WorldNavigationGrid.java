@@ -105,8 +105,10 @@ public final class WorldNavigationGrid implements NavigationGrid {
             || (dx == 0 && dz == 0) || !isStandable(to.x(), to.y(), to.z())) {
             return false;
         }
+        if (dy != 0 && dx != 0 && dz != 0) return false;
+        if (dy > 0 && dy != 1) return false;
+        if (dy < 0 && dy != -1) return false;
         if (dx != 0 && dz != 0) {
-            if (dy != 0) return false;
             if (!isStandable(from.x() + dx, from.y(), from.z())
                 || !isStandable(from.x(), from.y(), from.z() + dz)) return false;
         }

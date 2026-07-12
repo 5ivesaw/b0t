@@ -4,6 +4,7 @@ import dev.fivesaw.sawbot.common.action.AbortCondition;
 import dev.fivesaw.sawbot.common.action.ActionCommand;
 import dev.fivesaw.sawbot.common.action.Skill;
 import dev.fivesaw.sawbot.common.action.TacticalObjective;
+import dev.fivesaw.sawbot.common.navigation.ImmutableNavigationGrid;
 import dev.fivesaw.sawbot.common.navigation.MovementPath;
 import dev.fivesaw.sawbot.common.navigation.NavigationCell;
 import dev.fivesaw.sawbot.common.navigation.NavigationMovement;
@@ -11,6 +12,7 @@ import dev.fivesaw.sawbot.common.navigation.NavigationMovementType;
 import dev.fivesaw.sawbot.common.navigation.NavigationPath;
 import dev.fivesaw.sawbot.common.navigation.NavigationProgressWatchdog;
 import dev.fivesaw.sawbot.common.navigation.PathSegmentCoordinator;
+import dev.fivesaw.sawbot.common.navigation.SearchDebugEdge;
 import dev.fivesaw.sawbot.common.observation.ObservationSnapshot;
 import dev.fivesaw.sawbot.forge.actuator.EnvironmentGuard;
 import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
@@ -25,7 +27,7 @@ import net.minecraft.util.MathHelper;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Phase 9 segmented movement navigator.
+ * Phase 10 continuous anytime movement navigator.
  *
  * The learned brain supplies goals. This deterministic body converts those goals
  * into immutable world snapshots, plans movement operations on a bounded worker,
@@ -33,7 +35,7 @@ import org.apache.logging.log4j.Logger;
  * position every tick, and executes controls through a dedicated movement servo.
  */
 public final class NavigationBodyController {
-    private static final String BODY_VERSION = "navigation-body/1.0";
+    private static final String BODY_VERSION = "navigation-body/1.1";
     private static final int ARRIVAL_STABLE_TICKS = 4;
     private static final int RECONCILE_BACKTRACK_POSITIONS = 5;
     private static final int RECONCILE_FORWARD_POSITIONS = 28;
@@ -68,6 +70,12 @@ public final class NavigationBodyController {
     private WorldNavigationGrid worldGrid;
     private NavigationSnapshotCapture capture;
     private long planGeneration;
+    private long nextRequestId = 1L;
+    private ImmutableNavigationGrid rollingGrid;
+    private NavigationCell rollingGoal;
+    private long rollingWaypointRevision = -1L;
+    private boolean rollingCompletesFinalGoal;
+    private long lastRollingSubmitTick;
     private long plannedWaypointRevision = -1L;
     private long lastAcceptedRequestId = -1L;
     private long lastPlanStartTick;
@@ -86,6 +94,8 @@ public final class NavigationBodyController {
     private int directMicroPlans;
     private int stalePlanResults;
     private int failedPlans;
+    private int streamedPathUpdates;
+    private int rollingReplans;
     private double pathDeviation;
     private float steeringOffsetDegrees;
     private String status = "IDLE";
@@ -405,10 +415,12 @@ public final class NavigationBodyController {
                                String cause, boolean keepActivePath) {
         planGeneration++;
         plannedWaypointRevision = waypoint.revision();
+        long localRequestId = nextRequestId++;
+        long fullRequestId = nextRequestId++;
         capture = new NavigationSnapshotCapture(worldGrid, planGeneration,
-            plannedWaypointRevision, start, goal, horizontalRadius,
-            verticalRadius, maximumExpandedNodes, heuristicWeight,
-            localPlanningRadius, corridorMargin);
+            plannedWaypointRevision, localRequestId, fullRequestId, start, goal,
+            horizontalRadius, verticalRadius, maximumExpandedNodes,
+            heuristicWeight, localPlanningRadius, corridorMargin);
         replanCount++;
         lastPlanStartTick = clientTick;
         reason = cause;
@@ -439,13 +451,22 @@ public final class NavigationBodyController {
         NavigationPlannerWorker.PlanRequest local = capture.takeLocalRequest();
         if (local != null && (!segments.hasActivePath()
             || segments.remainingMovements() <= lookaheadNodes)) {
+            rememberRollingGrid(local);
             plannerWorker.submit(local);
         }
         NavigationPlannerWorker.PlanRequest full = capture.takeFullRequest();
         if (full != null) {
+            rememberRollingGrid(full);
             plannerWorker.submit(full);
             capture = null;
         }
+    }
+
+    private void rememberRollingGrid(NavigationPlannerWorker.PlanRequest request) {
+        rollingGrid = request.grid();
+        rollingGoal = request.goal();
+        rollingWaypointRevision = request.waypointRevision();
+        rollingCompletesFinalGoal = request.completeGoal();
     }
 
     private void acceptPlannerResults(NavigationCell feet) {
@@ -458,6 +479,7 @@ public final class NavigationBodyController {
             return;
         }
         lastAcceptedRequestId = request.requestId();
+        if (envelope.improving()) streamedPathUpdates++;
         if (!envelope.result().succeeded()) {
             failedPlans++;
             if (!segments.hasActivePath() && !request.provisional()) {
@@ -472,7 +494,8 @@ public final class NavigationBodyController {
             segments.install(path, feet);
             activePathProvisional = request.provisional() || !path.complete();
             activePathCompletesGoal = path.complete();
-            status = request.provisional() ? "LOCAL_PATH" : "FOLLOW";
+            status = envelope.improving() ? "ANYTIME_PATH"
+                : (request.provisional() ? "LOCAL_PATH" : "FOLLOW");
             reason = "accepted " + path.movementCount() + " operations";
         } else {
             segments.stage(path);
@@ -480,7 +503,7 @@ public final class NavigationBodyController {
                 hotSwapCount++;
                 activePathProvisional = request.provisional() || !path.complete();
                 activePathCompletesGoal = path.complete();
-                status = "SPLICE";
+                status = envelope.improving() ? "ANYTIME_SPLICE" : "SPLICE";
                 reason = "replacement path spliced at current cell";
             } else {
                 status = "FOLLOW+PLAN";
@@ -515,18 +538,44 @@ public final class NavigationBodyController {
 
     private void maybePlanAhead(long clientTick, EntityPlayerSP player,
                                 NavigationCell feet, NavigationCell goal) {
-        if (capture != null || plannerWorker.requestQueueSize() > 0
-            || "SEARCHING".equals(plannerWorker.state())) return;
+        if (capture != null) return;
+        if (plannerWorker.requestQueueSize() > 0
+            || "ANYTIME".equals(plannerWorker.state())) return;
+        if (clientTick - lastRollingSubmitTick < replanIntervalTicks) return;
+
+        boolean rollingAvailable = rollingGrid != null && rollingGoal != null
+            && rollingWaypointRevision == waypoint.revision()
+            && rollingGrid.contains(feet.x(), feet.y(), feet.z());
+        if (rollingAvailable) {
+            NavigationCell rollingStart = rollingGrid.nearestStandable(feet.x(),
+                feet.y(), feet.z(), 1, 2);
+            if (rollingStart != null && !rollingStart.equals(rollingGoal)) {
+                NavigationPlannerWorker.PlanRequest request =
+                    new NavigationPlannerWorker.PlanRequest(nextRequestId++,
+                        waypoint.revision(), !rollingCompletesFinalGoal,
+                        rollingCompletesFinalGoal,
+                        rollingGrid, rollingStart, rollingGoal, horizontalRadius,
+                        verticalRadius, maximumExpandedNodes, heuristicWeight,
+                        rollingGrid.sampledCells());
+                if (plannerWorker.submit(request)) {
+                    rollingReplans++;
+                    lastRollingSubmitTick = clientTick;
+                    status = "FOLLOW+ANYTIME";
+                    reason = "rolling search from live position";
+                    return;
+                }
+            }
+        }
+
         if (clientTick - lastPlanStartTick < Math.max(4, replanIntervalTicks)) return;
         boolean needsContinuation = !activePathCompletesGoal
             && segments.remainingMovements() <= Math.max(lookaheadNodes, 8);
-        boolean rollingReplacement = segments.remainingMovements() > 0
-            && clientTick - lastPlanStartTick >= Math.max(20,
-                replanIntervalTicks * 5);
-        if (needsContinuation || rollingReplacement) {
+        boolean leftSnapshot = rollingGrid == null
+            || !rollingGrid.contains(feet.x(), feet.y(), feet.z());
+        if (needsContinuation || leftSnapshot) {
             beginPlanning(clientTick, player, feet, goal,
-                needsContinuation ? "planning next segment"
-                    : "rolling live replacement", true);
+                needsContinuation ? "capture next moving segment"
+                    : "refresh rolling world corridor", true);
         }
     }
 
@@ -653,6 +702,9 @@ public final class NavigationBodyController {
         movementExecutor.release(why);
         activePathProvisional = false;
         activePathCompletesGoal = false;
+        rollingGrid = null;
+        rollingGoal = null;
+        rollingWaypointRevision = -1L;
         reason = why;
     }
 
@@ -674,6 +726,9 @@ public final class NavigationBodyController {
         release("world unavailable");
         if (worldGrid != null) worldGrid.clear();
         worldGrid = null;
+        rollingGrid = null;
+        rollingGoal = null;
+        rollingWaypointRevision = -1L;
         plannedWaypointRevision = -1L;
         planGeneration++;
         status = "IDLE";
@@ -781,6 +836,11 @@ public final class NavigationBodyController {
     public String currentMovementType() {
         NavigationMovement movement = segments.currentMovement();
         return movement == null ? "NONE" : movement.type().name();
+    }
+    public int streamedPathUpdates() { return streamedPathUpdates; }
+    public int rollingReplans() { return rollingReplans; }
+    public List<SearchDebugEdge> searchDebugEdges() {
+        return plannerWorker.debugEdges();
     }
     public ActionCommand previousAppliedAction() { return previousAppliedAction; }
 }
