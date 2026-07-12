@@ -233,9 +233,11 @@ public final class WorldDebugRenderer {
         for (int index = 0; index < cells.size(); index++) {
             NavigationCell cell = cells.get(index);
             boolean current = index == navigationBody.pathIndex();
-            int red = current ? 255 : 85;
-            int green = current ? 255 : 220;
-            int blue = current ? 85 : 255;
+            boolean lookahead = index == navigationBody.lookaheadIndex();
+            boolean provisional = navigationBody.provisionalPath();
+            int red = current ? 255 : (lookahead ? 255 : (provisional ? 255 : 85));
+            int green = current ? 255 : (lookahead ? 85 : (provisional ? 170 : 220));
+            int blue = current ? 85 : (lookahead ? 255 : 255);
             double x = cell.centerX();
             double y = cell.centerY() + 0.08D;
             double z = cell.centerZ();

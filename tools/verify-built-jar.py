@@ -44,6 +44,7 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/common/navigation/NavigationPath.class",
     "dev/fivesaw/sawbot/common/navigation/NavigationPlanState.class",
     "dev/fivesaw/sawbot/common/navigation/IncrementalAStarPlanner.class",
+    "dev/fivesaw/sawbot/common/navigation/AdaptivePathCursor.class",
     "dev/fivesaw/sawbot/forge/navigation/WorldNavigationGrid.class",
     "dev/fivesaw/sawbot/forge/navigation/NavigationBodyController.class",
 }

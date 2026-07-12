@@ -143,6 +143,19 @@
 - Added GitHub Actions CI and release publishing with validated JARs, sources, and checksums.
 - Replaced deprecated ForgeGradle 2.1 with Gradle 8.8 and Architectury Loom while retaining Java 8 output and Forge 1.8.9 runtime compatibility.
 
+## 0.8.0-alpha.0 — Phase 7 real-time adaptive navigation
+
+- Replaced mandatory node-by-node following with a continuously revised safe route corridor.
+- Added anytime bounded A* frontier paths so movement can begin before full search completion.
+- Added rolling current-position replanning while the active route continues to execute.
+- Added route hot swapping, live block/support invalidation, and off-route replanning.
+- Added bounded path re-anchoring after knockback/manual displacement and safe node skipping.
+- Added safe lookahead smoothing and several 20 Hz local steering candidates.
+- Increased bounded visible turn responsiveness and retained sustained input ownership.
+- Added soft edge-exposure and turn costs to improve route quality without forbidding narrow paths.
+- Added current/lookahead/provisional route rendering and compact adaptive diagnostics.
+- Expanded offline navigation verification for frontier paths, re-anchoring, dynamic world changes, and current-position resume.
+
 ## 0.7.0-alpha.0 — Phase 6 hybrid navigation body
 
 - Replaced low-level learned waypoint action spam with a deterministic specialist navigation body.

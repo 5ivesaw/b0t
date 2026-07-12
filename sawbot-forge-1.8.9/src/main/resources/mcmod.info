@@ -2,13 +2,13 @@
   {
     "modid": "sawbotv1",
     "name": "SawBotV1",
-    "description": "Visible-client neural-agent research foundation for private Minecraft 1.8.9 testing.",
+    "description": "Hybrid neural-brain and deterministic-body research agent for private Minecraft 1.8.9 testing.",
     "version": "${version}",
     "mcversion": "${mcversion}",
     "url": "",
     "updateUrl": "",
     "authorList": ["FiveSaw"],
-    "credits": "Clean-room Phase 4 local model bridge and safe-actuator research foundation.",
+    "credits": "Clean-room Phase 7 real-time adaptive navigation and safe hybrid-agent research foundation.",
     "logoFile": "",
     "screenshots": [],
     "dependencies": []

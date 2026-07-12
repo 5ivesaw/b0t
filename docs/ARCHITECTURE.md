@@ -120,14 +120,14 @@ The Phase 3 `.sbt` format is explicitly little-endian and versioned. Every indep
 
 `SafeActionActuator` is client-thread-only. Its authority is limited to ordinary key bindings, hotbar selection, and bounded visible rotation changes. `EnvironmentGuard`, `ActionContextValidator`, `PhysicalInputMonitor`, and `SawBotStateController` form independent safety gates. Any disconnect, blocked environment, stale action, human input, F9/F12, GUI conflict, or world unload invokes complete input release.
 
-The dummy model is a protocol/actuator fixture. A future learned model must speak the same contract and receives no hidden actuator correction, runtime pathfinding, aim help, or task logic.
+The dummy model is a protocol/actuator fixture. This was the Phase 4 direct-actuation boundary. ADR-0014 supersedes its prohibition on deterministic mechanical assistance: a learned model still speaks the same bounded contract, but may now invoke explicit specialist bodies whose state and output are visible in telemetry and the inspector.
 
 
 ## Phase 5 learned-policy boundary
 
 `NavigationWaypointController` creates one explicit semantic landmark on the client thread. The observation pipeline serializes it like every other landmark. The separate `waypoint_model.py` process decodes only the bridge payload, computes a fixed feature vector, runs the exported MLP, and returns an ordinary action referencing waypoint `#1000`.
 
-The live model has no Minecraft imports, world handle, collision query, route search, or teacher dependency. `SafeActionActuator` remains the only component allowed to mutate legitimate controls. It tracks ownership of synthetic continuous keys so an idle/disabled bridge cannot clear human input.
+The Phase 5 experimental model has no Minecraft imports, world handle, collision query, route search, or teacher dependency. Its direct low-level navigation is retained only as a training and bridge baseline. From Phase 6 onward, explicit specialist bodies may mutate legitimate controls through the same ownership and safety boundary; idle or disabled components may not clear human input.
 
 ### ADR-0012: First learned behavior is an exported tiny MLP, not a runtime teacher
 

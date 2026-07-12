@@ -78,7 +78,10 @@ public final class ClientRuntime {
             navigationWaypoint, config.navigationHorizontalRadius(), config.navigationVerticalRadius(),
             config.navigationMaximumExpandedNodes(), config.navigationExpansionsPerTick(),
             config.navigationReplanIntervalTicks(), config.navigationStuckWindowTicks(),
-            config.navigationMaximumTurnDegreesPerTick(), config.navigationArrivalRadius(), logger);
+            config.navigationMaximumTurnDegreesPerTick(), config.navigationArrivalRadius(),
+            config.navigationLookaheadNodes(), config.navigationLookaheadDistance(),
+            config.navigationPathValidationNodes(), config.navigationOffRouteDistance(),
+            config.navigationReactiveProbeDistance(), logger);
         this.worldRenderer = new WorldDebugRenderer(minecraft, state, inspector, navigationBody,
             config.timingWindowSize());
         this.hud = new FoundationHud(minecraft, state, tickTiming, observations, inspector,

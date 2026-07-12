@@ -9,10 +9,11 @@ import java.util.Map;
 import java.util.PriorityQueue;
 
 /**
- * Deterministic bounded A* over player-feet cells.
+ * Deterministic bounded anytime A* over player-feet cells.
  *
- * The planner is stepped with an explicit expansion budget so Minecraft's client
- * thread never performs an unbounded route search in one tick.
+ * Search is explicitly budgeted per client tick. While a full route is still
+ * being searched, {@link #bestEffortPath()} exposes the best current frontier so
+ * the follower can begin moving instead of waiting motionless for completion.
  */
 public final class IncrementalAStarPlanner {
     private static final int[][] DIRECTIONS = {
@@ -20,6 +21,7 @@ public final class IncrementalAStarPlanner {
         {1, 1}, {1, -1}, {-1, -1}, {-1, 1}
     };
     private static final float DIAGONAL_COST = 1.41421356F;
+    private static final float TURN_PENALTY = 0.055F;
 
     private final PriorityQueue<Node> open = new PriorityQueue<Node>(64, new Comparator<Node>() {
         @Override public int compare(Node left, Node right) {
@@ -36,6 +38,7 @@ public final class IncrementalAStarPlanner {
     private NavigationCell goal;
     private NavigationPlanState state = NavigationPlanState.IDLE;
     private NavigationPath path;
+    private Node bestFrontier;
     private int horizontalRadius;
     private int verticalRadius;
     private int maximumExpandedNodes;
@@ -74,9 +77,10 @@ public final class IncrementalAStarPlanner {
         }
 
         float h = heuristic(start, goal);
-        Node first = new Node(start, null, 0F, h, insertionOrder++);
+        Node first = new Node(start, null, 0F, h, insertionOrder++, 0, 0);
         open.add(first);
         best.put(start, first);
+        bestFrontier = first;
         state = NavigationPlanState.SEARCHING;
     }
 
@@ -92,6 +96,7 @@ public final class IncrementalAStarPlanner {
             }
             current.closed = true;
             expandedNodes++;
+            updateBestFrontier(current);
             if (current.cell.equals(goal)) {
                 succeed(current);
                 break;
@@ -125,20 +130,39 @@ public final class IncrementalAStarPlanner {
 
             NavigationCell next = new NavigationCell(
                 current.cell.x() + dx, nextY, current.cell.z() + dz);
-            if (!insideBounds(next)) continue;
+            if (!insideBounds(next) || !grid.canTransition(current.cell, next)) continue;
 
             float moveCost = diagonal ? DIAGONAL_COST : 1F;
             int verticalDelta = nextY - current.cell.y();
             if (verticalDelta > 0) moveCost += 0.45F;
             else if (verticalDelta < 0) moveCost += 0.15F;
+            if (current.parent != null && (current.stepDx != dx || current.stepDz != dz)) {
+                moveCost += TURN_PENALTY;
+            }
+            moveCost += Math.max(0F, grid.traversalPenalty(next.x(), next.y(), next.z()));
             float candidateG = current.g + moveCost;
 
             Node previous = best.get(next);
             if (previous != null && candidateG >= previous.g - 0.0001F) continue;
             float h = heuristic(next, goal);
-            Node candidate = new Node(next, current, candidateG, h, insertionOrder++);
+            Node candidate = new Node(next, current, candidateG, h,
+                insertionOrder++, dx, dz);
             best.put(next, candidate);
             open.add(candidate);
+            updateBestFrontier(candidate);
+        }
+    }
+
+    private void updateBestFrontier(Node candidate) {
+        if (candidate == null) return;
+        if (bestFrontier == null
+            || candidate.h < bestFrontier.h - 0.0001F
+            || (Math.abs(candidate.h - bestFrontier.h) <= 0.0001F
+                && candidate.f < bestFrontier.f - 0.0001F)
+            || (Math.abs(candidate.h - bestFrontier.h) <= 0.0001F
+                && Math.abs(candidate.f - bestFrontier.f) <= 0.0001F
+                && candidate.order < bestFrontier.order)) {
+            bestFrontier = candidate;
         }
     }
 
@@ -166,12 +190,16 @@ public final class IncrementalAStarPlanner {
     }
 
     private void succeed(Node terminal) {
+        path = buildPath(terminal);
+        state = NavigationPlanState.SUCCEEDED;
+        failureReason = "none";
+    }
+
+    private NavigationPath buildPath(Node terminal) {
         ArrayList<NavigationCell> reverse = new ArrayList<NavigationCell>();
         for (Node node = terminal; node != null; node = node.parent) reverse.add(node.cell);
         Collections.reverse(reverse);
-        path = new NavigationPath(reverse, terminal.g, expandedNodes);
-        state = NavigationPlanState.SUCCEEDED;
-        failureReason = "none";
+        return new NavigationPath(reverse, terminal.g, expandedNodes);
     }
 
     private void fail(String reason) {
@@ -196,6 +224,7 @@ public final class IncrementalAStarPlanner {
         open.clear();
         best.clear();
         path = null;
+        bestFrontier = null;
         state = NavigationPlanState.IDLE;
         expandedNodes = 0;
         failureReason = "idle";
@@ -203,6 +232,14 @@ public final class IncrementalAStarPlanner {
 
     public NavigationPlanState state() { return state; }
     public NavigationPath path() { return path; }
+    public NavigationPath bestEffortPath() {
+        if (state == NavigationPlanState.SUCCEEDED) return path;
+        if (state != NavigationPlanState.SEARCHING || bestFrontier == null
+            || bestFrontier.parent == null) return null;
+        return buildPath(bestFrontier);
+    }
+    public NavigationCell start() { return start; }
+    public NavigationCell goal() { return goal; }
     public int expandedNodes() { return expandedNodes; }
     public int openNodes() { return open.size(); }
     public int knownNodes() { return best.size(); }
@@ -215,15 +252,20 @@ public final class IncrementalAStarPlanner {
         final float h;
         final float f;
         final long order;
+        final int stepDx;
+        final int stepDz;
         boolean closed;
 
-        Node(NavigationCell cell, Node parent, float g, float h, long order) {
+        Node(NavigationCell cell, Node parent, float g, float h, long order,
+             int stepDx, int stepDz) {
             this.cell = cell;
             this.parent = parent;
             this.g = g;
             this.h = h;
             this.f = g + h;
             this.order = order;
+            this.stepDx = stepDx;
+            this.stepDz = stepDz;
         }
     }
 }

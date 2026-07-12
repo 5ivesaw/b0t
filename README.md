@@ -4,14 +4,14 @@ SawBotV1 is a client-side Minecraft Java Edition 1.8.9 Forge research mod for a 
 
 ## Current gate
 
-Phases 0–2 passed target-machine runtime acceptance. Phase 3 telemetry, Phase 4 bridge/actuator infrastructure, and the Phase 5 learned-action experiment remain preserved. This repository contains **Phase 6 — Hybrid Navigation Body** (`0.7.0-alpha.0`).
+Phases 0–2 passed target-machine runtime acceptance. Phase 3 telemetry, Phase 4 bridge/actuator infrastructure, and the Phase 5 learned-action experiment remain preserved. This repository contains **Phase 7 — Real-Time Adaptive Navigation** (`0.8.0-alpha.0`).
 
-The runtime now separates intelligence from mechanics:
+The runtime separates intelligence from mechanics:
 
 - learned brain: goals, priorities, targets, tactics, risk, and specialist selection
-- deterministic body: pathfinding, movement holding, camera control, jumping, safety, stuck recovery, and input ownership
+- deterministic body: pathfinding, real-time movement control, camera control, jumping, safety, stuck recovery, and input ownership
 
-The first deterministic body performs bounded incremental waypoint navigation. `G` sets waypoint `#1000`; F10 starts navigation without requiring the external model. A connected brain may request the same skill through the existing Action Contract.
+The navigation body no longer treats a route as a list of mandatory block centres. It continuously re-anchors to the player's actual position, follows a safe route corridor, skips unnecessary nodes, validates live geometry, probes several local headings each tick, and hot-swaps rolling current-position replans without routine stop/start movement.
 
 Implemented contracts and systems:
 
@@ -22,27 +22,31 @@ Implemented contracts and systems:
 - Bounded sensors, inspector, overlays, freeze/step, and export
 - Structured telemetry validation, replay, CRC, and recovery
 - Non-blocking model bridge and safe fallback actuator
-- Incremental A*, sustained movement, visible turning, step-up, arrival, stuck recovery, and path rendering
+- Anytime bounded A* and provisional frontier routes
+- 20 Hz live corridor validation and local steering candidates
+- Current-position rolling replanning and active-route hot swapping
+- Sustained movement, responsive visible turning, jumping, sprinting, and recovery
 - Physical-input restoration and explicit F9/F12 feedback
 - Automatic GitHub build, tag, and release
 
-## Phase 6 direct navigation
+## Phase 7 direct navigation
 
 1. Aim at a reachable block and press `G`.
 2. Press `F10`.
-3. The deterministic body plans and follows the visible route.
+3. The navigation specialist plans and follows the visible adaptive corridor.
 4. Press `F9`, provide physical input, or press `F12` to return control immediately.
-5. Use `Shift+G` to clear the goal.
+5. Re-enable after moving manually: the next route starts from the new current position.
+6. Use `Shift+G` to clear the goal.
 
-The Phase 5 model remains a historical experiment, not the primary navigator.
+The Phase 5 model remains a historical experiment. Future learned brains select high-level goals while deterministic specialists execute mechanics.
 
 ## Build
 
-A push to `main` verifies, builds, remaps, tags `v0.7.0-alpha.0`, and publishes the exact tested release artifact.
+A push to `main` verifies, builds, remaps, tags `v0.8.0-alpha.0`, and publishes the exact tested release artifact.
 
 ```powershell
 git add -A
-git commit -m "Implement Phase 6 hybrid navigation body"
+git commit -m "Implement Phase 7 real-time adaptive navigation"
 git push origin main
 ```
 
@@ -55,7 +59,7 @@ Toolchain: Gradle 8.8, Architectury Loom `0.10.0.5`, Java 17 for Gradle, Java 8 
 | F10 | Enable/disable the selected body or connected brain |
 | F9 | Immediate manual takeover |
 | F12 | Emergency release |
-| G | Set deterministic-navigation waypoint above aimed block |
+| G | Set navigation waypoint above aimed block |
 | Shift+G | Clear navigation waypoint |
 | F7 | Compact inspector |
 | H | Next inspector page |
@@ -67,9 +71,11 @@ Toolchain: Gradle 8.8, Architectury Loom `0.10.0.5`, Java 17 for Gradle, Java 8 
 
 ## Reports
 
-- `docs/PHASE6_REPORT.md`
+- `docs/PHASE7_REPORT.md`
+- `docs/ADAPTIVE_NAVIGATION.md`
 - `docs/HYBRID_ARCHITECTURE.md`
 - `docs/NAVIGATION_BODY.md`
+- `docs/PHASE6_REPORT.md`
 - `docs/PHASE5_REPORT.md`
 - `docs/WAYPOINT_MODEL.md`
 - `docs/PHASE4_RUNTIME_FINDINGS.md`

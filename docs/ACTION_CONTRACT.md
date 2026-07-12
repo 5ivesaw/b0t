@@ -45,11 +45,16 @@ Default stale policy:
 - Maximum action age: 250 ms.
 - Missing valid action by deadline: apply canonical zero action and release synthetic controls.
 
-## Actuator authority
+## Actuator and specialist authority
 
-Allowed: legitimate movement keys, smooth mouse-equivalent camera deltas, jump/sprint/sneak, attack/use, hotbar selection, GUI toggle when explicitly safe, and complete input release.
+The v0.1 command supports two execution modes:
 
-Forbidden: teleport, reach changes, impossible placement, server-only rotation, packet advantage, strategic target correction, runtime pathfinding/aiming/scaffold, or silently rescuing a bad neural action.
+1. **Direct fallback motor command.** When no deterministic specialist owns the selected skill, the safe actuator may apply legitimate movement keys, smooth visible camera deltas, jump/sprint/sneak, attack/use, hotbar selection, a GUI toggle when explicitly safe, and complete input release.
+2. **Hierarchical specialist intent.** When `selectedSkill` names an implemented specialist and its required target or waypoint is valid, the specialist owns low-level execution. For example, `NAVIGATION + selectedWaypointId` invokes the navigation body; direct movement and camera fields from that same command are ignored rather than blended into the controller.
+
+A deterministic specialist may perform bounded route search, collision/void checks, path following, camera interpolation, jump timing, legal placement geometry, inventory mechanics, and stuck recovery. It may not invent strategy, replace the objective, select an unrelated target, or conceal the source of the intent.
+
+Always forbidden: teleportation, reach changes, impossible placement, server-only or silent rotation, packet advantage, public-server automation, anti-cheat bypass, or strategic target correction inside a mechanical body.
 
 ## Phase 4 execution semantics
 

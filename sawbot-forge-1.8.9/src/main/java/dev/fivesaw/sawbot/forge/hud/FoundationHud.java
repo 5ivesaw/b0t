@@ -57,7 +57,7 @@ public final class FoundationHud {
         if(minecraft.fontRendererObj==null)return;
         int x=6,y=6;
         int statusColour=state.isEnabled()?WARNING:SAFE;
-        draw("SawBotV1  Phase 6 HYBRID",x,y,WHITE); y+=10;
+        draw("SawBotV1  Phase 7 ADAPTIVE NAV",x,y,WHITE); y+=10;
         draw("State: "+state.mode()+"  scope "+actuator.environmentDescription(),x,y,statusColour); y+=10;
         ObservationSnapshot snapshot=observations.latest();
         if(snapshot==null){draw("Eyes: waiting",x,y,WARNING);y+=10;}
@@ -76,8 +76,9 @@ public final class FoundationHud {
         draw("Handler "+micros(tickTiming.averageNanos())+"/"+micros(tickTiming.maximumNanos())+" us  render "+micros(worldRenderer.averageRenderNanos())+"/"+micros(worldRenderer.maximumRenderNanos())+" us",x,y,MUTED); y+=10;
         draw("Brain "+modelBridge.displayState()+"  "+modelBridge.modelVersion()+"  rtt "+millis(modelBridge.latestRoundTripNanos())+" ms  rx "+modelBridge.receivedActions(),x,y,modelBridge.isReady()?MODEL:MUTED); y+=10;
         if(navigationWaypoint.active()||!"IDLE".equals(navigationBody.status())){
-            draw("Nav "+navigationBody.status()+"  "+navigationBody.source()+"  path "+navigationBody.pathIndex()+"/"+navigationBody.pathCells().size()+"  replans "+navigationBody.replanCount()+"  stuck "+navigationBody.stuckRecoveries(),x,y,navColour()); y+=10;
-            draw("Nav reason "+tail(navigationBody.reason(),72)+"  plan "+navigationBody.plannerExpandedNodes()+" open "+navigationBody.plannerOpenNodes()+" reads "+navigationBody.gridWorldReads(),x,y,MUTED); y+=10;
+            draw("Nav "+navigationBody.status()+"  "+navigationBody.source()+"  node/look "+navigationBody.pathIndex()+"/"+navigationBody.lookaheadIndex()+" of "+navigationBody.pathCells().size()+"  dev "+one((float)navigationBody.pathDeviation())+"m",x,y,navColour()); y+=10;
+            draw("Nav replan/swap/reanchor/invalid "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.routeInvalidations()+"  detour/stuck "+navigationBody.localDetours()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED); y+=10;
+            draw("Nav "+tail(navigationBody.reason(),58)+"  plan "+navigationBody.plannerExpandedNodes()+" open "+navigationBody.plannerOpenNodes()+" reads/live "+navigationBody.gridWorldReads()+"/"+navigationBody.gridLiveRefreshes(),x,y,MUTED); y+=10;
         }
         if(state.isEnabled()||actuator.activeAction()!=null||actuator.rejectedActions()>0){
             draw("Actuator "+actuator.status()+"  "+actionCompact(actuator.activeAction())+"  "+tail(actuator.lastReason(),42),x,y,"APPLY".equals(actuator.status())?ACTION:MUTED); y+=10;
@@ -227,9 +228,10 @@ public final class FoundationHud {
         draw("brain "+modelBridge.displayState()+" endpoint "+modelBridge.endpoint()+" model "+modelBridge.modelVersion(),x,y,modelBridge.isReady()?MODEL:MUTED);y+=10;
         draw("tx/rx "+modelBridge.sentObservations()+"/"+modelBridge.receivedActions()+" q "+modelBridge.observationQueueSize()+"/2 "+modelBridge.actionQueueSize()+"/8 rtt "+millis(modelBridge.latestRoundTripNanos())+" ms",x,y,WHITE);y+=10;
         draw("bridge drop obs/action "+modelBridge.droppedObservations()+"/"+modelBridge.droppedActions()+" reconnect "+modelBridge.reconnects()+" invalid "+modelBridge.invalidFrames(),x,y,WHITE);y+=10;
-        draw("nav body "+navigationBody.status()+" source "+navigationBody.source()+" own "+bit(navigationBody.ownsMovement())+" path "+navigationBody.pathIndex()+"/"+navigationBody.pathCells().size(),x,y,navColour());y+=10;
-        draw("planner expanded/open/known "+navigationBody.plannerExpandedNodes()+"/"+navigationBody.plannerOpenNodes()+"/"+navigationBody.plannerKnownNodes()+" reads "+navigationBody.gridWorldReads(),x,y,WHITE);y+=10;
-        draw("replans/stuck "+navigationBody.replanCount()+"/"+navigationBody.stuckRecoveries()+" reason "+tail(navigationBody.reason(),58),x,y,MUTED);y+=10;
+        draw("nav body "+navigationBody.status()+" source "+navigationBody.source()+" own "+bit(navigationBody.ownsMovement())+" node/look/size "+navigationBody.pathIndex()+"/"+navigationBody.lookaheadIndex()+"/"+navigationBody.pathCells().size(),x,y,navColour());y+=10;
+        draw("planner expanded/open/known "+navigationBody.plannerExpandedNodes()+"/"+navigationBody.plannerOpenNodes()+"/"+navigationBody.plannerKnownNodes()+" reads/live "+navigationBody.gridWorldReads()+"/"+navigationBody.gridLiveRefreshes(),x,y,WHITE);y+=10;
+        draw("replan/swap/reanchor/invalid "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.routeInvalidations()+" off/detour/stuck "+navigationBody.offRouteReplans()+"/"+navigationBody.localDetours()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED);y+=10;
+        draw("corridor dev "+one((float)navigationBody.pathDeviation())+"m steer "+one(navigationBody.steeringOffsetDegrees())+" provisional "+bit(navigationBody.provisionalPath())+" reason "+tail(navigationBody.reason(),50),x,y,MUTED);y+=10;
         draw("fallback actuator "+actuator.status()+" own "+bit(actuator.ownsContinuousInputs())+" accepted/rejected/expired "+actuator.acceptedActions()+"/"+actuator.rejectedActions()+"/"+actuator.expiredActions(),x,y,ACTION);y+=10;
         draw("executed #"+action.observationSequenceNumber()+" controller "+action.modelVersion()+" confidence "+one(action.confidence()),x,y,WHITE);y+=10;
         draw("move F/S "+one(action.forward())+"/"+one(action.strafe())+" camera Y/P "+one(action.yawDeltaDegrees())+"/"+one(action.pitchDeltaDegrees()),x,y,WHITE);y+=10;
@@ -277,7 +279,7 @@ public final class FoundationHud {
         String value=navigationBody.status();
         if("ARRIVED".equals(value))return SAFE;
         if("NO_PATH".equals(value)||"BLOCKED".equals(value))return ERROR;
-        if("RECOVER".equals(value)||"PLANNING".equals(value))return WARNING;
+        if("RECOVER".equals(value)||"PLANNING".equals(value)||"REPLAN".equals(value)||"FOLLOW+REPLAN".equals(value)||"ANYTIME".equals(value))return WARNING;
         return ACTION;
     }
     private static long millis(long nanos){return nanos<=0L?0L:nanos/1_000_000L;}

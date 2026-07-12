@@ -52,6 +52,8 @@ required = [
     root / 'tools/verify-release-payload.sh',
     root / 'tools/verify-built-jar.py',
     root / 'docs/GITHUB_RELEASES.md',
+    root / 'docs/PHASE7_REPORT.md',
+    root / 'docs/ADAPTIVE_NAVIGATION.md',
     root / 'docs/PHASE6_REPORT.md',
     root / 'docs/HYBRID_ARCHITECTURE.md',
     root / 'docs/NAVIGATION_BODY.md',
@@ -82,7 +84,7 @@ required = [
 ]
 missing = [str(path.relative_to(root)) for path in required if not path.is_file()]
 if missing:
-    raise SystemExit('Missing Phase 6 repository files: ' + ', '.join(missing))
+    raise SystemExit('Missing Phase 7 repository files: ' + ', '.join(missing))
 for workflow in required[:2]:
     text = workflow.read_text(encoding='utf-8')
     if '\t' in text:
@@ -95,43 +97,48 @@ for token in (
     'automatic-release:', "github.ref == 'refs/heads/main'",
     'needs: [metadata, offline-verification, forge-build]',
     'actions/download-artifact@', 'tools/verify-release-payload.sh',
-    'PHASE6_REPORT.md', 'HYBRID_ARCHITECTURE.md', 'NAVIGATION_BODY.md',
+    'PHASE7_REPORT.md', 'ADAPTIVE_NAVIGATION.md', 'PHASE6_REPORT.md',
+    'HYBRID_ARCHITECTURE.md', 'NAVIGATION_BODY.md',
     'PHASE5_REPORT.md', 'WAYPOINT_MODEL.md', 'waypoint_v0.1.json',
     'waypoint_eval_v0.1.json', 'verify_phase5.py',
     'NavigationBodyContractTest', 'gh release create', 'contents: write',
     'dummy_model.py --self-test'
 ):
     if token not in ci_text:
-        raise SystemExit('CI missing Phase 6 automatic-release token: ' + token)
+        raise SystemExit('CI missing Phase 7 automatic-release token: ' + token)
 if "tags:\n      - 'v*'" in release_text:
     raise SystemExit('Manual recovery workflow must not be tag-triggered')
 if 'workflow_dispatch:' not in release_text or 'Manual Release Recovery' not in release_text:
     raise SystemExit('Manual release recovery workflow is missing or malformed')
-for token in ('PHASE6_REPORT.md', 'HYBRID_ARCHITECTURE.md', 'NAVIGATION_BODY.md',
+for token in ('PHASE7_REPORT.md', 'ADAPTIVE_NAVIGATION.md', 'PHASE6_REPORT.md',
+              'HYBRID_ARCHITECTURE.md', 'NAVIGATION_BODY.md',
               'PHASE5_REPORT.md', 'WAYPOINT_MODEL.md', 'waypoint_v0.1.json',
               'waypoint_eval_v0.1.json'):
     if token not in release_text:
-        raise SystemExit('Manual release workflow missing Phase 6 asset: ' + token)
+        raise SystemExit('Manual release workflow missing Phase 7 asset: ' + token)
 properties = (root / 'gradle.properties').read_text(encoding='utf-8')
 if 'loom.platform=forge' not in properties:
     raise SystemExit('gradle.properties does not declare loom.platform=forge')
 version = os.environ['SAWBOT_VERIFY_VERSION']
-if f'sawbotVersion={version}' not in properties or version != '0.7.0-alpha.0':
-    raise SystemExit('Phase 6 version metadata is inconsistent')
+if f'sawbotVersion={version}' not in properties or version != '0.8.0-alpha.0':
+    raise SystemExit('Phase 7 version metadata is inconsistent')
 package_script = (root / 'tools/package-release.sh').read_text(encoding='utf-8')
-for token in ('PHASE6_REPORT.md','HYBRID_ARCHITECTURE.md','NAVIGATION_BODY.md',
+for token in ('PHASE7_REPORT.md','ADAPTIVE_NAVIGATION.md','PHASE6_REPORT.md',
+              'HYBRID_ARCHITECTURE.md','NAVIGATION_BODY.md',
               'PHASE5_REPORT.md','WAYPOINT_MODEL.md','waypoint_v0.1.json',
               'waypoint_eval_v0.1.json','SHA256SUMS.txt'):
     if token not in package_script:
         raise SystemExit('Release packager missing ' + token)
 payload_verifier = (root / 'tools/verify-release-payload.sh').read_text(encoding='utf-8')
-for token in ('PHASE6_REPORT.md','HYBRID_ARCHITECTURE.md','NAVIGATION_BODY.md',
-              'PASS verified Phase 6 release payload'):
+for token in ('PHASE7_REPORT.md','ADAPTIVE_NAVIGATION.md','PHASE6_REPORT.md',
+              'HYBRID_ARCHITECTURE.md','NAVIGATION_BODY.md',
+              'PASS verified Phase 7 release payload'):
     if token not in payload_verifier:
         raise SystemExit('Release payload verifier missing ' + token)
 verifier = (root / 'tools/verify-built-jar.py').read_text(encoding='utf-8')
 for token in (
     'dev/fivesaw/sawbot/common/navigation/IncrementalAStarPlanner.class',
+    'dev/fivesaw/sawbot/common/navigation/AdaptivePathCursor.class',
     'dev/fivesaw/sawbot/common/navigation/NavigationPath.class',
     'dev/fivesaw/sawbot/forge/navigation/WorldNavigationGrid.class',
     'dev/fivesaw/sawbot/forge/navigation/NavigationBodyController.class',
@@ -142,7 +149,7 @@ for token in (
     'dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.class',
 ):
     if token not in verifier:
-        raise SystemExit('Release verifier missing Phase 6 class: ' + token)
+        raise SystemExit('Release verifier missing Phase 7 class: ' + token)
 renderer = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.java').read_text(encoding='utf-8')
 style = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/EntityVisualStyle.java').read_text(encoding='utf-8')
 if ('EntityVisualStyle.visibilityRgb(entity)' not in renderer
@@ -162,23 +169,34 @@ for token in ('modelBridge.offerObservation', 'modelBridge.pollLatestAction',
               'navigationBody.observeBrainAction', 'navigationBody.tick',
               'navigation body priority', 'physicalInput.hasTakeoverInput',
               'physicalInput.arm()', 'NavigationWaypointController', 'setFromCrosshair',
-              'NAV ENABLED: deterministic body', 'navigationBody.release("emergency stop")'):
+              'NAV ENABLED: deterministic body', 'navigationBody.release("emergency stop")',
+              'config.navigationLookaheadNodes()', 'config.navigationReactiveProbeDistance()'):
     if token not in client:
-        raise SystemExit('Client runtime missing Phase 6 integration token: ' + token)
+        raise SystemExit('Client runtime missing Phase 7 integration token: ' + token)
 navigation = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationBodyController.java').read_text(encoding='utf-8')
 planner = (root / 'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/IncrementalAStarPlanner.java').read_text(encoding='utf-8')
 grid = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/WorldNavigationGrid.java').read_text(encoding='utf-8')
+cursor = (root / 'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/AdaptivePathCursor.java').read_text(encoding='utf-8')
 for token in ('planner.step(expansionsPerTick)', 'applyMovement', 'maximumTurnDegreesPerTick',
-              'stuckRecoveries', 'beginPlan', 'arrivalTicks', 'restorePhysical'):
+              'stuckRecoveries', 'startPlan', 'arrivalTicks', 'restorePhysical',
+              'reanchorToCurrentPosition', 'maybeStartRollingReplan', 'chooseSteering',
+              'FOLLOW+REPLAN', 'validatePathWindow', 'bestEffortPath'):
     if token not in navigation:
-        raise SystemExit('Navigation body missing deterministic mechanism: ' + token)
+        raise SystemExit('Adaptive navigation body missing deterministic mechanism: ' + token)
 for token in ('PriorityQueue', 'maximumExpandedNodes', 'horizontalRadius',
-              'verticalRadius', 'diagonalClear', 'NavigationPlanState.SEARCHING'):
+              'verticalRadius', 'diagonalClear', 'NavigationPlanState.SEARCHING',
+              'bestEffortPath', 'bestFrontier', 'traversalPenalty', 'TURN_PENALTY'):
     if token not in planner:
-        raise SystemExit('Incremental planner missing bounded A* mechanism: ' + token)
-for token in ('MAX_CACHE_ENTRIES', 'isStandable', 'FLAG_LIQUID', 'FLAG_HAZARD', 'FLAG_SAFE_SUPPORT', 'nearestStandable'):
+        raise SystemExit('Anytime planner missing bounded mechanism: ' + token)
+for token in ('MAX_CACHE_ENTRIES', 'isStandable', 'FLAG_LIQUID', 'FLAG_HAZARD',
+              'FLAG_SAFE_SUPPORT', 'nearestStandable', 'refreshStandable',
+              'validatePathWindow', 'isCorridorSafe', 'probeDirection', 'traversalPenalty'):
     if token not in grid:
-        raise SystemExit('World navigation grid missing safety/cache mechanism: ' + token)
+        raise SystemExit('Live world navigation grid missing mechanism: ' + token)
+for token in ('project', 'farthestSafeLookahead', 'nearestHorizontalDistanceSquared',
+              'maximumBacktrackNodes', 'maximumForwardNodes'):
+    if token not in cursor:
+        raise SystemExit('Adaptive path cursor missing corridor mechanism: ' + token)
 if 'new Thread' in navigation or 'new Thread' in grid:
     raise SystemExit('Navigation body/grid must remain client-thread-only')
 actuator = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/actuator/SafeActionActuator.java').read_text(encoding='utf-8')
@@ -201,7 +219,7 @@ telemetry = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/t
 session = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/telemetry/TelemetrySession.java').read_text(encoding='utf-8')
 if ('failureLatched' not in telemetry or 'prepareRetry()' not in telemetry
     or 'encodingRejectedSteps' not in session or 'capture remains active' not in session):
-    raise SystemExit('Phase 6 telemetry retry/error isolation is missing')
+    raise SystemExit('Preserved telemetry retry/error isolation is missing')
 if 'worker.interrupt();' in session:
     raise SystemExit('Normal telemetry close must not interrupt an active NIO writer')
 waypoint = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/map/NavigationWaypointController.java').read_text(encoding='utf-8')
@@ -227,10 +245,15 @@ if 'sawbot.action/0.1' not in contract or 'local receive timestamp' not in contr
     raise SystemExit('Action Contract is not synchronized')
 if 'sawbot.bridge/0.1' not in protocol or '262,144' not in protocol or 'client thread' not in protocol:
     raise SystemExit('Bridge protocol documentation is incomplete')
-for token in ('learned brain', 'deterministic', 'specialist', 'never selects'):
+adaptive = (root / 'docs/ADAPTIVE_NAVIGATION.md').read_text(encoding='utf-8')
+for token in ('learned brain', 'deterministic', 'specialist', 'never chooses'):
     if token.lower() not in architecture.lower():
         raise SystemExit('Hybrid architecture report missing boundary: ' + token)
-print('PASS GitHub repository and Phase 6 hybrid packaging check')
+for token in ('anytime', 'rolling replanning', 'route corridor', 're-anchor',
+              '20 Hz reactive steering', 'live world invalidation'):
+    if token.lower() not in adaptive.lower():
+        raise SystemExit('Adaptive navigation report missing mechanism: ' + token)
+print('PASS GitHub repository and Phase 7 adaptive-navigation packaging check')
 PYREPOCHECK
 
 python3 "$ROOT/sawbot-tools/dataset-validator/validate_telemetry.py" "$ROOT/build/phase3-telemetry-fixture.sbt" --json > "$ROOT/build/phase3-telemetry-report.json"
@@ -265,4 +288,4 @@ PYTELEMETRY
 python3 "$ROOT/sawbot-tools/replay-inspector/inspect_telemetry.py" "$ROOT/build/phase3-telemetry-fixture.sbt" --limit 2 > "$ROOT/build/phase3-replay-summary.txt"
 python3 "$ROOT/sawbot-tools/dummy-model/dummy_model.py" --self-test
 python3 "$ROOT/sawbot-trainer/waypoint/verify_phase5.py"
-printf '%s\n' 'PASS offline Phase 6 hybrid navigation verification'
+printf '%s\n' 'PASS offline Phase 7 adaptive navigation verification'

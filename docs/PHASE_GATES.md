@@ -196,3 +196,28 @@ Implemented in candidate `0.7.0-alpha.0`:
 **Gate: SOURCE/OFFLINE PASS; TARGET-MACHINE ACCEPTANCE DEFERRED TO THE NEXT MAJOR REVIEW.**
 
 Evidence: `docs/PHASE6_REPORT.md`, `docs/HYBRID_ARCHITECTURE.md`, `docs/NAVIGATION_BODY.md`, and `NavigationBodyContractTest`.
+
+## Phase 7 — Real-time adaptive navigation
+
+Implemented in candidate `0.8.0-alpha.0`:
+
+- [x] Anytime bounded A* exposes a usable best-frontier route during search.
+- [x] Active movement continues while replacement planning runs.
+- [x] Rolling replans originate from the player's actual current position.
+- [x] Manual takeover/disable invalidates stale route ownership.
+- [x] Bounded corridor re-anchoring handles displacement and safe node skipping.
+- [x] Live route-window refresh detects placed/broken blocks and lost support.
+- [x] Safe lookahead smooths routes without wall/void/corner cutting.
+- [x] Several immediate steering candidates are evaluated every client tick.
+- [x] Faster bounded visible camera response and sustained inputs remain legitimate.
+- [x] Edge exposure and direction changes influence route quality as soft costs.
+- [x] HUD/renderer expose replans, hot swaps, re-anchors, invalidations, detours,
+      deviation, lookahead, provisional routes, and live world refreshes.
+- [x] Java contract tests cover frontier paths, re-anchoring, dynamic invalidation,
+      current-position resume, route safety, and input restoration.
+
+**Gate: SOURCE/OFFLINE PASS; INTEGRATED RUNTIME ACCEPTANCE DEFERRED TO THE NEXT MAJOR REVIEW.**
+
+Evidence: `docs/PHASE7_REPORT.md`, `docs/ADAPTIVE_NAVIGATION.md`,
+`docs/HYBRID_ARCHITECTURE.md`, `docs/NAVIGATION_BODY.md`, and
+`NavigationBodyContractTest`.

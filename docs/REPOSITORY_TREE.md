@@ -1,4 +1,4 @@
-# Repository tree — Phase 6 hybrid navigation candidate
+# Repository tree — Phase 7 adaptive navigation candidate
 
 ```text
 SawBotV1/
@@ -16,12 +16,14 @@ SawBotV1/
 │   ├── PROJECT_BRIEF.txt
 │   ├── ARCHITECTURE.md
 │   ├── HYBRID_ARCHITECTURE.md
+│   ├── ADAPTIVE_NAVIGATION.md
 │   ├── NAVIGATION_BODY.md
 │   ├── PERFORMANCE_BUDGET.md
 │   ├── OBSERVATION_CONTRACT.md
 │   ├── ACTION_CONTRACT.md
 │   ├── TELEMETRY_FORMAT.md
 │   ├── PHASE_GATES.md
+│   ├── PHASE7_REPORT.md
 │   ├── PHASE6_REPORT.md
 │   ├── PHASE5_REPORT.md
 │   ├── PHASE4_REPORT.md
@@ -30,7 +32,7 @@ SawBotV1/
 ├── sawbot-common/src/main/java/dev/fivesaw/sawbot/common/
 │   ├── action/
 │   ├── events/
-│   ├── navigation/      # immutable cells/path + bounded incremental A*
+│   ├── navigation/      # cells/path, adaptive cursor, bounded anytime A*
 │   ├── observation/
 │   ├── telemetry/
 │   ├── protocol/
@@ -40,11 +42,11 @@ SawBotV1/
 │   │   ├── actuator/    # validated fallback low-level action execution
 │   │   ├── client/
 │   │   ├── config/
-│   │   ├── hud/         # compact HUD + world route/debug renderer
+│   │   ├── hud/         # compact HUD + adaptive route/debug renderer
 │   │   ├── inspection/
 │   │   ├── map/
 │   │   ├── model/       # bounded loopback brain transport
-│   │   ├── navigation/  # world grid + deterministic navigation body
+│   │   ├── navigation/  # live world grid + adaptive navigation body
 │   │   ├── performance/
 │   │   ├── safety/
 │   │   ├── sensors/
@@ -72,4 +74,4 @@ SawBotV1/
     └── local bootstrap/preflight scripts
 ```
 
-Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the mod build. The navigation planner is pure deterministic Java; the world adapter and body execute on the Minecraft client thread with explicit per-tick and total-node bounds. The Phase 5 waypoint MLP remains a historical training/bridge baseline and is not the primary navigator.
+Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the mod build. World access remains on the Minecraft client thread. Search and live validation have explicit per-tick, total-node, path-window, and cache bounds.

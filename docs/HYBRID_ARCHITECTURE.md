@@ -1,54 +1,55 @@
 # Hybrid Brain-and-Body Architecture
 
-SawBotV1 now uses a hierarchical hybrid design.
+SawBotV1 uses a hierarchical hybrid design.
 
-## Brain boundary
+## Learned brain
 
-Learned systems choose goals, priorities, targets, tactics, risk, and which specialist skill should run. A brain output may request, for example, navigation to waypoint `#1000` with `Skill.NAVIGATION`.
+Learned systems select goals, priorities, targets, tactics, risk, and which specialist
+skill should run. A brain may request navigation to waypoint `#1000`, defend a base,
+retreat, select an opponent, or choose a bridge destination.
 
-The brain does not need to rediscover deterministic mechanics such as holding W, releasing owned inputs, graph search, collision checks, legal block geometry, or stable camera interpolation.
+The brain does not need to rediscover graph search, collision geometry, key ownership,
+or safe input release.
 
-## Body boundary
+## Deterministic specialist bodies
 
-Deterministic specialist controllers execute the selected intent:
+Specialists execute known mechanics:
 
-- local route planning
-- route following and sustained movement
-- visible camera control
-- jump and step-up timing
-- collision, hazard, liquid, and unsupported-cell rejection
-- stuck detection and replanning
-- input ownership and physical-input restoration
-- future bridging, inventory, shop, and interaction mechanics
+- adaptive local/global route planning
+- sustained movement and responsive camera control
+- support, collision, liquid, hazard, and void checks
+- jumping, recovery, and live route invalidation
+- future bridging placement mechanics
+- future inventory/shop interaction
+- future combat motor execution
 
-The body never selects Bedwars strategy by itself. It executes a bounded goal supplied by the user, test harness, or learned brain.
+A specialist never chooses Bedwars strategy by itself. It executes a bounded intent
+from the user, test harness, or learned brain.
 
 ## Runtime priority
 
 1. F12 emergency release
 2. F9 or physical human takeover
-3. environment and GUI guards
-4. deterministic specialist controller for an active skill
+3. environment, world, GUI, and freeze guards
+4. active deterministic specialist
 5. fallback low-level Action Contract actuator
 6. idle/manual control
 
-Only the controller that owns a binding may release it. Release restores the real hardware state instead of forcing the human key state to false.
+Only the owning controller changes a binding. Release restores physical hardware state.
 
-## Navigation body v0.1
+## Navigation body v0.2
 
-The first specialist body is deterministic waypoint navigation:
+The navigation specialist combines:
 
-- bounded incremental A*
-- maximum 64 expansions per client tick by default
-- hard maximum 4,096 expanded nodes per plan
-- 32-block horizontal and 8-block vertical default search bounds
-- full support, two-block headroom, liquid, and hazard checks
-- one-block step-up and step-down transitions
-- diagonal corner-cut prevention
-- sustained movement rather than action pulses
-- maximum 18 degrees of visible yaw change per tick
-- stable arrival hysteresis
-- stall detection, alternating recovery strafe, jump, and replanning
-- visible route, current node, planner counters, world reads, and recovery counters
+- bounded anytime A*
+- a continuously revised route corridor
+- current-position rolling replanning
+- active-route hot swapping
+- live block/support invalidation
+- bounded path re-anchoring after displacement
+- safe path smoothing and lookahead
+- multi-candidate 20 Hz local steering
+- sustained movement, faster bounded camera response, jumping, sprinting, and recovery
 
-All world access remains on the Minecraft client thread. Planning is incremental and explicitly budgeted.
+This is intentionally analogous to a brain commanding a capable body: the brain says
+where and why; the specialist decides how to execute the movement reliably.

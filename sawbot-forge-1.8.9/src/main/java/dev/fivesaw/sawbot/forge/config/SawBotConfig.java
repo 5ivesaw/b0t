@@ -29,6 +29,11 @@ public final class SawBotConfig {
     private final int navigationStuckWindowTicks;
     private final float navigationMaximumTurnDegreesPerTick;
     private final float navigationArrivalRadius;
+    private final int navigationLookaheadNodes;
+    private final float navigationLookaheadDistance;
+    private final int navigationPathValidationNodes;
+    private final float navigationOffRouteDistance;
+    private final float navigationReactiveProbeDistance;
 
     private SawBotConfig(boolean hudEnabled, int timingWindowSize, int sensorIntervalTicks,
                          int telemetryQueueCapacity, int telemetryInputWindowCapacity,
@@ -40,7 +45,10 @@ public final class SawBotConfig {
                          int navigationHorizontalRadius, int navigationVerticalRadius,
                          int navigationMaximumExpandedNodes, int navigationExpansionsPerTick,
                          int navigationReplanIntervalTicks, int navigationStuckWindowTicks,
-                         float navigationMaximumTurnDegreesPerTick, float navigationArrivalRadius) {
+                         float navigationMaximumTurnDegreesPerTick, float navigationArrivalRadius,
+                         int navigationLookaheadNodes, float navigationLookaheadDistance,
+                         int navigationPathValidationNodes, float navigationOffRouteDistance,
+                         float navigationReactiveProbeDistance) {
         this.hudEnabled = hudEnabled;
         this.timingWindowSize = timingWindowSize;
         this.sensorIntervalTicks = sensorIntervalTicks;
@@ -65,6 +73,11 @@ public final class SawBotConfig {
         this.navigationStuckWindowTicks = navigationStuckWindowTicks;
         this.navigationMaximumTurnDegreesPerTick = navigationMaximumTurnDegreesPerTick;
         this.navigationArrivalRadius = navigationArrivalRadius;
+        this.navigationLookaheadNodes = navigationLookaheadNodes;
+        this.navigationLookaheadDistance = navigationLookaheadDistance;
+        this.navigationPathValidationNodes = navigationPathValidationNodes;
+        this.navigationOffRouteDistance = navigationOffRouteDistance;
+        this.navigationReactiveProbeDistance = navigationReactiveProbeDistance;
     }
 
     public static SawBotConfig load(File file, Logger logger) {
@@ -103,29 +116,43 @@ public final class SawBotConfig {
                 "127.0.0.1,localhost", "Comma-separated exact private/LAN hosts. Public servers are blocked by default.");
             boolean physicalTakeover = configuration.getBoolean("physicalInputTakeover", "actuator", true,
                 "Any physical movement/mouse/click input immediately returns control to the human.");
-            int navigationRadius = configuration.getInt("horizontalRadius", "navigation", 32, 8, 64,
-                "Maximum horizontal A* search radius around the player.");
-            int navigationVertical = configuration.getInt("verticalRadius", "navigation", 8, 2, 16,
-                "Maximum vertical A* search range around the player.");
-            int navigationNodes = configuration.getInt("maximumExpandedNodes", "navigation", 4096, 256, 16384,
-                "Hard node-expansion cap for one local route plan.");
-            int navigationBudget = configuration.getInt("expansionsPerTick", "navigation", 64, 8, 256,
-                "Client-thread A* expansions permitted per tick.");
-            int navigationReplan = configuration.getInt("replanIntervalTicks", "navigation", 20, 4, 100,
-                "Minimum cooldown before retrying an unavailable path.");
-            int navigationStuck = configuration.getInt("stuckWindowTicks", "navigation", 20, 8, 80,
+            int navigationRadius = configuration.getInt("horizontalRadius", "navigation", 40, 8, 96,
+                "Maximum horizontal anytime-A* search radius around the player.");
+            int navigationVertical = configuration.getInt("verticalRadius", "navigation", 10, 2, 20,
+                "Maximum vertical route-search range around the player.");
+            int navigationNodes = configuration.getInt("maximumExpandedNodes", "navigation", 6144, 256, 32768,
+                "Hard node-expansion cap for one current-position route search.");
+            int navigationBudget = configuration.getInt("expansionsPerTick", "navigation", 96, 8, 384,
+                "Client-thread anytime-A* expansions permitted per tick.");
+            int navigationReplan = configuration.getInt("replanIntervalTicks", "navigation", 4, 2, 40,
+                "Ticks between rolling current-position route refreshes while the existing route remains active.");
+            int navigationStuck = configuration.getInt("stuckWindowTicks", "navigation", 16, 8, 80,
                 "Ticks of commanded movement used by deterministic stuck detection.");
             float navigationTurn = parseBoundedFloat(configuration.getString("maximumTurnDegreesPerTick",
-                "navigation", "18.0", "Maximum visible camera yaw change applied by the navigation body each client tick."),
-                18F, 2F, 45F);
+                "navigation", "32.0", "Maximum visible camera yaw change applied by the 20 Hz local controller."),
+                32F, 4F, 60F);
             float navigationArrival = parseBoundedFloat(configuration.getString("arrivalRadius",
-                "navigation", "0.75", "Horizontal distance considered a stable waypoint arrival."),
-                0.75F, 0.35F, 1.5F);
+                "navigation", "0.80", "Horizontal distance considered a stable waypoint arrival."),
+                0.80F, 0.35F, 1.5F);
+            int lookaheadNodes = configuration.getInt("lookaheadNodes", "navigation", 7, 1, 16,
+                "Maximum future route nodes considered as one safe movement corridor.");
+            float lookaheadDistance = parseBoundedFloat(configuration.getString("lookaheadDistance",
+                "navigation", "5.0", "Maximum metres of safe route smoothing/lookahead."),
+                5F, 1F, 10F);
+            int pathValidationNodes = configuration.getInt("pathValidationNodes", "navigation", 12, 2, 32,
+                "Future route nodes live-refreshed for block, support, hazard, and corner changes.");
+            float offRouteDistance = parseBoundedFloat(configuration.getString("offRouteDistance",
+                "navigation", "2.35", "Maximum corridor deviation before an immediate current-position replan."),
+                2.35F, 0.75F, 6F);
+            float reactiveProbeDistance = parseBoundedFloat(configuration.getString("reactiveProbeDistance",
+                "navigation", "1.25", "Distance sampled for each 20 Hz local steering candidate."),
+                1.25F, 0.5F, 3F);
             return new SawBotConfig(hudEnabled, window, interval, telemetryQueue, inputWindow,
                 compression, host, port, connectTimeout, reconnectDelay, decisionRate, actionAge,
                 sequenceLag, allowSingleplayer, allowedServers, physicalTakeover, navigationRadius,
                 navigationVertical, navigationNodes, navigationBudget, navigationReplan,
-                navigationStuck, navigationTurn, navigationArrival);
+                navigationStuck, navigationTurn, navigationArrival, lookaheadNodes,
+                lookaheadDistance, pathValidationNodes, offRouteDistance, reactiveProbeDistance);
         } catch (RuntimeException exception) {
             logger.error("Failed to load SawBotV1 configuration; using safe defaults.", exception);
             return defaults();
@@ -145,7 +172,8 @@ public final class SawBotConfig {
     private static SawBotConfig defaults() {
         return new SawBotConfig(true, 256, 2, 64, 32, 1, "127.0.0.1", 25189,
             500, 3000, 10, 250, 3, true, "127.0.0.1,localhost", true,
-            32, 8, 4096, 64, 20, 20, 18F, 0.75F);
+            40, 10, 6144, 96, 4, 16, 32F, 0.80F,
+            7, 5F, 12, 2.35F, 1.25F);
     }
 
     public boolean hudEnabled() { return hudEnabled; }
@@ -172,4 +200,9 @@ public final class SawBotConfig {
     public int navigationStuckWindowTicks() { return navigationStuckWindowTicks; }
     public float navigationMaximumTurnDegreesPerTick() { return navigationMaximumTurnDegreesPerTick; }
     public float navigationArrivalRadius() { return navigationArrivalRadius; }
+    public int navigationLookaheadNodes() { return navigationLookaheadNodes; }
+    public float navigationLookaheadDistance() { return navigationLookaheadDistance; }
+    public int navigationPathValidationNodes() { return navigationPathValidationNodes; }
+    public float navigationOffRouteDistance() { return navigationOffRouteDistance; }
+    public float navigationReactiveProbeDistance() { return navigationReactiveProbeDistance; }
 }
