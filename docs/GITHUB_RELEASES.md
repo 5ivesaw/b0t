@@ -1,49 +1,44 @@
-# GitHub build and release lane
+# GitHub build and release flow
 
-Push the patched repository to `main`:
+Normal publication requires one push to `main`:
 
 ```powershell
 git add -A
-git commit -m "Implement Phase 8 real-time bridging specialist"
+git commit -m "Implement Phase 9 segmented navigation core"
 git push origin main
 ```
 
-The CI workflow:
+The CI workflow then:
 
-1. reads the version from `gradle.properties`
-2. compiles Java 8 offline contract tests with warnings as errors
-3. verifies navigation, bridging, telemetry, brain transport, actuator, inspector,
-   input ownership, and safety contracts
-4. runs the real Forge/Loom build
-5. verifies the built JAR contents and metadata
-6. packages and checksums release assets
-7. creates the immutable tag and GitHub release automatically after a successful
-   `main` push
+1. resolves `sawbotVersion` from `gradle.properties`
+2. compiles every Java source and runs all offline contracts
+3. builds/remaps the Forge 1.8.9 JAR
+4. validates JAR metadata and required classes
+5. packages documentation/model evidence and SHA-256 hashes
+6. downloads and revalidates the exact tested artifact
+7. rejects a reused tag/version
+8. creates tag `v1.0.0-alpha.0` and publishes the GitHub Release
 
-Current version:
+The manual recovery workflow exists only for exceptional publication failures. It is not
+part of the normal development path.
+
+## Version source
 
 ```properties
-sawbotVersion=0.9.0-alpha.0
+sawbotVersion=1.0.0-alpha.0
 ```
 
-The automatic tag is `v0.9.0-alpha.0`. Published versions are immutable; duplicate
-versions fail explicitly.
+Published versions are immutable. Every new main-branch release must bump the version.
 
-## Phase 8 primary assets
+## Phase 9 primary assets
 
-- `SawBotV1-0.9.0-alpha.0-mc1.8.9.jar`
-- `SawBotV1-0.9.0-alpha.0-sources.jar`
+- `SawBotV1-1.0.0-alpha.0-mc1.8.9.jar`
+- `SawBotV1-1.0.0-alpha.0-sources.jar`
+- `SHA256SUMS.txt`
+- `PHASE9_REPORT.md`
+- `SEGMENTED_NAVIGATION_CORE.md`
+- `BARITONE_ARCHITECTURE_RESEARCH.md`
+- `NAVIGATION_BODY.md`
 - `PHASE8_REPORT.md`
 - `BRIDGING_BODY.md`
-- `PHASE7_REPORT.md`
-- `ADAPTIVE_NAVIGATION.md`
-- `HYBRID_ARCHITECTURE.md`
-- `NAVIGATION_BODY.md`
-- `SHA256SUMS.txt`
-- `release-notes.md`
-
-Historical reports, telemetry-format material, and the Phase 5 learned waypoint
-baseline remain attached for reproducibility.
-
-`release.yml` is manual recovery only. It must not replace the normal automatic
-main-push release.
+- retained telemetry/model/evaluation evidence

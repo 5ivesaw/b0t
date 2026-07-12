@@ -252,3 +252,26 @@ Implemented in candidate `0.9.0-alpha.0`:
 
 Evidence: `docs/PHASE8_REPORT.md`, `docs/BRIDGING_BODY.md`,
 `docs/HYBRID_ARCHITECTURE.md`, and `BridgingBodyContractTest`.
+
+## Phase 9 — Segmented navigation core
+
+Implemented in candidate `1.0.0-alpha.0`:
+
+- [x] Immutable local/full navigation snapshots captured under a client-tick budget.
+- [x] One bounded latest-wins background planner with explicit shutdown.
+- [x] Weighted A* over explicit traverse, diagonal, ascent, and descent operations.
+- [x] Direct validated micro-route while broader snapshots/plans are prepared.
+- [x] Active/staged routes, planning ahead, replacement splicing, and segments.
+- [x] Rewind/skip and corridor projection from the actual current player position.
+- [x] Large displacement and changed geometry trigger current-position replanning.
+- [x] Continuous movement ownership, validated lookahead, fast visible turning,
+      jump/sprint execution, operation timeout, and stuck recovery.
+- [x] Persistent bounded world caches and bounded live near-future refresh.
+- [x] Route rendering is inspector-only and marker-capped for low-end hardware.
+- [x] 71 dedicated segmented-navigation checks plus all previous contract suites.
+
+**Gate: SOURCE/OFFLINE PASS; TARGET-MACHINE RUNTIME ACCEPTANCE PENDING.**
+
+Evidence: `docs/PHASE9_REPORT.md`, `docs/SEGMENTED_NAVIGATION_CORE.md`,
+`docs/BARITONE_ARCHITECTURE_RESEARCH.md`, `docs/NAVIGATION_BODY.md`, and
+`SegmentedNavigationContractTest`.

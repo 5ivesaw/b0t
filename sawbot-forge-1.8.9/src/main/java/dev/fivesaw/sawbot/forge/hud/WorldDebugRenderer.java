@@ -56,7 +56,7 @@ public final class WorldDebugRenderer {
         if (snapshot == null || minecraft.theWorld == null || minecraft.thePlayer == null) return;
         if (!state.terrainOverlayVisible() && !state.collisionOverlayVisible()
             && !state.entityOverlayVisible() && !state.landmarkOverlayVisible()
-            && !state.inspectorVisible() && navigationBody.pathCells().isEmpty()
+            && !state.inspectorVisible()
             && bridgingBody.planSteps().isEmpty()) return;
         long start = System.nanoTime();
         boolean matrixPushed = false;
@@ -70,7 +70,9 @@ public final class WorldDebugRenderer {
             if (state.collisionOverlayVisible()) renderCollision(snapshot);
             if (state.entityOverlayVisible()) renderEntities(snapshot, manager, partialTicks);
             if (state.landmarkOverlayVisible()) renderLandmarks(snapshot, manager);
-            if (!navigationBody.pathCells().isEmpty()) renderNavigationPath();
+            if (state.inspectorVisible() && !navigationBody.pathCells().isEmpty()) {
+                renderNavigationPath();
+            }
             if (!bridgingBody.planSteps().isEmpty()) renderBridgePlan();
             if (state.inspectorVisible()) renderSelectedBlock(inspector.selectedBlock());
             if (state.observationsFrozen()) renderFrozenAnchor(snapshot, manager);
@@ -237,7 +239,9 @@ public final class WorldDebugRenderer {
         java.util.List<NavigationCell> cells = navigationBody.pathCells();
         if (cells.isEmpty()) return;
         beginLines(true, 2.4F);
-        for (int index = 0; index < cells.size(); index++) {
+        int startIndex = Math.max(0, navigationBody.pathIndex() - 4);
+        int endIndex = Math.min(cells.size(), startIndex + 96);
+        for (int index = startIndex; index < endIndex; index++) {
             NavigationCell cell = cells.get(index);
             boolean current = index == navigationBody.pathIndex();
             boolean lookahead = index == navigationBody.lookaheadIndex();
@@ -250,7 +254,7 @@ public final class WorldDebugRenderer {
             double z = cell.centerZ();
             drawBox(new AxisAlignedBB(x - 0.12D, y - 0.04D, z - 0.12D,
                 x + 0.12D, y + 0.20D, z + 0.12D), red, green, blue, 220);
-            if (index + 1 < cells.size()) {
+            if (index + 1 < endIndex) {
                 NavigationCell next = cells.get(index + 1);
                 drawLine(x, y + 0.08D, z, next.centerX(), next.centerY() + 0.16D,
                     next.centerZ(), red, green, blue, 230);

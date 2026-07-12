@@ -61,3 +61,12 @@ The bridging specialist accepts a destination/skill intent and performs bounded
 mechanical execution: cardinal/staircase corridor generation, block-slot selection,
 visible aim, normal-reach support-face placement, world confirmation, sneak-held
 advance, replanning, and complete release. It never chooses the strategic destination.
+
+## Navigation body v1.0
+
+Phase 9 replaces the former anytime cell-list follower with an operation-based,
+segmented body. It captures immutable world state incrementally, plans on one bounded
+worker, begins with validated local motion, stages replacement paths, reconciles against
+the actual player position, and executes continuous legal controls. This strengthens the
+original boundary: the brain selects the destination and tactical reason; the body owns
+all reliable pathing mechanics.

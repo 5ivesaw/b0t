@@ -1,34 +1,40 @@
 package dev.fivesaw.sawbot.forge.navigation;
 
+import dev.fivesaw.sawbot.common.navigation.MovementPath;
 import dev.fivesaw.sawbot.common.navigation.NavigationCell;
 import dev.fivesaw.sawbot.common.navigation.NavigationGrid;
+import dev.fivesaw.sawbot.common.navigation.NavigationMovement;
 import dev.fivesaw.sawbot.common.navigation.NavigationPath;
 import dev.fivesaw.sawbot.common.observation.LocalTerrainSnapshot;
 import dev.fivesaw.sawbot.forge.sensors.BlockSemanticClassifier;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.util.BlockPos;
 import net.minecraft.world.World;
 
 /**
- * Client-thread-only world adapter with bounded caches and live route probes.
+ * Persistent client-thread world cache used by snapshot capture and live motion.
  *
- * Planner reads are cached for speed. Real-time route validation explicitly
- * refreshes the cells it depends on so placed/broken blocks and exposed voids are
- * noticed without waiting for a full new observation snapshot.
+ * Unlike the previous navigator, this object is not recreated every few ticks.
+ * World reads are retained in bounded LRU caches, while only the current and
+ * near-future movement cells are explicitly refreshed after world changes.
  */
 public final class WorldNavigationGrid implements NavigationGrid {
-    private static final int MAX_CACHE_ENTRIES = 16384;
-    private static final int MAX_PENALTY_CACHE_ENTRIES = 8192;
+    private static final int MAX_CACHE_ENTRIES = 32768;
+    private static final int MAX_PENALTY_CACHE_ENTRIES = 16384;
     private static final float EXPOSED_SIDE_PENALTY = 0.14F;
 
     private final World world;
     private final BlockSemanticClassifier classifier;
-    private final Map<NavigationCell, Boolean> standableCache = new HashMap<NavigationCell, Boolean>();
-    private final Map<NavigationCell, Float> penaltyCache = new HashMap<NavigationCell, Float>();
+    private final Map<NavigationCell, Boolean> standableCache =
+        new BoundedMap<NavigationCell, Boolean>(MAX_CACHE_ENTRIES);
+    private final Map<NavigationCell, Float> penaltyCache =
+        new BoundedMap<NavigationCell, Float>(MAX_PENALTY_CACHE_ENTRIES);
     private int worldReads;
+    private int cacheHits;
     private int liveRefreshes;
+    private int invalidations;
 
     public WorldNavigationGrid(World world) {
         if (world == null) throw new IllegalArgumentException("world");
@@ -36,15 +42,18 @@ public final class WorldNavigationGrid implements NavigationGrid {
         this.classifier = new BlockSemanticClassifier();
     }
 
+    public boolean matchesWorld(World candidate) { return world == candidate; }
+
     @Override public boolean isStandable(int x, int y, int z) {
         if (y < 1 || y > 254) return false;
         NavigationCell key = new NavigationCell(x, y, z);
         Boolean cached = standableCache.get(key);
-        if (cached != null) return cached.booleanValue();
-        boolean value = calculateStandable(x, y, z);
-        if (standableCache.size() < MAX_CACHE_ENTRIES) {
-            standableCache.put(key, Boolean.valueOf(value));
+        if (cached != null) {
+            cacheHits++;
+            return cached.booleanValue();
         }
+        boolean value = calculateStandable(x, y, z);
+        standableCache.put(key, Boolean.valueOf(value));
         return value;
     }
 
@@ -56,19 +65,34 @@ public final class WorldNavigationGrid implements NavigationGrid {
         return isStandable(x, y, z);
     }
 
+    public void invalidateAround(int x, int y, int z, int radius) {
+        int bounded = Math.max(0, Math.min(3, radius));
+        for (int dx = -bounded; dx <= bounded; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -bounded; dz <= bounded; dz++) {
+                    NavigationCell key = new NavigationCell(x + dx, y + dy, z + dz);
+                    standableCache.remove(key);
+                    penaltyCache.remove(key);
+                }
+            }
+        }
+        invalidations++;
+    }
+
     @Override public float traversalPenalty(int x, int y, int z) {
         NavigationCell key = new NavigationCell(x, y, z);
         Float cached = penaltyCache.get(key);
-        if (cached != null) return cached.floatValue();
+        if (cached != null) {
+            cacheHits++;
+            return cached.floatValue();
+        }
         int exposed = 0;
         if (!isStandable(x + 1, y, z)) exposed++;
         if (!isStandable(x - 1, y, z)) exposed++;
         if (!isStandable(x, y, z + 1)) exposed++;
         if (!isStandable(x, y, z - 1)) exposed++;
         float value = exposed * EXPOSED_SIDE_PENALTY;
-        if (penaltyCache.size() < MAX_PENALTY_CACHE_ENTRIES) {
-            penaltyCache.put(key, Float.valueOf(value));
-        }
+        penaltyCache.put(key, Float.valueOf(value));
         return value;
     }
 
@@ -78,14 +102,13 @@ public final class WorldNavigationGrid implements NavigationGrid {
         int dy = to.y() - from.y();
         int dz = to.z() - from.z();
         if (Math.abs(dx) > 1 || Math.abs(dz) > 1 || Math.abs(dy) > 1
-            || (dx == 0 && dz == 0)) return false;
-        if (!isStandable(to.x(), to.y(), to.z())) return false;
+            || (dx == 0 && dz == 0) || !isStandable(to.x(), to.y(), to.z())) {
+            return false;
+        }
         if (dx != 0 && dz != 0) {
-            boolean xClear = isStandable(from.x() + dx, from.y(), from.z())
-                || isStandable(from.x() + dx, to.y(), from.z());
-            boolean zClear = isStandable(from.x(), from.y(), from.z() + dz)
-                || isStandable(from.x(), to.y(), from.z() + dz);
-            if (!xClear || !zClear) return false;
+            if (dy != 0) return false;
+            if (!isStandable(from.x() + dx, from.y(), from.z())
+                || !isStandable(from.x(), from.y(), from.z() + dz)) return false;
         }
         return true;
     }
@@ -94,9 +117,8 @@ public final class WorldNavigationGrid implements NavigationGrid {
         BlockPos feet = new BlockPos(x, y, z);
         BlockPos head = new BlockPos(x, y + 1, z);
         BlockPos support = new BlockPos(x, y - 1, z);
-        if (!world.isBlockLoaded(feet) || !world.isBlockLoaded(head) || !world.isBlockLoaded(support)) {
-            return false;
-        }
+        if (!world.isBlockLoaded(feet) || !world.isBlockLoaded(head)
+            || !world.isBlockLoaded(support)) return false;
         BlockSemanticClassifier.CellClassification feetCell = classify(feet);
         BlockSemanticClassifier.CellClassification headCell = classify(head);
         BlockSemanticClassifier.CellClassification supportCell = classify(support);
@@ -118,46 +140,54 @@ public final class WorldNavigationGrid implements NavigationGrid {
             && (cell.flags & LocalTerrainSnapshot.FLAG_HAZARD) == 0;
     }
 
-    public NavigationCell nearestStandable(int x, int y, int z, int horizontalRadius, int verticalRadius) {
+    public NavigationCell nearestStandable(int x, int y, int z,
+                                           int horizontalRadius,
+                                           int verticalRadius) {
         if (isStandable(x, y, z)) return new NavigationCell(x, y, z);
         int maxHorizontal = Math.max(0, horizontalRadius);
         int maxVertical = Math.max(0, verticalRadius);
         for (int radius = 0; radius <= maxHorizontal; radius++) {
             for (int dy = 0; dy <= maxVertical; dy++) {
-                int[] yOffsets = dy == 0 ? new int[]{0} : new int[]{dy, -dy};
-                for (int yOffset : yOffsets) {
-                    for (int dx = -radius; dx <= radius; dx++) {
-                        for (int dz = -radius; dz <= radius; dz++) {
-                            if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
-                            int candidateY = y + yOffset;
-                            if (isStandable(x + dx, candidateY, z + dz)) {
-                                return new NavigationCell(x + dx, candidateY, z + dz);
-                            }
-                        }
-                    }
+                NavigationCell found = scanRing(x, y + dy, z, radius);
+                if (found != null) return found;
+                if (dy > 0) {
+                    found = scanRing(x, y - dy, z, radius);
+                    if (found != null) return found;
                 }
             }
         }
         return null;
     }
 
-    /** Live-validates a bounded future path window. */
+    private NavigationCell scanRing(int x, int y, int z, int radius) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                if (isStandable(x + dx, y, z + dz)) {
+                    return new NavigationCell(x + dx, y, z + dz);
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Legacy cell-path validation retained for Phase 7/8 compatibility. */
     public PathValidation validatePathWindow(NavigationPath path, int startIndex,
                                              int maximumNodes, boolean refresh) {
-        if (path == null || path.size() == 0) return new PathValidation(false, startIndex, "missing path");
+        if (path == null || path.size() == 0) {
+            return new PathValidation(false, startIndex, "missing path");
+        }
         int start = Math.max(0, Math.min(startIndex, path.size() - 1));
         int end = Math.min(path.size() - 1, start + Math.max(1, maximumNodes));
         NavigationCell previous = path.cell(start);
-        if (!(refresh ? refreshStandable(previous.x(), previous.y(), previous.z())
-            : isStandable(previous.x(), previous.y(), previous.z()))) {
+        if (!sample(previous, refresh)) {
             return new PathValidation(false, start, "current route cell changed");
         }
         for (int index = start + 1; index <= end; index++) {
             NavigationCell current = path.cell(index);
-            boolean standable = refresh
-                ? refreshStandable(current.x(), current.y(), current.z())
-                : isStandable(current.x(), current.y(), current.z());
-            if (!standable) return new PathValidation(false, index, "route cell changed");
+            if (!sample(current, refresh)) {
+                return new PathValidation(false, index, "route cell changed");
+            }
             if (!canTransition(previous, current)) {
                 return new PathValidation(false, index, "route transition changed");
             }
@@ -166,10 +196,39 @@ public final class WorldNavigationGrid implements NavigationGrid {
         return new PathValidation(true, -1, "ok");
     }
 
+    /** Live-validates only the active and bounded near-future operations. */
+    public MovementValidation validateMovementWindow(MovementPath path,
+                                                       int movementIndex,
+                                                       int maximumMovements,
+                                                       boolean refresh) {
+        if (path == null || path.movementCount() == 0) {
+            return new MovementValidation(false, movementIndex, "missing movement path");
+        }
+        int start = Math.max(0, Math.min(movementIndex, path.movementCount() - 1));
+        int end = Math.min(path.movementCount() - 1,
+            start + Math.max(0, maximumMovements - 1));
+        for (int index = start; index <= end; index++) {
+            NavigationMovement movement = path.movement(index);
+            if (!sample(movement.to(), refresh)) {
+                return new MovementValidation(false, index,
+                    "destination support/headroom changed");
+            }
+            if (!canTransition(movement.from(), movement.to())) {
+                return new MovementValidation(false, index,
+                    "movement geometry changed");
+            }
+        }
+        return new MovementValidation(true, -1, "ok");
+    }
+
+    private boolean sample(NavigationCell cell, boolean refresh) {
+        return refresh ? refreshStandable(cell.x(), cell.y(), cell.z())
+            : isStandable(cell.x(), cell.y(), cell.z());
+    }
+
     /**
-     * Tests a straight local corridor by sampling player-feet cells and validating
-     * each cell-to-cell transition. This enables path smoothing without cutting
-     * through walls, across unsupported gaps, or around illegal diagonal corners.
+     * Tests a straight local corridor. This is used only for immediate steering
+     * and direct micro-paths; long-range planning uses immutable snapshots.
      */
     public boolean isCorridorSafe(double fromX, double fromY, double fromZ,
                                   double toX, double toY, double toZ,
@@ -178,7 +237,7 @@ public final class WorldNavigationGrid implements NavigationGrid {
         double dy = toY - fromY;
         double dz = toZ - fromZ;
         double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-        int steps = Math.max(1, (int)Math.ceil(horizontalDistance / 0.28D));
+        int steps = Math.max(1, (int)Math.ceil(horizontalDistance / 0.32D));
         NavigationCell previous = null;
         for (int step = 0; step <= steps; step++) {
             double t = (double)step / (double)steps;
@@ -197,7 +256,6 @@ public final class WorldNavigationGrid implements NavigationGrid {
         return true;
     }
 
-    /** Samples a possible immediate heading for the 20 Hz reactive controller. */
     public MotionProbe probeDirection(double x, double y, double z,
                                       float yawDegrees, double distance,
                                       boolean refresh) {
@@ -207,8 +265,9 @@ public final class WorldNavigationGrid implements NavigationGrid {
         NavigationCell destination = nearestStandableLive(
             floor(targetX), floor(y + 0.01D), floor(targetZ), refresh);
         if (destination == null) return MotionProbe.blocked(yawDegrees, targetX, targetZ);
-        boolean safe = isCorridorSafe(x, y, z, targetX, destination.centerY(), targetZ, refresh);
-        if (!safe) return MotionProbe.blocked(yawDegrees, targetX, targetZ);
+        if (!isCorridorSafe(x, y, z, targetX, destination.centerY(), targetZ, refresh)) {
+            return MotionProbe.blocked(yawDegrees, targetX, targetZ);
+        }
         return new MotionProbe(true, yawDegrees, targetX, targetZ,
             destination, traversalPenalty(destination.x(), destination.y(), destination.z()));
     }
@@ -216,8 +275,7 @@ public final class WorldNavigationGrid implements NavigationGrid {
     private NavigationCell nearestStandableLive(int x, int y, int z, boolean refresh) {
         int[] offsets = {0, 1, -1};
         for (int offset : offsets) {
-            boolean standable = refresh
-                ? refreshStandable(x, y + offset, z)
+            boolean standable = refresh ? refreshStandable(x, y + offset, z)
                 : isStandable(x, y + offset, z);
             if (standable) return new NavigationCell(x, y + offset, z);
         }
@@ -231,7 +289,14 @@ public final class WorldNavigationGrid implements NavigationGrid {
 
     public int cacheSize() { return standableCache.size(); }
     public int worldReads() { return worldReads; }
+    public int cacheHits() { return cacheHits; }
     public int liveRefreshes() { return liveRefreshes; }
+    public int invalidations() { return invalidations; }
+
+    public void clear() {
+        standableCache.clear();
+        penaltyCache.clear();
+    }
 
     public static final class PathValidation {
         private final boolean valid;
@@ -246,6 +311,22 @@ public final class WorldNavigationGrid implements NavigationGrid {
 
         public boolean valid() { return valid; }
         public int invalidIndex() { return invalidIndex; }
+        public String reason() { return reason; }
+    }
+
+    public static final class MovementValidation {
+        private final boolean valid;
+        private final int invalidMovementIndex;
+        private final String reason;
+
+        MovementValidation(boolean valid, int invalidMovementIndex, String reason) {
+            this.valid = valid;
+            this.invalidMovementIndex = invalidMovementIndex;
+            this.reason = reason;
+        }
+
+        public boolean valid() { return valid; }
+        public int invalidMovementIndex() { return invalidMovementIndex; }
         public String reason() { return reason; }
     }
 
@@ -268,7 +349,8 @@ public final class WorldNavigationGrid implements NavigationGrid {
         }
 
         static MotionProbe blocked(float yawDegrees, double targetX, double targetZ) {
-            return new MotionProbe(false, yawDegrees, targetX, targetZ, null, Float.POSITIVE_INFINITY);
+            return new MotionProbe(false, yawDegrees, targetX, targetZ, null,
+                Float.POSITIVE_INFINITY);
         }
 
         public boolean safe() { return safe; }
@@ -277,5 +359,19 @@ public final class WorldNavigationGrid implements NavigationGrid {
         public double targetZ() { return targetZ; }
         public NavigationCell destination() { return destination; }
         public float riskPenalty() { return riskPenalty; }
+    }
+
+    private static final class BoundedMap<K, V> extends LinkedHashMap<K, V> {
+        private static final long serialVersionUID = 1L;
+        private final int maximumEntries;
+
+        BoundedMap(int maximumEntries) {
+            super(256, 0.75F, true);
+            this.maximumEntries = maximumEntries;
+        }
+
+        @Override protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+            return size() > maximumEntries;
+        }
     }
 }

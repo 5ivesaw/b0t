@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.0.0-alpha.0 — Phase 9 segmented navigation core
+
+- Replaced the rigid client-thread route follower with an operation-based segmented
+  navigator inspired by proven pathing-system architecture.
+- Added compact immutable navigation snapshots; workers never read Minecraft state.
+- Added one bounded latest-wins planner worker with explicit shutdown, request
+  supersession, queue metrics, and no client-thread waits.
+- Added weighted A* over traverse, diagonal, one-block ascent, and safe descent
+  movement operations with deterministic tie-breaking, risk costs, and hard budgets.
+- Added current and staged replacement paths, safe overlap splicing, planning ahead,
+  segment continuation, rewind/skip after displacement, and nearby-corridor recovery.
+- Added direct validated micro-routes so safe motion can begin while local/full
+  snapshots are still captured.
+- Added persistent bounded world caches, live near-future operation validation, route
+  invalidation, current-position replanning, operation timeouts, and stuck recovery.
+- Added continuous key ownership and validated lookahead steering to flow through
+  route corridors without stopping at every block centre.
+- Moved route rendering behind the F7 inspector and bounded rendered markers to reduce
+  low-end GPU/CPU overhead.
+- Reduced default client-thread snapshot work and moved expensive graph search fully
+  off-thread.
+- Added Phase 9 HUD diagnostics and 71 new segmented-navigation contract checks while
+  retaining all previous navigation, bridging, telemetry, safety, and packaging tests.
+- Preserved the hybrid boundary: neural systems select goals; deterministic specialists
+  perform pathfinding and legal movement mechanics.
+
 ## 0.9.0-alpha.0 — Phase 8 real-time bridging specialist
 
 - Added the first deterministic mechanical specialist beyond navigation.

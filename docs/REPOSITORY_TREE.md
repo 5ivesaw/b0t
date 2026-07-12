@@ -1,76 +1,43 @@
-# Repository tree — Phase 8 bridging specialist candidate
+# Repository tree — Phase 9 segmented navigation candidate
 
 ```text
-SawBotV1/
-├── .github/workflows/{ci.yml,release.yml}
-├── README.md
-├── GITHUB_UPLOAD_QUICKSTART.md
-├── CHANGELOG.md
-├── LICENSE
-├── SECURITY.md
-├── settings.gradle
-├── build.gradle
-├── gradle.properties
-├── gradlew / gradlew.bat
-├── docs/
-│   ├── PROJECT_BRIEF.txt
-│   ├── ARCHITECTURE.md
-│   ├── HYBRID_ARCHITECTURE.md
-│   ├── ADAPTIVE_NAVIGATION.md
-│   ├── NAVIGATION_BODY.md
-│   ├── BRIDGING_BODY.md
-│   ├── PERFORMANCE_BUDGET.md
-│   ├── OBSERVATION_CONTRACT.md
-│   ├── ACTION_CONTRACT.md
-│   ├── TELEMETRY_FORMAT.md
-│   ├── PHASE_GATES.md
-│   ├── PHASE8_REPORT.md
-│   ├── PHASE7_REPORT.md
-│   └── prior reports, acceptance, release, audit, and historical evidence
-├── sawbot-common/src/main/java/dev/fivesaw/sawbot/common/
-│   ├── action/
-│   ├── bridging/        # bounded corridor and placement-step contract
-│   ├── events/
-│   ├── navigation/      # cells/path, adaptive cursor, bounded anytime A*
-│   ├── observation/
-│   ├── telemetry/
-│   ├── protocol/
-│   └── versioning/
-├── sawbot-forge-1.8.9/src/main/
-│   ├── java/dev/fivesaw/sawbot/forge/
-│   │   ├── actuator/    # validated fallback low-level action execution
-│   │   ├── bridging/    # legal placement/confirmation/advance body
-│   │   ├── client/      # specialist ownership and runtime priority
-│   │   ├── config/
-│   │   ├── hud/         # compact HUD + navigation/bridge rendering
-│   │   ├── inspection/
-│   │   ├── map/
-│   │   ├── model/       # bounded loopback brain transport
-│   │   ├── navigation/  # live world grid + adaptive navigation body
-│   │   ├── performance/
-│   │   ├── safety/
-│   │   ├── sensors/
-│   │   ├── telemetry/
-│   │   └── tracking/
-│   └── resources/
-├── sawbot-tools/
-├── sawbot-trainer/waypoint/  # preserved Phase 5 learned baseline
-├── sawbot-sim/
-├── sawbot-arenas/
-├── prototypes/control-center.html
-├── verification-stubs/
-├── verification-tests/
-│   ├── .../NavigationBodyContractTest.java
-│   └── .../BridgingBodyContractTest.java
-└── tools/
-    ├── offline-verify.sh
-    ├── package-release.sh
-    ├── verify-built-jar.py
-    ├── verify-release-payload.sh
-    └── local telemetry/bootstrap/preflight scripts
+.github/workflows/ci.yml
+.github/workflows/release.yml
+README.md
+CHANGELOG.md
+gradle.properties
+build.gradle
+docs/PHASE9_REPORT.md
+docs/SEGMENTED_NAVIGATION_CORE.md
+docs/BARITONE_ARCHITECTURE_RESEARCH.md
+docs/NAVIGATION_BODY.md
+docs/HYBRID_ARCHITECTURE.md
+docs/BRIDGING_BODY.md
+docs/PHASE_GATES.md
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/ImmutableNavigationGrid.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementAStarPlanner.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementPath.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementPlanResult.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/NavigationMovement.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/NavigationMovementType.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/NavigationProgressWatchdog.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/PathSegmentCoordinator.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationBodyController.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationCameraController.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationMovementExecutor.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationPlannerWorker.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationSnapshotCapture.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/WorldNavigationGrid.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/bridging/BridgingBodyController.java
+sawbot-trainer/waypoint/RUN-WAYPOINT-MODEL.bat
+sawbot-tools/dummy-model/RUN-DUMMY-MODEL.bat
+verification-tests/src/dev/fivesaw/sawbot/verification/SegmentedNavigationContractTest.java
+verification-tests/src/dev/fivesaw/sawbot/verification/NavigationBodyContractTest.java
+verification-tests/src/dev/fivesaw/sawbot/verification/BridgingBodyContractTest.java
+tools/offline-verify.sh
+tools/package-release.sh
+tools/verify-built-jar.py
+tools/verify-release-payload.sh
 ```
 
-Only `sawbot-common` and `sawbot-forge-1.8.9` participate in the mod build. World
-access and mechanical specialist execution remain on the Minecraft client thread.
-Search, corridor size, placement attempts, confirmation waits, route windows, caches,
-and per-tick turn rates have explicit bounds.
+Only the primary Phase 9 and retained runtime/release files are listed here.

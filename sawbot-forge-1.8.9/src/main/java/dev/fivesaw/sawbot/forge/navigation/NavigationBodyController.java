@@ -4,117 +4,153 @@ import dev.fivesaw.sawbot.common.action.AbortCondition;
 import dev.fivesaw.sawbot.common.action.ActionCommand;
 import dev.fivesaw.sawbot.common.action.Skill;
 import dev.fivesaw.sawbot.common.action.TacticalObjective;
-import dev.fivesaw.sawbot.common.navigation.AdaptivePathCursor;
-import dev.fivesaw.sawbot.common.navigation.IncrementalAStarPlanner;
+import dev.fivesaw.sawbot.common.navigation.MovementPath;
 import dev.fivesaw.sawbot.common.navigation.NavigationCell;
+import dev.fivesaw.sawbot.common.navigation.NavigationMovement;
+import dev.fivesaw.sawbot.common.navigation.NavigationMovementType;
 import dev.fivesaw.sawbot.common.navigation.NavigationPath;
-import dev.fivesaw.sawbot.common.navigation.NavigationPlanState;
+import dev.fivesaw.sawbot.common.navigation.NavigationProgressWatchdog;
+import dev.fivesaw.sawbot.common.navigation.PathSegmentCoordinator;
 import dev.fivesaw.sawbot.common.observation.ObservationSnapshot;
 import dev.fivesaw.sawbot.forge.actuator.EnvironmentGuard;
 import dev.fivesaw.sawbot.forge.map.NavigationWaypointController;
 import dev.fivesaw.sawbot.forge.model.ModelActionEnvelope;
-import dev.fivesaw.sawbot.forge.safety.InputRelease;
 import dev.fivesaw.sawbot.forge.safety.SawBotStateController;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
-import net.minecraft.client.settings.GameSettings;
-import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.MathHelper;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Real-time deterministic navigation body.
+ * Phase 9 segmented movement navigator.
  *
- * The route is a continuously revised corridor, not a mandatory sequence of
- * block centres. A 20 Hz local controller re-anchors after displacement, skips
- * safe nodes, validates live geometry, probes several immediate headings, and
- * continues following the current route while an anytime replacement A* search
- * runs incrementally.
+ * The learned brain supplies goals. This deterministic body converts those goals
+ * into immutable world snapshots, plans movement operations on a bounded worker,
+ * keeps current and replacement segments, reconciles against the real player
+ * position every tick, and executes controls through a dedicated movement servo.
  */
 public final class NavigationBodyController {
-    private static final String BODY_VERSION = "navigation-body/0.2";
-    private static final double NODE_REACHED_DISTANCE_SQUARED = 0.72D * 0.72D;
+    private static final String BODY_VERSION = "navigation-body/1.0";
     private static final int ARRIVAL_STABLE_TICKS = 4;
+    private static final int RECONCILE_BACKTRACK_POSITIONS = 5;
+    private static final int RECONCILE_FORWARD_POSITIONS = 28;
     private static final int RECOVERY_TICKS = 7;
-    private static final int REANCHOR_BACKTRACK_NODES = 4;
-    private static final int REANCHOR_FORWARD_NODES = 16;
-    private static final int LIVE_GRID_REFRESH_TICKS = 2;
-    private static final float[] STEERING_OFFSETS = {0F, -12F, 12F, -25F, 25F, -40F, 40F};
+    private static final int DIRECT_PATH_MAX_CELLS = 8;
 
     private final Minecraft minecraft;
     private final SawBotStateController state;
     private final EnvironmentGuard environment;
     private final NavigationWaypointController waypoint;
-    private final IncrementalAStarPlanner planner = new IncrementalAStarPlanner();
     private final int horizontalRadius;
     private final int verticalRadius;
     private final int maximumExpandedNodes;
-    private final int expansionsPerTick;
+    private final int snapshotCellsPerTick;
     private final int replanIntervalTicks;
     private final int stuckWindowTicks;
     private final float maximumTurnDegreesPerTick;
     private final float arrivalRadius;
     private final int lookaheadNodes;
-    private final float lookaheadDistance;
     private final int pathValidationNodes;
     private final float offRouteDistance;
-    private final float reactiveProbeDistance;
+    private final int localPlanningRadius;
+    private final int corridorMargin;
+    private final float heuristicWeight;
     private final Logger logger;
+    private final NavigationPlannerWorker plannerWorker;
+    private final NavigationMovementExecutor movementExecutor;
+    private final PathSegmentCoordinator segments = new PathSegmentCoordinator();
+    private final NavigationProgressWatchdog progressWatchdog =
+        new NavigationProgressWatchdog();
 
-    private WorldNavigationGrid planningGrid;
-    private WorldNavigationGrid liveGrid;
-    private long liveGridTick = Long.MIN_VALUE;
-    private NavigationPath path;
-    private int pathIndex;
-    private int lookaheadIndex;
-    private boolean provisionalPath;
-    private boolean replacementPlan;
-    private NavigationCell lastPlanStart;
+    private WorldNavigationGrid worldGrid;
+    private NavigationSnapshotCapture capture;
+    private long planGeneration;
     private long plannedWaypointRevision = -1L;
-    private int ticksSincePlanStart;
+    private long lastAcceptedRequestId = -1L;
+    private long lastPlanStartTick;
     private int arrivalTicks;
-    private int stuckTicks;
     private int recoveryTicks;
     private int recoveryDirection = 1;
+    private int repeatedBlockages;
     private int replanCount;
     private int hotSwapCount;
     private int routeReanchors;
+    private int corridorRecoveries;
     private int routeInvalidations;
     private int offRouteReplans;
     private int localDetours;
     private int stuckRecoveries;
-    private double progressX;
-    private double progressZ;
+    private int directMicroPlans;
+    private int stalePlanResults;
+    private int failedPlans;
     private double pathDeviation;
     private float steeringOffsetDegrees;
     private String status = "IDLE";
     private String reason = "startup";
     private String source = "manual";
-    private boolean ownsMovement;
     private boolean freshPlanRequired = true;
     private boolean brainIntentActive;
     private long brainIntentDeadlineNanos;
-    private ActionCommand previousAppliedAction = ActionCommand.zero(0L, 0L, BODY_VERSION);
+    private boolean activePathProvisional;
+    private boolean activePathCompletesGoal;
+    private ActionCommand previousAppliedAction =
+        ActionCommand.zero(0L, 0L, BODY_VERSION);
 
+    /** Compatibility constructor used by existing tests and old config files. */
     public NavigationBodyController(Minecraft minecraft, SawBotStateController state,
-                                    EnvironmentGuard environment, NavigationWaypointController waypoint,
+                                    EnvironmentGuard environment,
+                                    NavigationWaypointController waypoint,
                                     int horizontalRadius, int verticalRadius,
                                     int maximumExpandedNodes, int expansionsPerTick,
                                     int replanIntervalTicks, int stuckWindowTicks,
-                                    float maximumTurnDegreesPerTick, float arrivalRadius,
-                                    int lookaheadNodes, float lookaheadDistance,
-                                    int pathValidationNodes, float offRouteDistance,
+                                    float maximumTurnDegreesPerTick,
+                                    float arrivalRadius, int lookaheadNodes,
+                                    float lookaheadDistance,
+                                    int pathValidationNodes,
+                                    float offRouteDistance,
                                     float reactiveProbeDistance, Logger logger) {
-        if (minecraft == null || state == null || environment == null || waypoint == null || logger == null) {
+        this(minecraft, state, environment, waypoint, horizontalRadius,
+            verticalRadius, maximumExpandedNodes,
+            Math.max(320, expansionsPerTick * 5), replanIntervalTicks,
+            stuckWindowTicks, maximumTurnDegreesPerTick, arrivalRadius,
+            lookaheadNodes, pathValidationNodes, offRouteDistance,
+            Math.max(5, Math.min(9, (int)Math.ceil(lookaheadDistance))),
+            Math.max(6, Math.min(14, (int)Math.ceil(reactiveProbeDistance * 8F))),
+            24, 1.08F, logger);
+    }
+
+    public NavigationBodyController(Minecraft minecraft, SawBotStateController state,
+                                    EnvironmentGuard environment,
+                                    NavigationWaypointController waypoint,
+                                    int horizontalRadius, int verticalRadius,
+                                    int maximumExpandedNodes,
+                                    int snapshotCellsPerTick,
+                                    int replanIntervalTicks,
+                                    int stuckWindowTicks,
+                                    float maximumTurnDegreesPerTick,
+                                    float arrivalRadius, int lookaheadNodes,
+                                    int pathValidationNodes,
+                                    float offRouteDistance,
+                                    int localPlanningRadius,
+                                    int corridorMargin,
+                                    int segmentLength,
+                                    float heuristicWeight,
+                                    Logger logger) {
+        if (minecraft == null || state == null || environment == null
+            || waypoint == null || logger == null) {
             throw new IllegalArgumentException("navigation body component");
         }
-        if (horizontalRadius < 4 || verticalRadius < 1 || maximumExpandedNodes < 64
-            || expansionsPerTick < 8 || replanIntervalTicks < 2 || stuckWindowTicks < 5
-            || maximumTurnDegreesPerTick < 1F || arrivalRadius < 0.25F
-            || lookaheadNodes < 1 || lookaheadDistance < 1F || pathValidationNodes < 2
-            || offRouteDistance < 0.75F || reactiveProbeDistance < 0.5F) {
+        if (horizontalRadius < 8 || verticalRadius < 2
+            || maximumExpandedNodes < 256 || snapshotCellsPerTick < 64
+            || replanIntervalTicks < 2 || stuckWindowTicks < 5
+            || maximumTurnDegreesPerTick < 4F || arrivalRadius < 0.25F
+            || lookaheadNodes < 1 || pathValidationNodes < 1
+            || offRouteDistance < 0.75F || localPlanningRadius < 4
+            || corridorMargin < 4 || heuristicWeight < 1F
+            || heuristicWeight > 2F) {
             throw new IllegalArgumentException("navigation body configuration");
         }
         this.minecraft = minecraft;
@@ -124,25 +160,30 @@ public final class NavigationBodyController {
         this.horizontalRadius = horizontalRadius;
         this.verticalRadius = verticalRadius;
         this.maximumExpandedNodes = maximumExpandedNodes;
-        this.expansionsPerTick = expansionsPerTick;
+        this.snapshotCellsPerTick = snapshotCellsPerTick;
         this.replanIntervalTicks = replanIntervalTicks;
         this.stuckWindowTicks = stuckWindowTicks;
         this.maximumTurnDegreesPerTick = maximumTurnDegreesPerTick;
         this.arrivalRadius = arrivalRadius;
         this.lookaheadNodes = lookaheadNodes;
-        this.lookaheadDistance = lookaheadDistance;
         this.pathValidationNodes = pathValidationNodes;
         this.offRouteDistance = offRouteDistance;
-        this.reactiveProbeDistance = reactiveProbeDistance;
+        this.localPlanningRadius = localPlanningRadius;
+        this.corridorMargin = corridorMargin;
+        this.heuristicWeight = heuristicWeight;
         this.logger = logger;
+        this.plannerWorker = new NavigationPlannerWorker(logger);
+        this.movementExecutor = new NavigationMovementExecutor(minecraft);
+        this.segments.setSegmentLength(segmentLength);
     }
 
-    /** Records a high-level brain request without accepting its low-level motor values. */
+    /** Records only the high-level navigation intent from the learned brain. */
     public void observeBrainAction(ModelActionEnvelope envelope) {
         if (envelope == null || envelope.command() == null) return;
         ActionCommand command = envelope.command();
         if (command.selectedSkill() == Skill.NAVIGATION
-            && command.selectedWaypointId() == NavigationWaypointController.USER_WAYPOINT_ID) {
+            && command.selectedWaypointId()
+                == NavigationWaypointController.USER_WAYPOINT_ID) {
             brainIntentActive = true;
             brainIntentDeadlineNanos = System.nanoTime() + 1_500_000_000L;
             source = "brain";
@@ -151,9 +192,11 @@ public final class NavigationBodyController {
 
     public void tick(long clientTick, ObservationSnapshot latest) {
         if (!state.mayApplyAutonomousActions()) {
-            releaseOwnedInputs("disabled/frozen");
+            movementExecutor.release("disabled/frozen");
             freshPlanRequired = true;
             status = "IDLE";
+            previousAppliedAction = bodyAction(latest, false, false, false,
+                false, 0F);
             return;
         }
         if (!environment.isAllowed()) {
@@ -163,16 +206,18 @@ public final class NavigationBodyController {
             return;
         }
         if (!waypoint.active()) {
-            releaseOwnedInputs("no waypoint");
-            resetPlan("waiting for waypoint");
+            release("no waypoint");
+            clearNavigation("waiting for waypoint");
             status = "WAITING";
             return;
         }
-        if (minecraft.currentScreen != null || minecraft.thePlayer == null || minecraft.theWorld == null) {
-            releaseOwnedInputs("GUI/world unavailable");
+        if (minecraft.currentScreen != null || minecraft.thePlayer == null
+            || minecraft.theWorld == null) {
+            movementExecutor.release("GUI/world unavailable");
             freshPlanRequired = true;
             status = "PAUSED";
-            reason = minecraft.currentScreen != null ? "GUI open" : "world unavailable";
+            reason = minecraft.currentScreen != null ? "GUI open"
+                : "world unavailable";
             return;
         }
 
@@ -181,496 +226,561 @@ public final class NavigationBodyController {
             source = "manual";
         }
 
+        ensureWorldGrid();
         EntityPlayerSP player = minecraft.thePlayer;
-        refreshLiveGrid(clientTick);
+        NavigationCell feet = currentStandable(player);
+        NavigationCell goal = currentGoal();
+        if (feet == null || goal == null) {
+            movementExecutor.release("feet/goal not standable");
+            status = "BLOCKED";
+            reason = feet == null ? "current feet cell unavailable"
+                : "goal has no standable neighbour";
+            previousAppliedAction = bodyAction(latest, false, false, false,
+                false, 0F);
+            return;
+        }
 
         if (arrived(player)) {
             arrivalTicks++;
-            releaseOwnedInputs("waypoint reached");
+            movementExecutor.release("waypoint reached");
             status = "ARRIVED";
-            reason = "stable within " + arrivalRadius + "m";
+            reason = "stable within " + one(arrivalRadius) + "m";
             if (arrivalTicks == ARRIVAL_STABLE_TICKS) {
                 state.setInspectorNotice("NAV ARRIVED: waypoint #"
                     + NavigationWaypointController.USER_WAYPOINT_ID, 1);
             }
-            previousAppliedAction = bodyAction(latest, false, false, false, false, 0F);
+            previousAppliedAction = bodyAction(latest, false, false, false,
+                false, 0F);
             return;
         }
         arrivalTicks = 0;
 
         boolean waypointChanged = plannedWaypointRevision != waypoint.revision();
         if (waypointChanged || freshPlanRequired) {
-            startPlan(player, waypointChanged ? "waypoint changed" : "resume from current position", false);
+            beginPlanning(clientTick, player, feet, goal,
+                waypointChanged ? "waypoint changed"
+                    : "resume from real position", false);
             freshPlanRequired = false;
         }
 
-        advancePlanner(player);
-        if (path == null) {
-            adoptBestEffortPath(player);
-            if (path == null) {
-                releaseOwnedInputs("planning");
-                status = planner.state() == NavigationPlanState.FAILED ? "NO_PATH" : "PLANNING";
-                reason = planner.state() == NavigationPlanState.FAILED
-                    ? planner.failureReason()
-                    : planner.expandedNodes() + "/" + maximumExpandedNodes + " nodes";
-                previousAppliedAction = bodyAction(latest, false, false, false, false, 0F);
-                return;
-            }
+        tickCapture();
+        acceptPlannerResults(feet);
+
+        if (!segments.hasActivePath()) {
+            movementExecutor.release("waiting for movement path");
+            status = capture == null ? plannerFailureStatus() : "CAPTURE";
+            reason = planningReason();
+            previousAppliedAction = bodyAction(latest, false, false, false,
+                false, 0F);
+            return;
         }
 
-        if (!reanchorToCurrentPosition(player)) {
+        boolean reconciled = segments.reconcile(feet,
+            RECONCILE_BACKTRACK_POSITIONS, RECONCILE_FORWARD_POSITIONS);
+        if (!reconciled) {
+            reconciled = segments.reconcileNearby(player.posX, player.posY,
+                player.posZ, offRouteDistance, RECONCILE_BACKTRACK_POSITIONS,
+                RECONCILE_FORWARD_POSITIONS);
+        }
+        routeReanchors = segments.reanchors();
+        corridorRecoveries = segments.corridorRecoveries();
+        if (!reconciled) {
+            pathDeviation = nearestPathDistance(player);
             offRouteReplans++;
-            startPlan(player, "off route " + one(pathDeviation) + "m", false);
-            advancePlanner(player);
-            adoptBestEffortPath(player);
-            if (path == null || !reanchorToCurrentPosition(player)) {
-                releaseOwnedInputs("off route replanning");
-                status = "REPLAN";
-                previousAppliedAction = bodyAction(latest, false, false, false, false, 0F);
-                return;
+            beginPlanning(clientTick, player, feet, goal,
+                "off active route " + one(pathDeviation) + "m", false);
+            movementExecutor.release("off route replanning");
+            status = "REPLAN";
+            previousAppliedAction = bodyAction(latest, false, false, false,
+                false, 0F);
+            return;
+        }
+        pathDeviation = nearestPathDistance(player);
+
+        if (segments.trySplice(feet)) {
+            hotSwapCount++;
+            activePathProvisional = segments.activePath() != null
+                && !segments.activePath().complete();
+            activePathCompletesGoal = segments.activePath() != null
+                && segments.activePath().complete();
+        }
+
+        if ((clientTick & 1L) == 0L && !validateLiveRoute(clientTick, player,
+            feet, goal)) {
+            previousAppliedAction = bodyAction(latest, false, false, false,
+                false, 0F);
+            return;
+        }
+
+        while (segments.advanceIfAt(feet)) {
+            if (segments.finished()) break;
+        }
+        if (segments.finished()) {
+            if (arrived(player)) {
+                status = "ARRIVED";
+                movementExecutor.release("route complete at goal");
+            } else {
+                beginPlanning(clientTick, player, feet, goal,
+                    "segment consumed; continue to final goal", false);
+                movementExecutor.release("next segment planning");
+                status = "SEGMENT_PLAN";
+            }
+            previousAppliedAction = bodyAction(latest, false, false, false,
+                false, 0F);
+            return;
+        }
+
+        maybePlanAhead(clientTick, player, feet, goal);
+        tickCapture();
+        acceptPlannerResults(feet);
+
+        NavigationMovement movement = segments.currentMovement();
+        NavigationMovement next = nextMovement();
+        if (movement == null) {
+            movementExecutor.release("missing current movement");
+            status = "REPLAN";
+            beginPlanning(clientTick, player, feet, goal,
+                "missing movement operation", false);
+            return;
+        }
+
+        NavigationMovementExecutor.ExecutionFrame frame =
+            movementExecutor.execute(player, movement, next, worldGrid,
+                maximumTurnDegreesPerTick, recoveryTicks > 0,
+                recoveryDirection);
+        steeringOffsetDegrees = frame.yawError();
+        if (frame.success()) {
+            segments.advance();
+            repeatedBlockages = 0;
+            progressWatchdog.resetWindow(player.posX, player.posZ);
+            status = "FOLLOW";
+            reason = movement.type() + " complete";
+        } else if (frame.blocked()) {
+            routeInvalidations++;
+            repeatedBlockages++;
+            beginPlanning(clientTick, player, feet, goal,
+                "live movement blocked: " + frame.reason(), false);
+            movementExecutor.release("current movement blocked");
+            status = repeatedBlockages >= 2 ? "BLOCKED" : "REPLAN";
+            reason = frame.reason();
+        } else {
+            status = recoveryTicks > 0 ? "RECOVER"
+                : (capture != null || plannerWorker.requestQueueSize() > 0
+                    || "SEARCHING".equals(plannerWorker.state())
+                    ? "FOLLOW+PLAN" : "FOLLOW");
+            reason = movement.type() + " " + (segments.movementIndex() + 1)
+                + "/" + segments.activePath().movementCount()
+                + " seg " + (segments.currentSegmentIndex() + 1)
+                + "/" + segments.totalSegments();
+        }
+
+        boolean commanded = frame.forward() || frame.left() || frame.right();
+        if (progressWatchdog.update(player.posX, player.posZ, commanded,
+            stuckWindowTicks, 0.18D)) {
+            stuckRecoveries++;
+            recoveryDirection = chooseRecoveryDirection(player);
+            recoveryTicks = RECOVERY_TICKS;
+            beginPlanning(clientTick, player, feet, goal,
+                "movement timeout/stuck #" + stuckRecoveries, false);
+            state.setInspectorNotice("NAV RECOVER: replanning from current cell", 2);
+        }
+        if (recoveryTicks > 0) recoveryTicks--;
+
+        previousAppliedAction = bodyAction(latest, frame.forward(),
+            frame.left() || frame.right(), frame.jump(), frame.sprint(),
+            frame.yawDelta());
+    }
+
+    private void ensureWorldGrid() {
+        if (worldGrid == null || !worldGrid.matchesWorld(minecraft.theWorld)) {
+            worldGrid = new WorldNavigationGrid(minecraft.theWorld);
+            capture = null;
+            segments.clear();
+            freshPlanRequired = true;
+        }
+    }
+
+    private void beginPlanning(long clientTick, EntityPlayerSP player,
+                               NavigationCell start, NavigationCell goal,
+                               String cause, boolean keepActivePath) {
+        planGeneration++;
+        plannedWaypointRevision = waypoint.revision();
+        capture = new NavigationSnapshotCapture(worldGrid, planGeneration,
+            plannedWaypointRevision, start, goal, horizontalRadius,
+            verticalRadius, maximumExpandedNodes, heuristicWeight,
+            localPlanningRadius, corridorMargin);
+        replanCount++;
+        lastPlanStartTick = clientTick;
+        reason = cause;
+        if (!keepActivePath) {
+            segments.clear();
+            activePathProvisional = false;
+            activePathCompletesGoal = false;
+            movementExecutor.release("cold current-position plan");
+            MovementPath direct = buildDirectMicroPath(player, start, goal);
+            if (direct != null) {
+                segments.install(direct, start);
+                activePathProvisional = !direct.complete();
+                activePathCompletesGoal = direct.complete();
+                directMicroPlans++;
+                status = "DIRECT+CAPTURE";
+            } else {
+                status = "CAPTURE";
+            }
+        } else {
+            status = "FOLLOW+CAPTURE";
+        }
+        progressWatchdog.resetWindow(player.posX, player.posZ);
+    }
+
+    private void tickCapture() {
+        if (capture == null) return;
+        capture.tick(snapshotCellsPerTick);
+        NavigationPlannerWorker.PlanRequest local = capture.takeLocalRequest();
+        if (local != null && (!segments.hasActivePath()
+            || segments.remainingMovements() <= lookaheadNodes)) {
+            plannerWorker.submit(local);
+        }
+        NavigationPlannerWorker.PlanRequest full = capture.takeFullRequest();
+        if (full != null) {
+            plannerWorker.submit(full);
+            capture = null;
+        }
+    }
+
+    private void acceptPlannerResults(NavigationCell feet) {
+        NavigationPlannerWorker.PlanEnvelope envelope = plannerWorker.pollLatest();
+        if (envelope == null) return;
+        NavigationPlannerWorker.PlanRequest request = envelope.request();
+        if (request.waypointRevision() != waypoint.revision()
+            || request.requestId() < lastAcceptedRequestId) {
+            stalePlanResults++;
+            return;
+        }
+        lastAcceptedRequestId = request.requestId();
+        if (!envelope.result().succeeded()) {
+            failedPlans++;
+            if (!segments.hasActivePath() && !request.provisional()) {
+                status = "NO_PATH";
+                reason = envelope.result().failureReason();
+            }
+            return;
+        }
+
+        MovementPath path = envelope.result().path();
+        if (!segments.hasActivePath()) {
+            segments.install(path, feet);
+            activePathProvisional = request.provisional() || !path.complete();
+            activePathCompletesGoal = path.complete();
+            status = request.provisional() ? "LOCAL_PATH" : "FOLLOW";
+            reason = "accepted " + path.movementCount() + " operations";
+        } else {
+            segments.stage(path);
+            if (segments.trySplice(feet)) {
+                hotSwapCount++;
+                activePathProvisional = request.provisional() || !path.complete();
+                activePathCompletesGoal = path.complete();
+                status = "SPLICE";
+                reason = "replacement path spliced at current cell";
+            } else {
+                status = "FOLLOW+PLAN";
+                reason = "replacement staged; waiting for safe overlap";
             }
         }
+    }
 
-        if (pathIndex >= path.size()) {
-            startPlan(player, "route consumed before arrival", false);
-            releaseOwnedInputs("route consumed");
+    private boolean validateLiveRoute(long clientTick, EntityPlayerSP player,
+                                      NavigationCell feet, NavigationCell goal) {
+        MovementPath path = segments.activePath();
+        if (path == null) return false;
+        int validationCount = Math.min(pathValidationNodes,
+            clientTick % 6L == 0L ? 6 : 2);
+        WorldNavigationGrid.MovementValidation validation =
+            worldGrid.validateMovementWindow(path, segments.movementIndex(),
+                validationCount, true);
+        if (validation.valid()) return true;
+        routeInvalidations++;
+        boolean immediate = validation.invalidMovementIndex()
+            <= segments.movementIndex() + 1;
+        beginPlanning(clientTick, player, feet, goal,
+            validation.reason() + " @" + validation.invalidMovementIndex(),
+            !immediate);
+        if (immediate) {
+            movementExecutor.release("immediate route invalidation");
             status = "REPLAN";
-            return;
+            return false;
         }
-
-        validateAndRefreshRoute(player, clientTick);
-        advancePlanner(player);
-        if (path == null || pathIndex >= path.size()) {
-            releaseOwnedInputs("route invalidated");
-            status = "REPLAN";
-            return;
-        }
-
-        maybeStartRollingReplan(player);
-        advancePlanner(player);
-
-        lookaheadIndex = selectLookahead(player);
-        NavigationCell target = path.cell(lookaheadIndex);
-        double dx = target.centerX() - player.posX;
-        double dz = target.centerZ() - player.posZ;
-        float directYaw = (float)Math.toDegrees(Math.atan2(-dx, dz));
-        SteeringChoice steering = chooseSteering(player, directYaw, target);
-        if (steering == null) {
-            routeInvalidations++;
-            startPlan(player, "no safe local heading", false);
-            releaseOwnedInputs("local corridor blocked");
-            status = "REPLAN";
-            reason = "all immediate probes blocked";
-            return;
-        }
-
-        steeringOffsetDegrees = wrapDegrees(steering.yawDegrees - directYaw);
-        if (Math.abs(steeringOffsetDegrees) > 1F) localDetours++;
-        float yawError = wrapDegrees(steering.yawDegrees - player.rotationYaw);
-        float turn = boundedHumanTurn(yawError);
-        player.rotationYaw += turn;
-
-        int feetY = MathHelper.floor_double(player.posY + 0.01D);
-        boolean stepUp = steering.destination != null && steering.destination.y() > feetY;
-        boolean recovery = recoveryTicks > 0;
-        boolean forward = Math.abs(yawError) <= (recovery ? 88F : 78F);
-        boolean jump = (stepUp || player.isCollidedHorizontally || recovery) && player.onGround;
-        boolean sprint = forward && !jump && Math.abs(yawError) < 15F
-            && hasStraightSafeRun();
-        boolean strafeLeft = recovery && recoveryDirection < 0;
-        boolean strafeRight = recovery && recoveryDirection > 0;
-
-        applyMovement(forward, strafeLeft, strafeRight, jump, sprint);
-        if (recovery) status = "RECOVER";
-        else if (planner.state() == NavigationPlanState.SEARCHING) status = "FOLLOW+REPLAN";
-        else if (Math.abs(steeringOffsetDegrees) > 1F) status = "DETOUR";
-        else status = provisionalPath ? "ANYTIME" : "FOLLOW";
-        reason = "node " + (pathIndex + 1) + " look " + (lookaheadIndex + 1)
-            + "/" + path.size() + " dev " + one(pathDeviation) + "m";
-        previousAppliedAction = bodyAction(latest, forward, strafeLeft || strafeRight,
-            jump, sprint, turn);
-
-        if (recoveryTicks > 0) recoveryTicks--;
-        updateProgress(player, forward);
-        ticksSincePlanStart++;
-    }
-
-    private void refreshLiveGrid(long clientTick) {
-        if (liveGrid == null || liveGridTick == Long.MIN_VALUE
-            || clientTick - liveGridTick >= LIVE_GRID_REFRESH_TICKS) {
-            liveGrid = new WorldNavigationGrid(minecraft.theWorld);
-            liveGridTick = clientTick;
-        }
-    }
-
-    private void startPlan(EntityPlayerSP player, String cause, boolean keepExistingRoute) {
-        planningGrid = new WorldNavigationGrid(minecraft.theWorld);
-        NavigationCell start = currentStandable(planningGrid, player);
-        NavigationCell goal = planningGrid.nearestStandable(
-            MathHelper.floor_double(waypoint.x()), MathHelper.floor_double(waypoint.y()),
-            MathHelper.floor_double(waypoint.z()), 2, 2);
-        plannedWaypointRevision = waypoint.revision();
-        replacementPlan = keepExistingRoute && path != null;
-        lastPlanStart = start;
-        ticksSincePlanStart = 0;
-        if (!replacementPlan) {
-            path = null;
-            pathIndex = 0;
-            lookaheadIndex = 0;
-            provisionalPath = false;
-            releaseOwnedInputs("cold planning");
-        }
-        if (start == null || goal == null) {
-            planner.reset();
-            failPlan(start == null ? "start not standable" : "goal not standable", replacementPlan);
-            return;
-        }
-        planner.begin(planningGrid, start, goal, horizontalRadius, verticalRadius,
-            maximumExpandedNodes);
-        status = replacementPlan ? "FOLLOW+REPLAN" : "PLANNING";
-        reason = cause;
-        replanCount++;
-        progressX = player.posX;
-        progressZ = player.posZ;
-        stuckTicks = 0;
-    }
-
-    private NavigationCell currentStandable(WorldNavigationGrid grid, EntityPlayerSP player) {
-        int startX = MathHelper.floor_double(player.posX);
-        int startY = MathHelper.floor_double(player.posY + 0.01D);
-        int startZ = MathHelper.floor_double(player.posZ);
-        return grid.nearestStandable(startX, startY, startZ, 1, 2);
-    }
-
-    private void advancePlanner(EntityPlayerSP player) {
-        if (planner.state() != NavigationPlanState.SEARCHING) return;
-        planner.step(expansionsPerTick);
-        if (planner.state() == NavigationPlanState.SUCCEEDED) {
-            acceptPlan(planner.path(), player, false);
-        } else if (planner.state() == NavigationPlanState.FAILED) {
-            failPlan(planner.failureReason(), replacementPlan && path != null);
-        } else if (path == null) {
-            adoptBestEffortPath(player);
-        }
-    }
-
-    private void adoptBestEffortPath(EntityPlayerSP player) {
-        if (planner.state() != NavigationPlanState.SEARCHING) return;
-        NavigationPath partial = planner.bestEffortPath();
-        if (partial == null || partial.size() < 2) return;
-        if (path == null || !provisionalPath
-            || partial.size() >= path.size() + 2) {
-            acceptPlan(partial, player, true);
-        }
-    }
-
-    private void acceptPlan(NavigationPath accepted, EntityPlayerSP player, boolean provisional) {
-        boolean replacing = path != null && !provisional;
-        path = accepted;
-        provisionalPath = provisional;
-        AdaptivePathCursor.Projection projection = AdaptivePathCursor.project(path, 0,
-            player.posX, player.posY, player.posZ, 0, Math.min(12, path.size() - 1));
-        pathIndex = Math.min(path.size() - 1,
-            projection.index() + (projection.distanceSquared() < NODE_REACHED_DISTANCE_SQUARED ? 1 : 0));
-        lookaheadIndex = pathIndex;
-        status = provisional ? "ANYTIME" : "FOLLOW";
-        reason = (provisional ? "partial " : "path ") + path.size() + " nodes";
-        progressX = player.posX;
-        progressZ = player.posZ;
-        stuckTicks = 0;
-        if (replacing) hotSwapCount++;
-        if (!provisional) replacementPlan = false;
-    }
-
-    private void failPlan(String failure, boolean keepExistingRoute) {
-        if (!keepExistingRoute) {
-            path = null;
-            pathIndex = 0;
-            lookaheadIndex = 0;
-            releaseOwnedInputs("no path");
-            status = "NO_PATH";
-        } else {
-            status = "FOLLOW";
-        }
-        reason = failure;
-        replacementPlan = false;
-    }
-
-    private boolean reanchorToCurrentPosition(EntityPlayerSP player) {
-        if (path == null || path.size() == 0) return false;
-        pathIndex = Math.max(0, Math.min(pathIndex, path.size() - 1));
-        AdaptivePathCursor.Projection projection = AdaptivePathCursor.project(path, pathIndex,
-            player.posX, player.posY, player.posZ,
-            REANCHOR_BACKTRACK_NODES, REANCHOR_FORWARD_NODES);
-        pathDeviation = Math.sqrt(projection.distanceSquared());
-        if (pathDeviation > offRouteDistance) return false;
-        int oldIndex = pathIndex;
-        pathIndex = projection.index();
-        NavigationCell anchor = path.cell(pathIndex);
-        double dx = anchor.centerX() - player.posX;
-        double dz = anchor.centerZ() - player.posZ;
-        double dy = Math.abs(anchor.centerY() - player.posY);
-        if (dx * dx + dz * dz <= NODE_REACHED_DISTANCE_SQUARED && dy <= 1.35D
-            && pathIndex + 1 < path.size()) {
-            pathIndex++;
-        }
-        if (pathIndex != oldIndex) routeReanchors++;
         return true;
     }
 
-    private void validateAndRefreshRoute(EntityPlayerSP player, long clientTick) {
-        if (path == null || liveGrid == null) return;
-        int nodes = clientTick % 5L == 0L ? pathValidationNodes : Math.min(4, pathValidationNodes);
-        WorldNavigationGrid.PathValidation validation = liveGrid.validatePathWindow(
-            path, pathIndex, nodes, true);
-        if (validation.valid()) return;
-        routeInvalidations++;
-        boolean immediate = validation.invalidIndex() <= pathIndex + 2;
-        startPlan(player, validation.reason() + " @" + validation.invalidIndex(), !immediate);
-        if (immediate) releaseOwnedInputs("immediate route invalidation");
-    }
-
-    private void maybeStartRollingReplan(EntityPlayerSP player) {
-        if (planner.state() == NavigationPlanState.SEARCHING || path == null
-            || ticksSincePlanStart < replanIntervalTicks) return;
-        NavigationCell current = currentStandable(liveGrid, player);
-        if (current == null) return;
-        boolean movedFromPlanOrigin = lastPlanStart == null
-            || current.horizontalManhattan(lastPlanStart) >= 2
-            || Math.abs(current.y() - lastPlanStart.y()) >= 1;
-        if (movedFromPlanOrigin || provisionalPath) {
-            startPlan(player, "rolling current-position replan", true);
+    private void maybePlanAhead(long clientTick, EntityPlayerSP player,
+                                NavigationCell feet, NavigationCell goal) {
+        if (capture != null || plannerWorker.requestQueueSize() > 0
+            || "SEARCHING".equals(plannerWorker.state())) return;
+        if (clientTick - lastPlanStartTick < Math.max(4, replanIntervalTicks)) return;
+        boolean needsContinuation = !activePathCompletesGoal
+            && segments.remainingMovements() <= Math.max(lookaheadNodes, 8);
+        boolean rollingReplacement = segments.remainingMovements() > 0
+            && clientTick - lastPlanStartTick >= Math.max(20,
+                replanIntervalTicks * 5);
+        if (needsContinuation || rollingReplacement) {
+            beginPlanning(clientTick, player, feet, goal,
+                needsContinuation ? "planning next segment"
+                    : "rolling live replacement", true);
         }
     }
 
-    private int selectLookahead(final EntityPlayerSP player) {
-        int best = pathIndex;
-        int last = Math.min(path.size() - 1, pathIndex + lookaheadNodes);
-        double maximumDistanceSquared = lookaheadDistance * lookaheadDistance;
-        for (int index = pathIndex + 1; index <= last; index++) {
-            NavigationCell candidate = path.cell(index);
-            double dx = candidate.centerX() - player.posX;
-            double dz = candidate.centerZ() - player.posZ;
-            if (dx * dx + dz * dz > maximumDistanceSquared) break;
-            if (!liveGrid.isCorridorSafe(player.posX, player.posY, player.posZ,
-                candidate.centerX(), candidate.centerY(), candidate.centerZ(), false)) break;
-            best = index;
+    private MovementPath buildDirectMicroPath(EntityPlayerSP player,
+                                               NavigationCell start,
+                                               NavigationCell goal) {
+        double totalDx = goal.centerX() - start.centerX();
+        double totalDz = goal.centerZ() - start.centerZ();
+        double distance = Math.sqrt(totalDx * totalDx + totalDz * totalDz);
+        if (distance < 0.75D) return null;
+        double travel = Math.min(distance,
+            Math.min(DIRECT_PATH_MAX_CELLS, localPlanningRadius - 1));
+        double scale = travel / distance;
+        double targetX = start.centerX() + totalDx * scale;
+        double targetZ = start.centerZ() + totalDz * scale;
+        double targetY = start.centerY()
+            + (goal.centerY() - start.centerY()) * scale;
+        if (!worldGrid.isCorridorSafe(player.posX, player.posY, player.posZ,
+            targetX, targetY, targetZ, false)) return null;
+
+        int steps = Math.max(1, (int)Math.ceil(travel));
+        ArrayList<NavigationMovement> movements =
+            new ArrayList<NavigationMovement>();
+        NavigationCell previous = start;
+        float cost = 0F;
+        for (int step = 1; step <= steps; step++) {
+            double t = (double)step / (double)steps;
+            int x = floor(start.centerX() + (targetX - start.centerX()) * t);
+            int z = floor(start.centerZ() + (targetZ - start.centerZ()) * t);
+            int y = floor(start.centerY() + (targetY - start.centerY()) * t);
+            NavigationCell current = worldGrid.nearestStandable(x, y, z, 1, 1);
+            if (current == null || current.equals(previous)) continue;
+            if (!worldGrid.canTransition(previous, current)) return null;
+            NavigationMovementType type = type(previous, current);
+            float movementCost = type == NavigationMovementType.DIAGONAL
+                ? 1.41421356F : (type == NavigationMovementType.ASCEND
+                    ? 1.46F : (type == NavigationMovementType.DESCEND
+                        ? 1.16F : 1F));
+            movements.add(new NavigationMovement(previous, current, type,
+                movementCost, type == NavigationMovementType.ASCEND ? 9 : 6,
+                true));
+            cost += movementCost;
+            previous = current;
         }
-        return best;
+        if (movements.isEmpty()) return null;
+        boolean complete = previous.horizontalManhattan(goal) <= 1
+            && Math.abs(previous.y() - goal.y()) <= 1
+            && distance <= travel + 0.5D;
+        return new MovementPath(movements, cost, 0, complete,
+            planGeneration * 2L - 1L);
     }
 
-    private SteeringChoice chooseSteering(EntityPlayerSP player, float directYaw,
-                                           NavigationCell target) {
-        SteeringChoice best = null;
-        double speed = Math.sqrt(player.motionX * player.motionX + player.motionZ * player.motionZ);
-        double probeDistance = reactiveProbeDistance + Math.min(0.65D, speed * 2.5D);
-        int corridorEnd = Math.min(path.size() - 1, lookaheadIndex + 2);
-        for (float offset : STEERING_OFFSETS) {
-            float candidateYaw = directYaw + offset;
-            WorldNavigationGrid.MotionProbe probe = liveGrid.probeDirection(
-                player.posX, player.posY, player.posZ, candidateYaw, probeDistance, false);
-            if (!probe.safe()) continue;
-            double corridorDistance = AdaptivePathCursor.nearestHorizontalDistanceSquared(
-                path, Math.max(0, pathIndex - 1), corridorEnd,
-                probe.targetX(), probe.targetZ());
-            double tx = target.centerX() - probe.targetX();
-            double tz = target.centerZ() - probe.targetZ();
-            double remaining = Math.sqrt(tx * tx + tz * tz);
-            float score = (float)(corridorDistance * 2.8D + remaining * 0.12D)
-                + Math.abs(offset) * 0.024F
-                + probe.riskPenalty() * 1.35F
-                + Math.abs(wrapDegrees(candidateYaw - player.rotationYaw)) * 0.0025F;
-            if (best == null || score < best.score - 0.0001F) {
-                best = new SteeringChoice(candidateYaw, probe.destination(), score);
-            }
-        }
-        return best;
+    private NavigationCell currentStandable(EntityPlayerSP player) {
+        int x = MathHelper.floor_double(player.posX);
+        int y = MathHelper.floor_double(player.posY + 0.01D);
+        int z = MathHelper.floor_double(player.posZ);
+        return worldGrid.nearestStandable(x, y, z, 1, 2);
     }
 
-    private float boundedHumanTurn(float yawError) {
-        float magnitude = Math.abs(yawError);
-        if (magnitude < 0.35F) return yawError;
-        float desired = magnitude * 0.68F + 1.2F;
-        float bounded = Math.min(maximumTurnDegreesPerTick, Math.max(1.5F, desired));
-        return yawError < 0F ? -bounded : bounded;
+    private NavigationCell currentGoal() {
+        return worldGrid.nearestStandable(floor(waypoint.x()),
+            floor(waypoint.y()), floor(waypoint.z()), 2, 2);
+    }
+
+    private NavigationMovement nextMovement() {
+        MovementPath path = segments.activePath();
+        int index = segments.movementIndex() + 1;
+        return path == null || index >= path.movementCount()
+            ? null : path.movement(index);
+    }
+
+    private int chooseRecoveryDirection(EntityPlayerSP player) {
+        float leftYaw = player.rotationYaw - 70F;
+        float rightYaw = player.rotationYaw + 70F;
+        boolean left = worldGrid.probeDirection(player.posX, player.posY,
+            player.posZ, leftYaw, 0.9D, true).safe();
+        boolean right = worldGrid.probeDirection(player.posX, player.posY,
+            player.posZ, rightYaw, 0.9D, true).safe();
+        if (left && !right) return -1;
+        if (right && !left) return 1;
+        return (stuckRecoveries & 1) == 0 ? -1 : 1;
+    }
+
+    private double nearestPathDistance(EntityPlayerSP player) {
+        List<NavigationCell> cells = pathCells();
+        if (cells.isEmpty()) return Double.POSITIVE_INFINITY;
+        int start = Math.max(0, pathIndex() - 5);
+        int end = Math.min(cells.size() - 1, pathIndex() + 28);
+        double best = Double.POSITIVE_INFINITY;
+        for (int index = start; index <= end; index++) {
+            NavigationCell cell = cells.get(index);
+            double dx = cell.centerX() - player.posX;
+            double dz = cell.centerZ() - player.posZ;
+            double dy = (cell.centerY() - player.posY) * 0.65D;
+            best = Math.min(best, dx * dx + dz * dz + dy * dy);
+        }
+        return Math.sqrt(best);
     }
 
     private boolean arrived(EntityPlayerSP player) {
         double dx = waypoint.x() - player.posX;
         double dz = waypoint.z() - player.posZ;
         double dy = Math.abs(waypoint.y() - player.posY);
-        return dx * dx + dz * dz <= arrivalRadius * arrivalRadius && dy <= 1.25D;
+        return dx * dx + dz * dz <= arrivalRadius * arrivalRadius
+            && dy <= 1.25D;
     }
 
-    private boolean hasStraightSafeRun() {
-        if (path == null || lookaheadIndex <= pathIndex || lookaheadIndex >= path.size()) return false;
-        NavigationCell current = path.cell(Math.max(0, pathIndex - 1));
-        NavigationCell next = path.cell(pathIndex);
-        int dx = Integer.signum(next.x() - current.x());
-        int dz = Integer.signum(next.z() - current.z());
-        for (int index = pathIndex + 1; index <= lookaheadIndex; index++) {
-            NavigationCell after = path.cell(index);
-            NavigationCell before = path.cell(index - 1);
-            if (Integer.signum(after.x() - before.x()) != dx
-                || Integer.signum(after.z() - before.z()) != dz
-                || after.y() != before.y()) return false;
+    private String plannerFailureStatus() {
+        return "FAILED".equals(plannerWorker.state()) ? "NO_PATH" : "PLAN";
+    }
+
+    private String planningReason() {
+        if (capture != null) {
+            return capture.status() + " " + capture.progressPercent() + "% "
+                + capture.capturedCells() + "/" + capture.totalCells();
         }
-        return true;
+        return plannerWorker.state() + " q " + plannerWorker.requestQueueSize();
     }
 
-    private void updateProgress(EntityPlayerSP player, boolean commandedForward) {
-        if (!commandedForward) {
-            stuckTicks = 0;
-            progressX = player.posX;
-            progressZ = player.posZ;
-            return;
-        }
-        stuckTicks++;
-        if (stuckTicks < stuckWindowTicks) return;
-        double dx = player.posX - progressX;
-        double dz = player.posZ - progressZ;
-        if (dx * dx + dz * dz < 0.12D * 0.12D) {
-            stuckRecoveries++;
-            recoveryDirection = (stuckRecoveries & 1) == 0 ? -1 : 1;
-            recoveryTicks = RECOVERY_TICKS;
-            startPlan(player, "stuck live replan #" + stuckRecoveries, false);
-            state.setInspectorNotice("NAV RECOVER: stuck, replanning", 2);
-        }
-        progressX = player.posX;
-        progressZ = player.posZ;
-        stuckTicks = 0;
+    private void clearNavigation(String why) {
+        capture = null;
+        segments.clear();
+        progressWatchdog.reset();
+        movementExecutor.release(why);
+        activePathProvisional = false;
+        activePathCompletesGoal = false;
+        reason = why;
     }
 
-    private void applyMovement(boolean forward, boolean left, boolean right,
-                               boolean jump, boolean sprint) {
-        GameSettings settings = minecraft.gameSettings;
-        if (settings == null) return;
-        ownsMovement = forward || left || right || jump || sprint;
-        set(settings.keyBindForward, forward);
-        set(settings.keyBindBack, false);
-        set(settings.keyBindLeft, left);
-        set(settings.keyBindRight, right);
-        set(settings.keyBindJump, jump);
-        set(settings.keyBindSprint, sprint);
-        set(settings.keyBindSneak, false);
-    }
-
-    /** External safety/manual release. The next enable always plans from the real current position. */
+    /** External safety/manual release; the next enable plans from real position. */
     public void release(String why) {
-        releaseOwnedInputs(why);
+        movementExecutor.release(why);
+        capture = null;
+        segments.clear();
+        progressWatchdog.reset();
         freshPlanRequired = true;
-    }
-
-    private void releaseOwnedInputs(String why) {
-        if (ownsMovement && minecraft.gameSettings != null) {
-            GameSettings settings = minecraft.gameSettings;
-            InputRelease.restorePhysical(settings.keyBindForward);
-            InputRelease.restorePhysical(settings.keyBindBack);
-            InputRelease.restorePhysical(settings.keyBindLeft);
-            InputRelease.restorePhysical(settings.keyBindRight);
-            InputRelease.restorePhysical(settings.keyBindJump);
-            InputRelease.restorePhysical(settings.keyBindSprint);
-            InputRelease.restorePhysical(settings.keyBindSneak);
-        }
-        ownsMovement = false;
         reason = why == null ? "released" : why;
     }
 
     public void releaseIfOwned(String why) {
-        if (ownsMovement) releaseOwnedInputs(why);
+        if (movementExecutor.ownsInputs()) movementExecutor.release(why);
     }
 
     public void onWorldUnavailable() {
         release("world unavailable");
-        resetPlan("world unavailable");
+        if (worldGrid != null) worldGrid.clear();
+        worldGrid = null;
         plannedWaypointRevision = -1L;
+        planGeneration++;
+        status = "IDLE";
     }
 
-    private void resetPlan(String why) {
-        planner.reset();
-        planningGrid = null;
-        liveGrid = null;
-        liveGridTick = Long.MIN_VALUE;
-        path = null;
-        pathIndex = 0;
-        lookaheadIndex = 0;
-        provisionalPath = false;
-        replacementPlan = false;
-        arrivalTicks = 0;
-        recoveryTicks = 0;
-        reason = why;
+    public void shutdown() {
+        release("shutdown");
+        plannerWorker.shutdown();
     }
 
-    private ActionCommand bodyAction(ObservationSnapshot latest, boolean forward,
-                                     boolean strafe, boolean jump, boolean sprint,
+    private ActionCommand bodyAction(ObservationSnapshot latest,
+                                     boolean forward, boolean strafe,
+                                     boolean jump, boolean sprint,
                                      float yawDelta) {
         long sequence = latest == null ? 0L : latest.sequenceNumber();
-        float strafeValue = strafe ? (recoveryDirection < 0 ? -1F : 1F) : 0F;
+        float strafeValue = strafe
+            ? (recoveryDirection < 0 ? -1F : 1F) : 0F;
         return new ActionCommand(sequence, System.nanoTime(), BODY_VERSION,
             forward ? 1F : 0F, strafeValue, yawDelta, 0F,
             jump ? 1F : 0F, sprint ? 1F : 0F, 0F,
             0F, 0F, 0F, 0F, ActionCommand.KEEP_CURRENT_HOTBAR_SLOT,
-            Skill.NAVIGATION, -1, NavigationWaypointController.USER_WAYPOINT_ID,
-            1F, 1, TacticalObjective.CONTINUE_CURRENT_OBJECTIVE, AbortCondition.NONE);
+            Skill.NAVIGATION, -1,
+            NavigationWaypointController.USER_WAYPOINT_ID,
+            1F, 1, TacticalObjective.CONTINUE_CURRENT_OBJECTIVE,
+            AbortCondition.NONE);
     }
 
-    private static void set(KeyBinding binding, boolean down) {
-        if (binding != null) KeyBinding.setKeyBindState(binding.getKeyCode(), down);
+    private static NavigationMovementType type(NavigationCell from,
+                                               NavigationCell to) {
+        int dy = to.y() - from.y();
+        if (dy > 0) return NavigationMovementType.ASCEND;
+        if (dy < 0) return NavigationMovementType.DESCEND;
+        if (from.x() != to.x() && from.z() != to.z()) {
+            return NavigationMovementType.DIAGONAL;
+        }
+        return NavigationMovementType.TRAVERSE;
     }
 
-    private static float wrapDegrees(float value) {
-        float wrapped = value % 360F;
-        if (wrapped >= 180F) wrapped -= 360F;
-        if (wrapped < -180F) wrapped += 360F;
-        return wrapped;
+    private static int floor(double value) {
+        int integer = (int)value;
+        return value < integer ? integer - 1 : integer;
     }
 
     private static String one(double value) {
+        if (!Double.isFinite(value)) return "inf";
         long scaled = Math.round(Math.abs(value) * 10D);
-        return (value < 0D ? "-" : "") + (scaled / 10L) + "." + (scaled % 10L);
+        return (value < 0D ? "-" : "") + (scaled / 10L)
+            + "." + (scaled % 10L);
     }
 
     public boolean shouldOwnNavigation() { return waypoint.active(); }
-    public boolean ownsMovement() { return ownsMovement; }
+    public boolean ownsMovement() { return movementExecutor.ownsInputs(); }
     public String status() { return status; }
     public String reason() { return reason; }
     public String source() { return source; }
-    public NavigationPath path() { return path; }
-    public List<NavigationCell> pathCells() {
-        return path == null ? Collections.<NavigationCell>emptyList() : path.cells();
+    public NavigationPath path() {
+        MovementPath movementPath = segments.activePath();
+        return movementPath == null ? null
+            : new NavigationPath(movementPath.positions(), movementPath.cost(),
+                movementPath.expandedNodes());
     }
-    public int pathIndex() { return pathIndex; }
-    public int lookaheadIndex() { return lookaheadIndex; }
-    public boolean provisionalPath() { return provisionalPath; }
+    public List<NavigationCell> pathCells() {
+        MovementPath movementPath = segments.activePath();
+        return movementPath == null ? Collections.<NavigationCell>emptyList()
+            : movementPath.positions();
+    }
+    public int pathIndex() { return segments.movementIndex(); }
+    public int lookaheadIndex() {
+        MovementPath path = segments.activePath();
+        if (path == null) return 0;
+        return Math.min(path.positionCount() - 1,
+            segments.movementIndex() + Math.max(1, lookaheadNodes));
+    }
+    public boolean provisionalPath() { return activePathProvisional; }
     public double pathDeviation() { return pathDeviation; }
     public float steeringOffsetDegrees() { return steeringOffsetDegrees; }
-    public int plannerExpandedNodes() { return planner.expandedNodes(); }
-    public int plannerOpenNodes() { return planner.openNodes(); }
-    public int plannerKnownNodes() { return planner.knownNodes(); }
-    public int gridWorldReads() {
-        int planningReads = planningGrid == null ? 0 : planningGrid.worldReads();
-        int liveReads = liveGrid == null ? 0 : liveGrid.worldReads();
-        return planningReads + liveReads;
-    }
-    public int gridLiveRefreshes() { return liveGrid == null ? 0 : liveGrid.liveRefreshes(); }
+    public int plannerExpandedNodes() { return plannerWorker.lastExpandedNodes(); }
+    public int plannerOpenNodes() { return plannerWorker.requestQueueSize(); }
+    public int plannerKnownNodes() { return plannerWorker.lastKnownNodes(); }
+    public int gridWorldReads() { return worldGrid == null ? 0 : worldGrid.worldReads(); }
+    public int gridCacheHits() { return worldGrid == null ? 0 : worldGrid.cacheHits(); }
+    public int gridLiveRefreshes() { return worldGrid == null ? 0 : worldGrid.liveRefreshes(); }
     public int replanCount() { return replanCount; }
     public int hotSwapCount() { return hotSwapCount; }
     public int routeReanchors() { return routeReanchors; }
+    public int corridorRecoveries() { return corridorRecoveries; }
     public int routeInvalidations() { return routeInvalidations; }
     public int offRouteReplans() { return offRouteReplans; }
     public int localDetours() { return localDetours; }
     public int stuckRecoveries() { return stuckRecoveries; }
-    public ActionCommand previousAppliedAction() { return previousAppliedAction; }
-
-    private static final class SteeringChoice {
-        final float yawDegrees;
-        final NavigationCell destination;
-        final float score;
-
-        SteeringChoice(float yawDegrees, NavigationCell destination, float score) {
-            this.yawDegrees = yawDegrees;
-            this.destination = destination;
-            this.score = score;
-        }
+    public int directMicroPlans() { return directMicroPlans; }
+    public int stalePlanResults() { return stalePlanResults; }
+    public int failedPlans() { return failedPlans; }
+    public int captureProgressPercent() { return capture == null ? 100 : capture.progressPercent(); }
+    public String plannerState() { return plannerWorker.state(); }
+    public long plannerComputeNanos() { return plannerWorker.lastComputeNanos(); }
+    public int plannerSubmitted() { return plannerWorker.submitted(); }
+    public int plannerCompleted() { return plannerWorker.completed(); }
+    public int plannerSuperseded() { return plannerWorker.superseded(); }
+    public int remainingMovements() { return segments.remainingMovements(); }
+    public int currentSegmentIndex() { return segments.currentSegmentIndex(); }
+    public int totalSegments() { return segments.totalSegments(); }
+    public boolean nextSegmentAvailable() { return segments.nextSegmentAvailable(); }
+    public boolean replacementPending() { return segments.hasStagedPath(); }
+    public String currentMovementType() {
+        NavigationMovement movement = segments.currentMovement();
+        return movement == null ? "NONE" : movement.type().name();
     }
+    public ActionCommand previousAppliedAction() { return previousAppliedAction; }
 }

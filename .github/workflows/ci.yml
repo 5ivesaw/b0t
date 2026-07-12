@@ -71,6 +71,7 @@ jobs:
           python3 sawbot-tools/dummy-model/dummy_model.py --self-test
           python3 sawbot-trainer/waypoint/verify_phase5.py
           java -cp build/offline-classes dev.fivesaw.sawbot.verification.NavigationBodyContractTest
+          java -cp build/offline-classes dev.fivesaw.sawbot.verification.SegmentedNavigationContractTest
           java -cp build/offline-classes dev.fivesaw.sawbot.verification.BridgingBodyContractTest
 
   forge-build:
@@ -126,6 +127,9 @@ jobs:
             dist/SawBotV1-${{ needs.metadata.outputs.version }}-sources.jar
             dist/SHA256SUMS.txt
             dist/release-notes.md
+            dist/PHASE9_REPORT.md
+            dist/SEGMENTED_NAVIGATION_CORE.md
+            dist/BARITONE_ARCHITECTURE_RESEARCH.md
             dist/PHASE8_REPORT.md
             dist/BRIDGING_BODY.md
             dist/PHASE7_REPORT.md
@@ -214,6 +218,9 @@ jobs:
             "dist/SawBotV1-$VERSION-mc1.8.9.jar" \
             "dist/SawBotV1-$VERSION-sources.jar" \
             "dist/SHA256SUMS.txt" \
+            "dist/PHASE9_REPORT.md" \
+            "dist/SEGMENTED_NAVIGATION_CORE.md" \
+            "dist/BARITONE_ARCHITECTURE_RESEARCH.md" \
             "dist/PHASE8_REPORT.md" \
             "dist/BRIDGING_BODY.md" \
             "dist/PHASE7_REPORT.md" \

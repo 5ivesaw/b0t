@@ -24,7 +24,7 @@ public final class SawBotConfig {
     private final int navigationHorizontalRadius;
     private final int navigationVerticalRadius;
     private final int navigationMaximumExpandedNodes;
-    private final int navigationExpansionsPerTick;
+    private final int navigationSnapshotCellsPerTick;
     private final int navigationReplanIntervalTicks;
     private final int navigationStuckWindowTicks;
     private final float navigationMaximumTurnDegreesPerTick;
@@ -34,6 +34,10 @@ public final class SawBotConfig {
     private final int navigationPathValidationNodes;
     private final float navigationOffRouteDistance;
     private final float navigationReactiveProbeDistance;
+    private final int navigationLocalPlanningRadius;
+    private final int navigationCorridorMargin;
+    private final int navigationSegmentLength;
+    private final float navigationHeuristicWeight;
     private final int bridgingMaximumSteps;
     private final int bridgingPlacementConfirmationTicks;
     private final int bridgingMaximumPlacementAttempts;
@@ -49,12 +53,14 @@ public final class SawBotConfig {
                          int actionMaximumSequenceLag, boolean actuatorAllowSingleplayer,
                          String actuatorAllowedServers, boolean physicalInputTakeover,
                          int navigationHorizontalRadius, int navigationVerticalRadius,
-                         int navigationMaximumExpandedNodes, int navigationExpansionsPerTick,
+                         int navigationMaximumExpandedNodes, int navigationSnapshotCellsPerTick,
                          int navigationReplanIntervalTicks, int navigationStuckWindowTicks,
                          float navigationMaximumTurnDegreesPerTick, float navigationArrivalRadius,
                          int navigationLookaheadNodes, float navigationLookaheadDistance,
                          int navigationPathValidationNodes, float navigationOffRouteDistance,
-                         float navigationReactiveProbeDistance, int bridgingMaximumSteps,
+                         float navigationReactiveProbeDistance, int navigationLocalPlanningRadius,
+                         int navigationCorridorMargin, int navigationSegmentLength,
+                         float navigationHeuristicWeight, int bridgingMaximumSteps,
                          int bridgingPlacementConfirmationTicks, int bridgingMaximumPlacementAttempts,
                          int bridgingReplanIntervalTicks, float bridgingMaximumYawDegreesPerTick,
                          float bridgingMaximumPitchDegreesPerTick) {
@@ -77,7 +83,7 @@ public final class SawBotConfig {
         this.navigationHorizontalRadius = navigationHorizontalRadius;
         this.navigationVerticalRadius = navigationVerticalRadius;
         this.navigationMaximumExpandedNodes = navigationMaximumExpandedNodes;
-        this.navigationExpansionsPerTick = navigationExpansionsPerTick;
+        this.navigationSnapshotCellsPerTick = navigationSnapshotCellsPerTick;
         this.navigationReplanIntervalTicks = navigationReplanIntervalTicks;
         this.navigationStuckWindowTicks = navigationStuckWindowTicks;
         this.navigationMaximumTurnDegreesPerTick = navigationMaximumTurnDegreesPerTick;
@@ -87,6 +93,10 @@ public final class SawBotConfig {
         this.navigationPathValidationNodes = navigationPathValidationNodes;
         this.navigationOffRouteDistance = navigationOffRouteDistance;
         this.navigationReactiveProbeDistance = navigationReactiveProbeDistance;
+        this.navigationLocalPlanningRadius = navigationLocalPlanningRadius;
+        this.navigationCorridorMargin = navigationCorridorMargin;
+        this.navigationSegmentLength = navigationSegmentLength;
+        this.navigationHeuristicWeight = navigationHeuristicWeight;
         this.bridgingMaximumSteps = bridgingMaximumSteps;
         this.bridgingPlacementConfirmationTicks = bridgingPlacementConfirmationTicks;
         this.bridgingMaximumPlacementAttempts = bridgingMaximumPlacementAttempts;
@@ -135,17 +145,17 @@ public final class SawBotConfig {
                 "Maximum horizontal anytime-A* search radius around the player.");
             int navigationVertical = configuration.getInt("verticalRadius", "navigation", 10, 2, 20,
                 "Maximum vertical route-search range around the player.");
-            int navigationNodes = configuration.getInt("maximumExpandedNodes", "navigation", 6144, 256, 32768,
+            int navigationNodes = configuration.getInt("maximumExpandedNodes", "navigation", 4096, 256, 32768,
                 "Hard node-expansion cap for one current-position route search.");
-            int navigationBudget = configuration.getInt("expansionsPerTick", "navigation", 96, 8, 384,
-                "Client-thread anytime-A* expansions permitted per tick.");
-            int navigationReplan = configuration.getInt("replanIntervalTicks", "navigation", 4, 2, 40,
-                "Ticks between rolling current-position route refreshes while the existing route remains active.");
+            int navigationSnapshotBudget = configuration.getInt("snapshotCellsPerTick", "navigation", 220, 96, 1600,
+                "Maximum standability cells copied on the client thread per tick before worker planning.");
+            int navigationReplan = configuration.getInt("replanIntervalTicks", "navigation", 8, 2, 80,
+                "Minimum ticks between bounded current-position/next-segment planning requests.");
             int navigationStuck = configuration.getInt("stuckWindowTicks", "navigation", 16, 8, 80,
                 "Ticks of commanded movement used by deterministic stuck detection.");
             float navigationTurn = parseBoundedFloat(configuration.getString("maximumTurnDegreesPerTick",
-                "navigation", "32.0", "Maximum visible camera yaw change applied by the 20 Hz local controller."),
-                32F, 4F, 60F);
+                "navigation", "48.0", "Maximum visible yaw servo change for deterministic movement execution."),
+                48F, 8F, 75F);
             float navigationArrival = parseBoundedFloat(configuration.getString("arrivalRadius",
                 "navigation", "0.80", "Horizontal distance considered a stable waypoint arrival."),
                 0.80F, 0.35F, 1.5F);
@@ -160,8 +170,17 @@ public final class SawBotConfig {
                 "navigation", "2.35", "Maximum corridor deviation before an immediate current-position replan."),
                 2.35F, 0.75F, 6F);
             float reactiveProbeDistance = parseBoundedFloat(configuration.getString("reactiveProbeDistance",
-                "navigation", "1.25", "Distance sampled for each 20 Hz local steering candidate."),
+                "navigation", "1.25", "Legacy local probe distance retained for configuration compatibility."),
                 1.25F, 0.5F, 3F);
+            int localPlanningRadius = configuration.getInt("localPlanningRadius", "navigation", 7, 4, 12,
+                "Small snapshot radius captured first for immediate provisional movement.");
+            int corridorMargin = configuration.getInt("corridorMargin", "navigation", 10, 4, 20,
+                "Detour margin surrounding each bounded long-range segment snapshot.");
+            int segmentLength = configuration.getInt("segmentLength", "navigation", 24, 8, 64,
+                "Movement operations per executor segment before planning-ahead diagnostics advance.");
+            float heuristicWeight = parseBoundedFloat(configuration.getString("heuristicWeight",
+                "navigation", "1.12", "Weighted-A* speed/optimality balance for the background worker."),
+                1.12F, 1F, 1.5F);
             int bridgeSteps = configuration.getInt("maximumSteps", "bridging", 24, 1, 64,
                 "Maximum cardinal support placements in one bounded bridge corridor.");
             int bridgeConfirm = configuration.getInt("placementConfirmationTicks", "bridging", 8, 2, 30,
@@ -179,9 +198,10 @@ public final class SawBotConfig {
             return new SawBotConfig(hudEnabled, window, interval, telemetryQueue, inputWindow,
                 compression, host, port, connectTimeout, reconnectDelay, decisionRate, actionAge,
                 sequenceLag, allowSingleplayer, allowedServers, physicalTakeover, navigationRadius,
-                navigationVertical, navigationNodes, navigationBudget, navigationReplan,
+                navigationVertical, navigationNodes, navigationSnapshotBudget, navigationReplan,
                 navigationStuck, navigationTurn, navigationArrival, lookaheadNodes,
                 lookaheadDistance, pathValidationNodes, offRouteDistance, reactiveProbeDistance,
+                localPlanningRadius, corridorMargin, segmentLength, heuristicWeight,
                 bridgeSteps, bridgeConfirm, bridgeAttempts, bridgeReplan, bridgeYaw, bridgePitch);
         } catch (RuntimeException exception) {
             logger.error("Failed to load SawBotV1 configuration; using safe defaults.", exception);
@@ -202,8 +222,9 @@ public final class SawBotConfig {
     private static SawBotConfig defaults() {
         return new SawBotConfig(true, 256, 2, 64, 32, 1, "127.0.0.1", 25189,
             500, 3000, 10, 250, 3, true, "127.0.0.1,localhost", true,
-            40, 10, 6144, 96, 4, 16, 32F, 0.80F,
-            7, 5F, 12, 2.35F, 1.25F,
+            40, 10, 4096, 220, 8, 16, 48F, 0.80F,
+            7, 5F, 6, 2.35F, 1.25F,
+            7, 10, 24, 1.12F,
             24, 8, 3, 4, 38F, 28F);
     }
 
@@ -226,7 +247,9 @@ public final class SawBotConfig {
     public int navigationHorizontalRadius() { return navigationHorizontalRadius; }
     public int navigationVerticalRadius() { return navigationVerticalRadius; }
     public int navigationMaximumExpandedNodes() { return navigationMaximumExpandedNodes; }
-    public int navigationExpansionsPerTick() { return navigationExpansionsPerTick; }
+    public int navigationSnapshotCellsPerTick() { return navigationSnapshotCellsPerTick; }
+    /** Legacy accessor; now reports the bounded snapshot capture budget. */
+    public int navigationExpansionsPerTick() { return navigationSnapshotCellsPerTick; }
     public int navigationReplanIntervalTicks() { return navigationReplanIntervalTicks; }
     public int navigationStuckWindowTicks() { return navigationStuckWindowTicks; }
     public float navigationMaximumTurnDegreesPerTick() { return navigationMaximumTurnDegreesPerTick; }
@@ -236,6 +259,10 @@ public final class SawBotConfig {
     public int navigationPathValidationNodes() { return navigationPathValidationNodes; }
     public float navigationOffRouteDistance() { return navigationOffRouteDistance; }
     public float navigationReactiveProbeDistance() { return navigationReactiveProbeDistance; }
+    public int navigationLocalPlanningRadius() { return navigationLocalPlanningRadius; }
+    public int navigationCorridorMargin() { return navigationCorridorMargin; }
+    public int navigationSegmentLength() { return navigationSegmentLength; }
+    public float navigationHeuristicWeight() { return navigationHeuristicWeight; }
     public int bridgingMaximumSteps() { return bridgingMaximumSteps; }
     public int bridgingPlacementConfirmationTicks() { return bridgingPlacementConfirmationTicks; }
     public int bridgingMaximumPlacementAttempts() { return bridgingMaximumPlacementAttempts; }

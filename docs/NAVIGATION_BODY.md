@@ -1,55 +1,98 @@
-# Deterministic Navigation Body v0.2
+# Deterministic Navigation Body v1.0
 
-The current implementation is described in `ADAPTIVE_NAVIGATION.md`.
+Version: `1.0.0-alpha.0`
 
-## Goal input
+## Responsibility boundary
 
-`G` places user waypoint `#1000` above the aimed block. A learned brain may request the
-same waypoint with `Skill.NAVIGATION` and `selectedWaypointId=1000`.
+The neural brain or local test harness chooses a semantic destination. The navigation
+body owns only mechanical execution: route search, route maintenance, movement,
+camera control, jump/sprint timing, live safety validation, recovery, and release.
 
-F10 may enable the navigation specialist whenever the waypoint exists. This direct mode
-is an engineering path; Bedwars strategy remains outside the body.
+`G` sets waypoint `#1000`. A learned brain may request the same waypoint with
+`Skill.NAVIGATION` and `selectedWaypointId=1000`.
 
-## Global planner
+## Planner pipeline
 
-The bounded anytime A* searches standable player-feet cells. It supports cardinal and
-diagonal travel, one-block ascent/descent, deterministic tie-breaking, turn cost,
-exposed-edge cost, and hard search bounds.
+Minecraft world access remains on the client thread:
 
-Search is incremental. A safe frontier route may be followed before the complete route
-finishes. A replacement route is hot-swapped while movement continues.
+1. resolve actual standable player and goal cells
+2. create a validated direct micro-route when a short corridor is already known safe
+3. capture a small local immutable grid under a strict per-tick cell budget
+4. submit a provisional local request through a bounded queue
+5. continue a corridor-shaped full snapshot incrementally
+6. submit the replacement/full segment to one daemon planner worker
 
-## Local controller
+The worker consumes arrays only. It never receives `World`, player, block-state, or
+other Minecraft objects.
 
-Every client tick the body:
+## Movement operations
 
-1. projects the real player position onto the current route corridor
-2. live-validates future route geometry
-3. chooses the farthest safe lookahead node
-4. probes several immediate safe headings
-5. applies bounded visible camera movement
-6. holds movement continuously
-7. decides jump/sprint/recovery mechanics
-8. measures progress and triggers replanning when necessary
+Routes contain explicit operations rather than mandatory centre checkpoints:
 
-The player is not required to touch every path-node centre.
+- `TRAVERSE`
+- `DIAGONAL`
+- `ASCEND`
+- `DESCEND`
 
-## Recovery and release
+Each operation has start/destination cells, cost, estimated ticks, cancellation safety,
+and execution properties. Diagonal operations require both cardinal corner cells to be
+safe. Ascent and descent are bounded to one block.
 
-Stalls trigger an alternating strafe/jump recovery and current-position replanning.
-F9, F12, physical input, disable, GUI pause, freeze, and world unload release owned
-inputs. The next enable never blindly resumes the old path.
+## Current and replacement segments
 
-## Visibility
+The coordinator retains:
 
-The HUD exposes route state, lookahead, deviation, replans, swaps, re-anchors,
-invalidations, detours, live reads, and recovery counters. The world overlay distinguishes
-the current node, active lookahead, and provisional anytime route.
+- active operation path
+- current operation index
+- staged replacement path
+- segment boundaries and remaining operations
 
-## Bridging handoff
+A replacement may splice at the player's actual cell or a shared safe future position.
+When server correction or displacement moves the player backward/forward on the route,
+the cursor rewinds or skips. Nearby displacement may project into a bounded route
+corridor. Large displacement discards stale execution and replans from the real cell.
 
-Navigation remains the default movement owner. When live navigation reports
-`NO_PATH` or `BLOCKED` toward the current semantic waypoint, the runtime may offer the
-same bounded destination to the bridging specialist. The bridge body owns inputs only
-while a missing-support corridor exists. After support is confirmed and crossed, it
-releases ownership so navigation replans from the player's new actual position.
+## Continuous execution
+
+The executor does not tap W for every observation. It owns movement bindings across
+client ticks until an operation completes or safety releases ownership. Straight and
+gentle-turn operations use a live-validated next-operation lookahead point, so movement
+flows through a corridor instead of stopping at every block centre.
+
+Camera changes remain visible and bounded. Sprint is used only on low-risk aligned
+continuations. Ascents, collision, and recovery can request jump. Every movement has a
+bounded timeout in addition to the progress watchdog.
+
+## Live world changes
+
+Only the active and near-future operation window is refreshed from the world. If
+support, headroom, hazard, or transition geometry changes:
+
+- immediate invalidation releases movement and replans
+- later invalidation starts a replacement calculation while the safe current operation
+  continues
+
+Persistent bounded LRU caches avoid rereading unchanged cells during repeated snapshots.
+
+## Performance rules
+
+- no graph search on the Minecraft client thread
+- one planner worker only
+- one queued latest request; obsolete requests are superseded
+- two-result bounded output queue
+- immutable worker input
+- bounded per-tick snapshot capture
+- bounded A* nodes and spatial radius
+- corridor-shaped long-range snapshots
+- small local request before full request
+- bounded live validation window
+- route world rendering only while F7 inspector is open
+- at most 96 route markers rendered near the active operation
+- explicit worker shutdown on runtime shutdown
+
+## Release and takeover
+
+F9, F12, physical input, disable, observation freeze, GUI opening, environment denial,
+world unload, and runtime shutdown release owned inputs. Physical keyboard state is
+restored rather than blindly cleared. The next enable plans from the actual current
+position.

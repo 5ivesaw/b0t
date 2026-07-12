@@ -52,6 +52,7 @@ public final class ClientRuntime {
     private long clientTick;
     private long lastPublishedObservationSequence = -1L;
     private boolean registered;
+    private boolean stopped;
 
     public ClientRuntime(SawBotConfig config, Logger logger) {
         if (config == null || logger == null) throw new IllegalArgumentException("config/logger");
@@ -78,12 +79,13 @@ public final class ClientRuntime {
             config.actionMaximumAgeMillis(), config.actionMaximumSequenceLag(), logger);
         this.navigationBody = new NavigationBodyController(minecraft, state, environment,
             navigationWaypoint, config.navigationHorizontalRadius(), config.navigationVerticalRadius(),
-            config.navigationMaximumExpandedNodes(), config.navigationExpansionsPerTick(),
+            config.navigationMaximumExpandedNodes(), config.navigationSnapshotCellsPerTick(),
             config.navigationReplanIntervalTicks(), config.navigationStuckWindowTicks(),
             config.navigationMaximumTurnDegreesPerTick(), config.navigationArrivalRadius(),
-            config.navigationLookaheadNodes(), config.navigationLookaheadDistance(),
-            config.navigationPathValidationNodes(), config.navigationOffRouteDistance(),
-            config.navigationReactiveProbeDistance(), logger);
+            config.navigationLookaheadNodes(), config.navigationPathValidationNodes(),
+            config.navigationOffRouteDistance(), config.navigationLocalPlanningRadius(),
+            config.navigationCorridorMargin(), config.navigationSegmentLength(),
+            config.navigationHeuristicWeight(), logger);
         this.bridgingBody = new BridgingBodyController(minecraft, state, environment,
             navigationWaypoint, config.bridgingMaximumSteps(),
             config.bridgingPlacementConfirmationTicks(),
@@ -97,6 +99,17 @@ public final class ClientRuntime {
             worldRenderer, navigationWaypoint);
     }
 
+    public void shutdown() {
+        if (stopped) return;
+        stopped = true;
+        actuator.release("runtime shutdown");
+        navigationBody.shutdown();
+        bridgingBody.release("runtime shutdown");
+        telemetry.onWorldUnavailable();
+        modelBridge.close();
+        state.shutdown();
+    }
+
     public void register() {
         if (registered) throw new IllegalStateException("ClientRuntime already registered");
         keys.register();
@@ -106,6 +119,7 @@ public final class ClientRuntime {
     }
 
     @SubscribeEvent public void onClientTick(TickEvent.ClientTickEvent event) {
+        if (stopped) return;
         if (event.phase == TickEvent.Phase.END) {
             telemetry.captureHumanInput(clientTick);
             return;

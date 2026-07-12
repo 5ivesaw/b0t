@@ -61,7 +61,7 @@ public final class FoundationHud {
         if(minecraft.fontRendererObj==null)return;
         int x=6,y=6;
         int statusColour=state.isEnabled()?WARNING:SAFE;
-        draw("SawBotV1  Phase 8 BRIDGING BODY",x,y,WHITE); y+=10;
+        draw("SawBotV1  Phase 9 SEGMENTED NAVIGATION",x,y,WHITE); y+=10;
         draw("State: "+state.mode()+"  scope "+actuator.environmentDescription(),x,y,statusColour); y+=10;
         ObservationSnapshot snapshot=observations.latest();
         if(snapshot==null){draw("Eyes: waiting",x,y,WARNING);y+=10;}
@@ -80,9 +80,9 @@ public final class FoundationHud {
         draw("Handler "+micros(tickTiming.averageNanos())+"/"+micros(tickTiming.maximumNanos())+" us  render "+micros(worldRenderer.averageRenderNanos())+"/"+micros(worldRenderer.maximumRenderNanos())+" us",x,y,MUTED); y+=10;
         draw("Brain "+modelBridge.displayState()+"  "+modelBridge.modelVersion()+"  rtt "+millis(modelBridge.latestRoundTripNanos())+" ms  rx "+modelBridge.receivedActions(),x,y,modelBridge.isReady()?MODEL:MUTED); y+=10;
         if(navigationWaypoint.active()||!"IDLE".equals(navigationBody.status())){
-            draw("Nav "+navigationBody.status()+"  "+navigationBody.source()+"  node/look "+navigationBody.pathIndex()+"/"+navigationBody.lookaheadIndex()+" of "+navigationBody.pathCells().size()+"  dev "+one((float)navigationBody.pathDeviation())+"m",x,y,navColour()); y+=10;
-            draw("Nav replan/swap/reanchor/invalid "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.routeInvalidations()+"  detour/stuck "+navigationBody.localDetours()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED); y+=10;
-            draw("Nav "+tail(navigationBody.reason(),58)+"  plan "+navigationBody.plannerExpandedNodes()+" open "+navigationBody.plannerOpenNodes()+" reads/live "+navigationBody.gridWorldReads()+"/"+navigationBody.gridLiveRefreshes(),x,y,MUTED); y+=10;
+            draw("Nav "+navigationBody.status()+"  "+navigationBody.source()+"  "+navigationBody.currentMovementType()+"  op/rem "+navigationBody.pathIndex()+"/"+navigationBody.remainingMovements()+"  seg "+(navigationBody.currentSegmentIndex()+1)+"/"+navigationBody.totalSegments(),x,y,navColour()); y+=10;
+            draw("Nav plan/splice/reanchor/corridor "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.corridorRecoveries()+"  invalid/stuck "+navigationBody.routeInvalidations()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED); y+=10;
+            draw("Nav "+tail(navigationBody.reason(),52)+"  worker "+navigationBody.plannerState()+" "+millis(navigationBody.plannerComputeNanos())+"ms cap "+navigationBody.captureProgressPercent()+"% reads/hit "+navigationBody.gridWorldReads()+"/"+navigationBody.gridCacheHits(),x,y,MUTED); y+=10;
         }
         if(bridgingBody.manualIntent()||bridgingBody.brainIntent()||bridgingBody.ownsInputs()||!"IDLE".equals(bridgingBody.status())){
             draw("Bridge "+bridgingBody.status()+"  "+bridgingBody.source()+"  step "+bridgingBody.stepIndex()+"/"+bridgingBody.planSize()+"  slot "+slotDisplay(bridgingBody.selectedBlockSlot()),x,y,bridgeColour()); y+=10;
@@ -239,10 +239,12 @@ public final class FoundationHud {
         draw("brain "+modelBridge.displayState()+" endpoint "+modelBridge.endpoint()+" model "+modelBridge.modelVersion(),x,y,modelBridge.isReady()?MODEL:MUTED);y+=10;
         draw("tx/rx "+modelBridge.sentObservations()+"/"+modelBridge.receivedActions()+" q "+modelBridge.observationQueueSize()+"/2 "+modelBridge.actionQueueSize()+"/8 rtt "+millis(modelBridge.latestRoundTripNanos())+" ms",x,y,WHITE);y+=10;
         draw("bridge drop obs/action "+modelBridge.droppedObservations()+"/"+modelBridge.droppedActions()+" reconnect "+modelBridge.reconnects()+" invalid "+modelBridge.invalidFrames(),x,y,WHITE);y+=10;
-        draw("nav body "+navigationBody.status()+" source "+navigationBody.source()+" own "+bit(navigationBody.ownsMovement())+" node/look/size "+navigationBody.pathIndex()+"/"+navigationBody.lookaheadIndex()+"/"+navigationBody.pathCells().size(),x,y,navColour());y+=10;
-        draw("planner expanded/open/known "+navigationBody.plannerExpandedNodes()+"/"+navigationBody.plannerOpenNodes()+"/"+navigationBody.plannerKnownNodes()+" reads/live "+navigationBody.gridWorldReads()+"/"+navigationBody.gridLiveRefreshes(),x,y,WHITE);y+=10;
-        draw("replan/swap/reanchor/invalid "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.routeInvalidations()+" off/detour/stuck "+navigationBody.offRouteReplans()+"/"+navigationBody.localDetours()+"/"+navigationBody.stuckRecoveries(),x,y,MUTED);y+=10;
-        draw("corridor dev "+one((float)navigationBody.pathDeviation())+"m steer "+one(navigationBody.steeringOffsetDegrees())+" provisional "+bit(navigationBody.provisionalPath())+" reason "+tail(navigationBody.reason(),50),x,y,MUTED);y+=10;
+        draw("nav body "+navigationBody.status()+" source "+navigationBody.source()+" own "+bit(navigationBody.ownsMovement())+" movement "+navigationBody.currentMovementType()+" op/rem "+navigationBody.pathIndex()+"/"+navigationBody.remainingMovements(),x,y,navColour());y+=10;
+        draw("segment "+(navigationBody.currentSegmentIndex()+1)+"/"+navigationBody.totalSegments()+" next "+bit(navigationBody.nextSegmentAvailable())+" replacement "+bit(navigationBody.replacementPending())+" provisional "+bit(navigationBody.provisionalPath()),x,y,WHITE);y+=10;
+        draw("planner "+navigationBody.plannerState()+" submitted/completed/superseded "+navigationBody.plannerSubmitted()+"/"+navigationBody.plannerCompleted()+"/"+navigationBody.plannerSuperseded()+" compute "+millis(navigationBody.plannerComputeNanos())+" ms",x,y,WHITE);y+=10;
+        draw("expanded/known "+navigationBody.plannerExpandedNodes()+"/"+navigationBody.plannerKnownNodes()+" capture "+navigationBody.captureProgressPercent()+"% reads/cache/live "+navigationBody.gridWorldReads()+"/"+navigationBody.gridCacheHits()+"/"+navigationBody.gridLiveRefreshes(),x,y,MUTED);y+=10;
+        draw("replan/splice/reanchor/corridor "+navigationBody.replanCount()+"/"+navigationBody.hotSwapCount()+"/"+navigationBody.routeReanchors()+"/"+navigationBody.corridorRecoveries()+" invalid/off/stuck/fail "+navigationBody.routeInvalidations()+"/"+navigationBody.offRouteReplans()+"/"+navigationBody.stuckRecoveries()+"/"+navigationBody.failedPlans(),x,y,MUTED);y+=10;
+        draw("corridor dev "+one((float)navigationBody.pathDeviation())+"m yaw error "+one(navigationBody.steeringOffsetDegrees())+" stale "+navigationBody.stalePlanResults()+" reason "+tail(navigationBody.reason(),44),x,y,MUTED);y+=10;
         draw("bridge body "+bridgingBody.status()+" source "+bridgingBody.source()+" own "+bit(bridgingBody.ownsInputs())+" step/size "+bridgingBody.stepIndex()+"/"+bridgingBody.planSize()+" slot "+slotDisplay(bridgingBody.selectedBlockSlot()),x,y,bridgeColour());y+=10;
         draw("bridge placed/fail/replan/retarget "+bridgingBody.placedBlocks()+"/"+bridgingBody.failedPlacements()+"/"+bridgingBody.replans()+"/"+bridgingBody.retargets()+" attempt/wait "+bridgingBody.placementAttempts()+"/"+bridgingBody.confirmationTicks(),x,y,MUTED);y+=10;
         draw("bridge reason "+tail(bridgingBody.reason(),72),x,y,MUTED);y+=10;
