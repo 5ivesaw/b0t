@@ -30,6 +30,7 @@ java \
 java -cp "$OUT" dev.fivesaw.sawbot.verification.NavigationBodyContractTest
 java -cp "$OUT" dev.fivesaw.sawbot.verification.SegmentedNavigationContractTest
 java -cp "$OUT" dev.fivesaw.sawbot.verification.BridgingBodyContractTest
+java -cp "$OUT" dev.fivesaw.sawbot.verification.CombatBodyContractTest
 
 ROOT_FOR_PY="$ROOT" python3 - <<'PY'
 from pathlib import Path
@@ -52,8 +53,8 @@ from pathlib import Path
 import json, os, re
 root = Path(os.environ['ROOT_FOR_PY'])
 version = os.environ['SAWBOT_VERIFY_VERSION']
-if version != '1.2.0-alpha.0':
-    raise SystemExit(f'Phase 11 version mismatch: {version}')
+if version != '1.3.0-alpha.0':
+    raise SystemExit(f'Phase 12 version mismatch: {version}')
 properties = (root / 'gradle.properties').read_text(encoding='utf-8')
 if f'sawbotVersion={version}' not in properties or 'loom.platform=forge' not in properties:
     raise SystemExit('gradle.properties version/platform metadata is inconsistent')
@@ -67,7 +68,9 @@ assert metadata['mcversion'] == '1.8.9'
 required = [
     '.github/workflows/ci.yml', '.github/workflows/release.yml',
     'tools/package-release.sh', 'tools/verify-release-payload.sh',
-    'tools/verify-built-jar.py', 'docs/PHASE11_REPORT.md',
+    'tools/verify-built-jar.py', 'docs/PHASE12_REPORT.md',
+    'docs/COMBAT_BODY.md', 'docs/HUMAN_MOTION_PROFILE.md',
+    'docs/PHASE11_REPORT.md',
     'docs/REFERENCE_BODY_RESEARCH.md',
     'docs/VISUALIZATION_LIFECYCLE.md',
     'docs/PHASE10_REPORT.md',
@@ -76,6 +79,7 @@ required = [
     'docs/BARITONE_ARCHITECTURE_RESEARCH.md', 'docs/NAVIGATION_BODY.md',
     'docs/HYBRID_ARCHITECTURE.md', 'docs/PHASE8_REPORT.md',
     'docs/BRIDGING_BODY.md', 'docs/GITHUB_RELEASES.md',
+    'verification-tests/src/dev/fivesaw/sawbot/verification/CombatBodyContractTest.java',
     'verification-tests/src/dev/fivesaw/sawbot/verification/SegmentedNavigationContractTest.java',
     'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/ImmutableNavigationGrid.java',
     'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/AnytimeMovementSearch.java',
@@ -93,23 +97,29 @@ required = [
     'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationCameraController.java',
     'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/WorldNavigationGrid.java',
     'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationBodyController.java',
+    'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/combat/CombatMovementDecision.java',
+    'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/combat/CombatMovementPlanner.java',
+    'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/combat/HumanRotationController.java',
+    'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/combat/CombatBodyController.java',
 ]
 missing = [item for item in required if not (root / item).is_file()]
 if missing:
-    raise SystemExit('Missing Phase 11 repository files: ' + ', '.join(missing))
+    raise SystemExit('Missing Phase 12 repository files: ' + ', '.join(missing))
 
 ci = (root / '.github/workflows/ci.yml').read_text(encoding='utf-8')
 manual = (root / '.github/workflows/release.yml').read_text(encoding='utf-8')
 for text, label in ((ci, 'CI'), (manual, 'manual release')):
     if '\t' in text:
         raise SystemExit(f'{label} workflow contains tabs')
-    for token in ('PHASE11_REPORT.md', 'REFERENCE_BODY_RESEARCH.md',
+    for token in ('PHASE12_REPORT.md', 'COMBAT_BODY.md',
+                  'HUMAN_MOTION_PROFILE.md', 'PHASE11_REPORT.md',
+                  'REFERENCE_BODY_RESEARCH.md',
                   'VISUALIZATION_LIFECYCLE.md', 'PHASE10_REPORT.md',
                   'CONTINUOUS_ANYTIME_NAVIGATION.md',
                   'BARITONE_ARCHITECTURE_RESEARCH.md'):
         if token not in text:
             raise SystemExit(f'{label} workflow missing {token}')
-for token in ('SegmentedNavigationContractTest', 'automatic-release:',
+for token in ('CombatBodyContractTest', 'SegmentedNavigationContractTest', 'automatic-release:',
               "github.ref == 'refs/heads/main'", 'actions/download-artifact@',
               'tools/verify-release-payload.sh', 'gh release create'):
     if token not in ci:
@@ -126,6 +136,12 @@ body = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/naviga
 grid = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/WorldNavigationGrid.java').read_text(encoding='utf-8')
 renderer = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/WorldDebugRenderer.java').read_text(encoding='utf-8')
 client = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/client/ClientRuntime.java').read_text(encoding='utf-8')
+combat_planner = (root / 'sawbot-common/src/main/java/dev/fivesaw/sawbot/common/combat/CombatMovementPlanner.java').read_text(encoding='utf-8')
+rotation = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/combat/HumanRotationController.java').read_text(encoding='utf-8')
+combat = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/combat/CombatBodyController.java').read_text(encoding='utf-8')
+config = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/config/SawBotConfig.java').read_text(encoding='utf-8')
+hud = (root / 'sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/hud/FoundationHud.java').read_text(encoding='utf-8')
+combat_test = (root / 'verification-tests/src/dev/fivesaw/sawbot/verification/CombatBodyContractTest.java').read_text(encoding='utf-8')
 
 for token in ('PriorityQueue', 'maximumExpandedNodes', 'heuristicWeight',
               'NavigationMovementType.ASCEND', 'NavigationMovementType.DESCEND',
@@ -198,6 +214,53 @@ for token in ('findPlacementTarget', 'lineOfSightMatches', 'onPlayerRightClick',
     if token not in bridge:
         raise SystemExit('Bridging body lost mechanism: ' + token)
 
+
+for token in ('APPROACH', 'SPACING', 'RETREAT', 'EDGE_GUARD',
+              'attackCooldownTicks', 'targetHurtTicks', 'forwardSafe',
+              'leftSafe', 'rightSafe'):
+    if token not in combat_planner:
+        raise SystemExit('Combat movement planner missing: ' + token)
+for token in ('maximumYawStep', 'maximumPitchStep', 'acceleration',
+              'previousYawStep', 'wrapDegrees', 'reset()'):
+    if token not in rotation:
+        raise SystemExit('Human rotation controller missing: ' + token)
+for forbidden in ('C02PacketUseEntity', 'setPositionAndUpdate', 'teleport',
+                  'getClosestPlayer', 'nearestPlayer', 'C03PacketPlayer'):
+    if forbidden in combat:
+        raise SystemExit('Combat body contains forbidden or implicit mechanism: ' + forbidden)
+for token in ('selectedTargetTrackingId', 'toggleManualIntent',
+              'TeamRelation.TEAMMATE', 'player.canEntityBeSeen',
+              'attackEntity(player, target)', 'player.swingItem()',
+              'supportProbe', 'maximumPursuitDistance',
+              'releaseMovement', 'restorePhysical', 'brainTargetTrackingId'):
+    if token not in combat:
+        raise SystemExit('Combat body missing: ' + token)
+for token in ('combatMaximumPursuitDistance', 'combatAttackRange',
+              'combatStrafeWindowTicks', 'combatAttackCooldownTicks',
+              'combatMaximumYawDegreesPerTick', 'combatMaximumPitchDegreesPerTick'):
+    if token not in config:
+        raise SystemExit('Combat config missing: ' + token)
+for token in ('combatBody.shouldOwnCombat()', 'combat body priority',
+              'toggleCombatIntent', 'combatBody.release',
+              'combatBody.observeBrainAction'):
+    if token not in client:
+        raise SystemExit('Combat runtime integration missing: ' + token)
+for token in ('Phase 12 HUMAN MOTION + PVP MOTOR',
+              'Y selected-target combat', 'combat attacks/edge/lost/reject/switch'):
+    if token not in hud:
+        raise SystemExit('Combat HUD missing: ' + token)
+for token in ('bodyNeverAutoSelectsTarget', 'manualTargetTurnsAndAttacksLegally',
+              'teammateTargetIsRejected', 'lostTargetReleasesOwnedInputs',
+              'humanRotationIsBoundedAndContinuous',
+              'worldUnloadClearsStaleIntent'):
+    if token not in combat_test:
+        raise SystemExit('Combat contract test missing: ' + token)
+nav_test = (root / 'verification-tests/src/dev/fivesaw/sawbot/verification/NavigationBodyContractTest.java').read_text(encoding='utf-8')
+for token in ('adaptiveBodyReroutesAfterSupportBreak', 'allowPlannerWorker()',
+              'Thread.sleep(1L)', 'adaptive body routes around changed support'):
+    if token not in nav_test:
+        raise SystemExit('Async navigation reroute verification missing: ' + token)
+
 architecture = (root / 'docs/HYBRID_ARCHITECTURE.md').read_text(encoding='utf-8').lower()
 for token in ('learned brain', 'deterministic', 'specialist', 'never chooses'):
     if token not in architecture:
@@ -209,10 +272,13 @@ for token in ('cabaletta/baritone', '054092e44eec61f6ef3818a2b4b7c56df90daf76',
         raise SystemExit('Architecture provenance missing: ' + token)
 
 body_research = (root / 'docs/REFERENCE_BODY_RESEARCH.md').read_text(encoding='utf-8')
-for token in ('PrismarineJS/mineflayer-pathfinder', 'gaucho-matrero/altoclef',
+for token in ('PrismarineJS/mineflayer-pathfinder', 'PrismarineJS/mineflayer-pvp',
+              'gaucho-matrero/altoclef',
               'JellyLabScripts/MightyMiner', 'Wurst-Imperium/Wurst7',
               '40412d6004c3554dd20eec8be464169a32c332af',
               '749b0499a57ff3fa2f32e30441a992c3cb8d089c',
+              '82e19b6ac66555f81d1e8e2f749233b4ae0bac4f',
+              '539ba6a23d74cfe7776ddabfb2c1204a8bf2c126',
               'no MightyMiner source is copied', 'No Wurst source is copied',
               'Human motion', 'Visualization'):
     if token.lower() not in body_research.lower():
@@ -225,20 +291,24 @@ for token in ('search edges: 160', 'route markers: 48', 'bridge markers: 16',
 
 for script in ('tools/package-release.sh', 'tools/verify-release-payload.sh'):
     text = (root / script).read_text(encoding='utf-8')
-    for token in ('PHASE11_REPORT.md', 'REFERENCE_BODY_RESEARCH.md',
+    for token in ('PHASE12_REPORT.md', 'COMBAT_BODY.md',
+                  'HUMAN_MOTION_PROFILE.md', 'PHASE11_REPORT.md',
+                  'REFERENCE_BODY_RESEARCH.md',
                   'VISUALIZATION_LIFECYCLE.md', 'PHASE10_REPORT.md',
                   'CONTINUOUS_ANYTIME_NAVIGATION.md',
                   'BARITONE_ARCHITECTURE_RESEARCH.md'):
         if token not in text:
             raise SystemExit(f'{script} missing {token}')
 verifier = (root / 'tools/verify-built-jar.py').read_text(encoding='utf-8')
-for token in ('ImmutableNavigationGrid.class', 'AnytimeMovementSearch.class',
+for token in ('CombatMovementDecision.class', 'CombatMovementPlanner.class',
+              'HumanRotationController.class', 'CombatBodyController.class',
+              'ImmutableNavigationGrid.class', 'AnytimeMovementSearch.class',
               'SearchDebugEdge.class', 'MovementAStarPlanner.class',
               'PathSegmentCoordinator.class', 'NavigationPlannerWorker.class',
               'NavigationSnapshotCapture.class', 'NavigationMovementExecutor.class'):
     if token not in verifier:
         raise SystemExit('JAR verifier missing ' + token)
-print('PASS Phase 11 repository, reference, visualization, performance, and safety checks')
+print('PASS Phase 12 repository, combat, reference, performance, and safety checks')
 PY
 
 python3 "$ROOT/sawbot-tools/dataset-validator/validate_telemetry.py" \
@@ -305,5 +375,5 @@ python3 "$ROOT/tools/verify-built-jar.py" \
   "$LIBS/SawBotV1-$VERSION-mc1.8.9.jar" --expected-version "$VERSION"
 bash "$ROOT/tools/package-release.sh" "$VERSION" >/dev/null
 bash "$ROOT/tools/verify-release-payload.sh" "$VERSION" "$ROOT/dist" >/dev/null
-printf '%s\n' 'PASS synthetic JAR, Phase 11 release packaging, hashes, and payload verification'
-printf '%s\n' 'PASS offline Phase 11 reference-driven body verification'
+printf '%s\n' 'PASS synthetic JAR, Phase 12 release packaging, hashes, and payload verification'
+printf '%s\n' 'PASS offline Phase 12 human-motion and PvP motor verification'

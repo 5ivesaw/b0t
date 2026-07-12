@@ -44,6 +44,12 @@ public final class SawBotConfig {
     private final int bridgingReplanIntervalTicks;
     private final float bridgingMaximumYawDegreesPerTick;
     private final float bridgingMaximumPitchDegreesPerTick;
+    private final float combatMaximumPursuitDistance;
+    private final float combatAttackRange;
+    private final int combatStrafeWindowTicks;
+    private final int combatAttackCooldownTicks;
+    private final float combatMaximumYawDegreesPerTick;
+    private final float combatMaximumPitchDegreesPerTick;
 
     private SawBotConfig(boolean hudEnabled, int timingWindowSize, int sensorIntervalTicks,
                          int telemetryQueueCapacity, int telemetryInputWindowCapacity,
@@ -63,7 +69,11 @@ public final class SawBotConfig {
                          float navigationHeuristicWeight, int bridgingMaximumSteps,
                          int bridgingPlacementConfirmationTicks, int bridgingMaximumPlacementAttempts,
                          int bridgingReplanIntervalTicks, float bridgingMaximumYawDegreesPerTick,
-                         float bridgingMaximumPitchDegreesPerTick) {
+                         float bridgingMaximumPitchDegreesPerTick,
+                         float combatMaximumPursuitDistance, float combatAttackRange,
+                         int combatStrafeWindowTicks, int combatAttackCooldownTicks,
+                         float combatMaximumYawDegreesPerTick,
+                         float combatMaximumPitchDegreesPerTick) {
         this.hudEnabled = hudEnabled;
         this.timingWindowSize = timingWindowSize;
         this.sensorIntervalTicks = sensorIntervalTicks;
@@ -103,6 +113,12 @@ public final class SawBotConfig {
         this.bridgingReplanIntervalTicks = bridgingReplanIntervalTicks;
         this.bridgingMaximumYawDegreesPerTick = bridgingMaximumYawDegreesPerTick;
         this.bridgingMaximumPitchDegreesPerTick = bridgingMaximumPitchDegreesPerTick;
+        this.combatMaximumPursuitDistance = combatMaximumPursuitDistance;
+        this.combatAttackRange = combatAttackRange;
+        this.combatStrafeWindowTicks = combatStrafeWindowTicks;
+        this.combatAttackCooldownTicks = combatAttackCooldownTicks;
+        this.combatMaximumYawDegreesPerTick = combatMaximumYawDegreesPerTick;
+        this.combatMaximumPitchDegreesPerTick = combatMaximumPitchDegreesPerTick;
     }
 
     public static SawBotConfig load(File file, Logger logger) {
@@ -195,6 +211,22 @@ public final class SawBotConfig {
             float bridgePitch = parseBoundedFloat(configuration.getString("maximumPitchDegreesPerTick",
                 "bridging", "28.0", "Maximum visible bridging pitch change per client tick."),
                 28F, 4F, 60F);
+            float combatPursuit = parseBoundedFloat(configuration.getString("maximumPursuitDistance",
+                "combat", "8.0", "Maximum visible local distance owned by the PvP motor body."),
+                8F, 3F, 16F);
+            float combatRange = parseBoundedFloat(configuration.getString("attackRange",
+                "combat", "3.05", "Maximum legitimate local attack distance."),
+                3.05F, 2.5F, 3.2F);
+            int combatStrafeWindow = configuration.getInt("strafeWindowTicks", "combat", 16, 4, 60,
+                "Ticks before the bounded combat strafe side may change.");
+            int combatCooldown = configuration.getInt("attackCooldownTicks", "combat", 4, 1, 20,
+                "Minimum ticks between deliberate Minecraft 1.8.9 attack attempts.");
+            float combatYaw = parseBoundedFloat(configuration.getString("maximumYawDegreesPerTick",
+                "combat", "36.0", "Maximum visible PvP yaw change per client tick."),
+                36F, 4F, 75F);
+            float combatPitch = parseBoundedFloat(configuration.getString("maximumPitchDegreesPerTick",
+                "combat", "22.0", "Maximum visible PvP pitch change per client tick."),
+                22F, 3F, 60F);
             return new SawBotConfig(hudEnabled, window, interval, telemetryQueue, inputWindow,
                 compression, host, port, connectTimeout, reconnectDelay, decisionRate, actionAge,
                 sequenceLag, allowSingleplayer, allowedServers, physicalTakeover, navigationRadius,
@@ -202,7 +234,9 @@ public final class SawBotConfig {
                 navigationStuck, navigationTurn, navigationArrival, lookaheadNodes,
                 lookaheadDistance, pathValidationNodes, offRouteDistance, reactiveProbeDistance,
                 localPlanningRadius, corridorMargin, segmentLength, heuristicWeight,
-                bridgeSteps, bridgeConfirm, bridgeAttempts, bridgeReplan, bridgeYaw, bridgePitch);
+                bridgeSteps, bridgeConfirm, bridgeAttempts, bridgeReplan, bridgeYaw, bridgePitch,
+                combatPursuit, combatRange, combatStrafeWindow, combatCooldown,
+                combatYaw, combatPitch);
         } catch (RuntimeException exception) {
             logger.error("Failed to load SawBotV1 configuration; using safe defaults.", exception);
             return defaults();
@@ -225,7 +259,8 @@ public final class SawBotConfig {
             40, 10, 4096, 220, 8, 16, 48F, 0.80F,
             7, 5F, 6, 2.35F, 1.25F,
             7, 10, 24, 1.12F,
-            24, 8, 3, 4, 38F, 28F);
+            24, 8, 3, 4, 38F, 28F,
+            8F, 3.05F, 16, 4, 36F, 22F);
     }
 
     public boolean hudEnabled() { return hudEnabled; }
@@ -269,4 +304,10 @@ public final class SawBotConfig {
     public int bridgingReplanIntervalTicks() { return bridgingReplanIntervalTicks; }
     public float bridgingMaximumYawDegreesPerTick() { return bridgingMaximumYawDegreesPerTick; }
     public float bridgingMaximumPitchDegreesPerTick() { return bridgingMaximumPitchDegreesPerTick; }
+    public float combatMaximumPursuitDistance() { return combatMaximumPursuitDistance; }
+    public float combatAttackRange() { return combatAttackRange; }
+    public int combatStrafeWindowTicks() { return combatStrafeWindowTicks; }
+    public int combatAttackCooldownTicks() { return combatAttackCooldownTicks; }
+    public float combatMaximumYawDegreesPerTick() { return combatMaximumYawDegreesPerTick; }
+    public float combatMaximumPitchDegreesPerTick() { return combatMaximumPitchDegreesPerTick; }
 }

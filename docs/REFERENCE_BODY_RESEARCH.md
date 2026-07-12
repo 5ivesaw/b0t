@@ -1,6 +1,6 @@
 # Reference Body Research
 
-Version: `1.2.0-alpha.0`
+Version: `1.3.0-alpha.0`
 
 SawBotV1 now requires a reference review before a deterministic body subsystem is
 expanded. The purpose is not to paste an existing client into the project. The purpose
@@ -75,6 +75,26 @@ Reviewed concepts:
 
 License: MIT.
 
+### PrismarineJS/mineflayer-pvp
+
+Pinned reference commit:
+`82e19b6ac66555f81d1e8e2f749233b4ae0bac4f`
+
+Reviewed `src/PVP.ts` blob:
+`539ba6a23d74cfe7776ddabfb2c1204a8bf2c126`
+
+Reviewed concepts:
+
+- target ownership is explicit rather than nearest-entity auto-selection
+- follow distance and attack distance are separate concerns
+- target disappearance stops combat ownership
+- range transitions update attack timing rather than firing blindly
+- camera alignment precedes attack execution
+- combat delegates long-range pursuit to a pathing system
+
+License: MIT. SawBotV1's implementation is independently written Java for Minecraft
+1.8.9 and preserves the reference record; no TypeScript source was copied.
+
 ### JellyLabScripts/MightyMiner
 
 Reviewed repository: `JellyLabScripts/MightyMiner`
@@ -112,6 +132,24 @@ This release applies the reference review to two immediate failures:
 2. Debug visualization now has explicit ownership and lifetime rules. Old bridge plans,
    old path frontiers, and completed routes cannot remain rendered after their body
    releases ownership.
+
+## Phase 12 applications
+
+This release applies the reference process to human motion and local combat. The direct
+comparison set is mineflayer-pvp for target/range/cadence separation, AltoClef for
+progress windows and task ownership, and Baritone/SawBot navigation for handing distant
+pursuit back to a separate movement specialist.
+
+1. Combat target ownership is explicit. The user or learned brain supplies one tracking
+   ID; the motor never scans for a substitute or chooses tactics.
+2. Long-range pursuit remains navigation's responsibility. The combat body operates only
+   inside a bounded local radius and reports when the brain must navigate closer.
+3. Camera alignment, attack range, LOS, hurt-time recovery, and cooldown are separate
+   gates rather than one combined "attack nearby" switch.
+4. Continuous key ownership, support probes, and full release are inherited from the
+   established navigation/body architecture.
+5. Human-motion execution remains visible and bounded; no silent rotation or altered
+   reach is introduced.
 
 ## Required reference matrix for future bodies
 

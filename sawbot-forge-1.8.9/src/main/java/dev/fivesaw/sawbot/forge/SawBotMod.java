@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 public final class SawBotMod {
     public static final String MOD_ID = "sawbotv1";
     public static final String NAME = "SawBotV1";
-    public static final String VERSION = "1.2.0-alpha.0";
+    public static final String VERSION = "1.3.0-alpha.0";
 
     private Logger logger;
     private ClientRuntime clientRuntime;
@@ -22,13 +22,13 @@ public final class SawBotMod {
         logger = event.getModLog();
         SawBotConfig config = SawBotConfig.load(event.getSuggestedConfigurationFile(), logger);
         clientRuntime = new ClientRuntime(config, logger);
-        logger.info("SawBotV1 Phase 11 reference-driven body pass initialized; autonomous control is disabled by default.");
+        logger.info("SawBotV1 Phase 12 human-motion and PvP motor body initialized; autonomous control is disabled by default.");
     }
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         if (clientRuntime == null) throw new IllegalStateException("preInit did not create ClientRuntime");
         clientRuntime.register();
-        logger.info("SawBotV1 Phase 11 event handlers registered.");
+        logger.info("SawBotV1 Phase 12 event handlers registered.");
     }
 }

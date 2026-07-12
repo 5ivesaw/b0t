@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.0-alpha.0 — Phase 12 human motion and explicit-target PvP motor
+
+- Added a deterministic local PvP motor that accepts only an explicit user- or
+  brain-selected tracking ID; it never scans for or auto-selects an opponent.
+- Added visible bounded yaw/pitch control with acceleration continuity and predicted
+  target aim derived from normal loaded-entity state.
+- Added approach, spacing, retreat, deterministic strafe windows, live support probes,
+  edge guarding, normal-reach attack timing, hurt-time gating, and teammate rejection.
+- Added Y/Shift+Y selected-target combat controls and combat-first specialist ownership
+  with complete release on F9, F12, physical takeover, skill switch, target loss, unload,
+  disconnect, GUI/freeze, and exceptions.
+- Added compact combat HUD diagnostics without expanding the normal inspector into a
+  large card interface.
+- Added 47 combat-body contract checks and stabilized the asynchronous support-break
+  navigation test without weakening its reroute assertion.
+- Added pinned MIT mineflayer-pvp reference evidence and retained clean-room boundaries.
+
+
 ## 1.2.0-alpha.0 — Phase 11 reference-driven bodies and visualization lifecycle
 
 - Added a pinned reference and license audit for Baritone, mineflayer-pathfinder,

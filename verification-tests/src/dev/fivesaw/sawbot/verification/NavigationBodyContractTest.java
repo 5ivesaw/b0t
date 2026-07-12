@@ -369,6 +369,7 @@ public final class NavigationBodyContractTest {
                 world.setBlockStateForTest(new BlockPos(8, 63, 0), Blocks.air.getDefaultState());
             }
             simulateMovement(minecraft, player);
+            allowPlannerWorker();
             if ("ARRIVED".equals(body.status())) {
                 arrived = true;
                 break;
@@ -434,6 +435,15 @@ public final class NavigationBodyContractTest {
         player.lastTickPosX = player.posX - player.motionX;
         player.lastTickPosZ = player.posZ - player.motionZ;
         player.onGround = true;
+    }
+
+    private static void allowPlannerWorker() {
+        try {
+            Thread.sleep(1L);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("planner-worker test interrupted", interrupted);
+        }
     }
 
     private static void inputReleaseRestoresPhysicalKeyboardState() {

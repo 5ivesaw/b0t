@@ -9,14 +9,14 @@ local/private test environments.
 
 Phases 0–2 passed target-machine runtime acceptance. Later runtime refinement is
 intentionally grouped into a future integration pass while the body architecture is
-built out. This repository contains **Phase 11 — Reference-Driven Bodies and Visualization Lifecycle**
-(`1.2.0-alpha.0`).
+built out. This repository contains **Phase 12 — Human Motion and Explicit-Target PvP Motor**
+(`1.3.0-alpha.0`).
 
 The runtime separates intelligence from mechanics:
 
 - learned brain: goals, priorities, targets, tactics, risk, and specialist selection
-- deterministic bodies: navigation, bridging, movement, camera, placement geometry,
-  safety, confirmation, recovery, and input ownership
+- deterministic bodies: navigation, bridging, human motion, local combat mechanics,
+  camera, placement geometry, safety, confirmation, recovery, and input ownership
 
 Implemented contracts and systems:
 
@@ -36,21 +36,22 @@ Implemented contracts and systems:
 - Legal short-gap bridging with block selection, visible alignment, normal reach and
   ray-trace validation, deliberate placement, world confirmation, cautious advance,
   and full release
+- Explicit-target local PvP motor with visible bounded rotation, spacing, strafe,
+  edge guarding, legal attack timing, teammate rejection, and full release
 - Explicit F9/F12/physical-input ownership priority
 - Automatic GitHub build, tag, and release
 
-## Phase 11 body controls
+## Phase 12 body controls
 
-1. Aim at a reachable block and press `G` to set destination waypoint `#1000`.
-2. Press `F10` to enable the deterministic navigation body.
-3. The body begins with an immediate validated micro-route when possible, captures a
-   small local snapshot, begins following a safe best-so-far route, and keeps improving
-   wider alternatives in the background.
-4. Knockback, manual displacement, server correction, terrain change, or reaching a
-   later operation causes bounded route reconciliation, splicing, or replanning from
-   the actual player position instead of returning to obsolete nodes.
-5. When navigation reaches an unsupported bounded gap, the existing bridging body may
-   take ownership, confirm support, cross, then return control to navigation.
+1. Use `[` / `]` to select a tracked player in the inspector.
+2. Press `Y` to arm the selected-target combat test intent, then `F10` to enable it.
+3. The combat body turns visibly with bounded yaw/pitch acceleration, maintains local
+   spacing, strafes only over supported cells, and attacks only an explicit valid target
+   inside normal reach and line of sight.
+4. Press `Shift+Y` to clear combat intent. The learned brain can instead provide the
+   same explicit PVP skill and target tracking ID.
+5. Navigation (`G`) and bridging (`R`) remain available and yield to combat only while
+   an explicit combat intent is active.
 6. `F9`, physical input, or `F12` releases every owned input immediately.
 
 No model process is required for deterministic waypoint navigation. Existing model BAT
@@ -58,12 +59,12 @@ files remain available for bridge/protocol and learned-brain development.
 
 ## Build
 
-A push to `main` verifies, builds, remaps, tags `v1.2.0-alpha.0`, and publishes the
+A push to `main` verifies, builds, remaps, tags `v1.3.0-alpha.0`, and publishes the
 exact tested release artifact.
 
 ```powershell
 git add -A
-git commit -m "Implement Phase 11 reference-driven body pass"
+git commit -m "Implement Phase 12 human motion and PvP motor body"
 git push origin main
 ```
 
@@ -81,6 +82,8 @@ Java 8 bytecode, Forge `1.8.9-11.15.1.2318-1.8.9`, MCP `stable_22`.
 | Shift+G | Clear destination |
 | R | Toggle manual bridging specialist intent |
 | Shift+R | Clear manual bridging intent |
+| Y | Toggle combat intent for the selected tracked entity |
+| Shift+Y | Clear manual combat intent |
 | F7 | Compact inspector and route rendering |
 | H | Next inspector page |
 | P / . | Freeze/unfreeze / single observation step |
@@ -91,6 +94,9 @@ Java 8 bytecode, Forge `1.8.9-11.15.1.2318-1.8.9`, MCP `stable_22`.
 
 ## Reports
 
+- `docs/PHASE12_REPORT.md`
+- `docs/COMBAT_BODY.md`
+- `docs/HUMAN_MOTION_PROFILE.md`
 - `docs/PHASE11_REPORT.md`
 - `docs/REFERENCE_BODY_RESEARCH.md`
 - `docs/VISUALIZATION_LIFECYCLE.md`

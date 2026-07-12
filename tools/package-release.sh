@@ -16,6 +16,9 @@ python3 "$ROOT/sawbot-trainer/waypoint/verify_phase5.py"
 [[ -f "$SOURCES_JAR" ]] || { echo "ERROR: sources JAR does not exist: $SOURCES_JAR" >&2; exit 3; }
 
 assets=(
+  "docs/PHASE12_REPORT.md"
+  "docs/COMBAT_BODY.md"
+  "docs/HUMAN_MOTION_PROFILE.md"
   "docs/PHASE11_REPORT.md"
   "docs/REFERENCE_BODY_RESEARCH.md"
   "docs/VISUALIZATION_LIFECYCLE.md"
@@ -64,47 +67,40 @@ done
 cat > "$DIST/release-notes.md" <<'NOTES'
 # SawBotV1 @VERSION@
 
-Phase 11 reference-driven-body candidate for Minecraft Forge 1.8.9.
+Phase 12 human-motion and explicit-target PvP motor candidate for Minecraft Forge 1.8.9.
 
 ## Main change
 
-Mechanical body work is now reference-driven and license-audited. Bridge placement
-evaluates every legal adjacent support and multiple hit vectors, then chooses a visible
-normal-reach candidate instead of trusting one exact face center. Debug overlays now
-follow body ownership and disappear immediately when the body releases, completes, or
-loses its waypoint.
+SawBot now has its first bounded local combat motor. The learned brain or explicit private
+test harness selects one tracked player; the body never scans for or substitutes an
+opponent. It turns the visible camera with bounded rate and acceleration, maintains local
+approach/spacing/retreat movement, guards unsupported directions, and attacks only with
+current line of sight, normal range, alignment, hurt-time recovery, and cooldown.
 
-The navigation body remains an operation-based segmented system instead of a rigid
-client-thread block list. Minecraft state is captured into bounded immutable snapshots;
-one latest-wins worker performs weighted A* over traverse, diagonal, ascent, and descent
-operations. The body can begin on a validated micro-route, plan local/full replacement
-segments, splice safely, rewind/skip after displacement, project back into a nearby route
-corridor, invalidate changed geometry, and replan from the actual player position.
+Combat yields entirely when intent ends or the selected target is invalid. F9, F12,
+physical takeover, disable, freeze, GUI/world loss, skill switch, disconnect, and runtime
+errors restore all owned inputs. Navigation and bridging remain retained deterministic
+bodies below combat in the specialist priority chain.
 
-Movement controls are continuous, camera changes remain visible and bounded, route
-lookahead is live-validated, and F9/F12/physical takeover retain priority. Search, queues,
-snapshots, caches, live validation, and rendering remain bounded for the low-end target.
+Phase 12 also stabilizes the asynchronous support-break navigation contract by giving the
+planner worker a deterministic scheduling window in the synthetic tight-loop test while
+preserving the original invalidation, replan, and successful-reroute assertions.
 
-No external model process is required for deterministic waypoint navigation. The neural
-brain remains responsible for selecting goals and tactics, not low-level path mechanics.
+No external model process is required for deterministic body testing. The neural brain
+remains responsible for target, objective, tactics, risk, and specialist selection.
 
 ## Primary assets
 
 - `SawBotV1-@VERSION@-mc1.8.9.jar`: installable mod.
 - `SawBotV1-@VERSION@-sources.jar`: source archive.
-- `PHASE11_REPORT.md`: reference-driven body and visualization evidence.
-- `REFERENCE_BODY_RESEARCH.md`: reviewed projects and clean-room boundary.
-- `VISUALIZATION_LIFECYCLE.md`: overlay ownership, expiry, and render caps.
-- `PHASE10_REPORT.md`: continuous anytime navigation implementation evidence.
-- `CONTINUOUS_ANYTIME_NAVIGATION.md`: current rolling planner/executor contract.
-- `PHASE9_REPORT.md`: previous segmented-core implementation evidence.
-- `SEGMENTED_NAVIGATION_CORE.md`: current navigation contract.
-- `BARITONE_ARCHITECTURE_RESEARCH.md`: design provenance and clean-room boundary.
-- `NAVIGATION_BODY.md`: deterministic body details.
-- `PHASE8_REPORT.md` and `BRIDGING_BODY.md`: retained bridging specialist.
+- `PHASE12_REPORT.md`: implementation and verification evidence.
+- `COMBAT_BODY.md`: explicit-target motor contract.
+- `HUMAN_MOTION_PROFILE.md`: visible bounded motion profile.
+- `REFERENCE_BODY_RESEARCH.md`: pinned reference and clean-room decisions.
+- retained Phase 11 navigation, bridging, visualization, telemetry, and model evidence.
 - `SHA256SUMS.txt`: integrity hashes.
 NOTES
 sed -i "s/@VERSION@/$VERSION/g" "$DIST/release-notes.md"
 
-printf 'Packaged Phase 11 release assets in %s\n' "$DIST"
+printf 'Packaged Phase 12 release assets in %s\n' "$DIST"
 ls -lh "$DIST"

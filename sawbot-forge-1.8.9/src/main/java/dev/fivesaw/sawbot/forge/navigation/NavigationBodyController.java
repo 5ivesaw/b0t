@@ -27,7 +27,7 @@ import net.minecraft.util.MathHelper;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Phase 11 reference-driven continuous movement navigator.
+ * Phase 12 retained reference-driven continuous movement navigator.
  *
  * The learned brain supplies goals. This deterministic body converts those goals
  * into immutable world snapshots, plans movement operations on a bounded worker,

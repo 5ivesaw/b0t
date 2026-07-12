@@ -318,3 +318,27 @@ Evidence: `docs/PHASE11_REPORT.md`, `docs/REFERENCE_BODY_RESEARCH.md`,
 `docs/VISUALIZATION_LIFECYCLE.md`.
 
 Runtime acceptance is intentionally grouped with the later body-integration pass.
+
+
+## Phase 12 — Human motion and explicit-target PvP motor
+
+Implemented in candidate `1.3.0-alpha.0`:
+
+- [x] explicit user/brain target tracking ID; no nearest-target auto-selection
+- [x] visible bounded yaw/pitch servo with acceleration continuity
+- [x] deterministic approach, spacing, retreat, and strafe windows
+- [x] live directional support probes and edge guarding
+- [x] normal-range LOS/alignment/hurt-time/cooldown attack gates
+- [x] self/teammate/non-player/dead/missing target rejection
+- [x] combat/bridge/navigation ownership priority and complete release
+- [x] compact combat HUD diagnostics and Y/Shift+Y test controls
+- [x] pinned MIT combat reference and clean-room record
+- [x] 47 combat contract checks
+- [x] deterministic scheduling window for the asynchronous support-break route test
+
+Evidence: `docs/PHASE12_REPORT.md`, `docs/COMBAT_BODY.md`,
+`docs/HUMAN_MOTION_PROFILE.md`, `docs/REFERENCE_BODY_RESEARCH.md`, and
+`CombatBodyContractTest`.
+
+**Gate: SOURCE/OFFLINE PASS; INTEGRATED TARGET-MACHINE ACCEPTANCE DEFERRED TO THE LATER
+BODY REVIEW.**

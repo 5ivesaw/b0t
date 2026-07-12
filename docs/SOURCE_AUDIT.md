@@ -13,6 +13,7 @@ This audit records architecture study only. No donor source has been copied into
 | CCBlueX/LiquidBounce | `nextgen` branch; exact commit **PIN BEFORE STUDY** | modern | Kotlin/Java / Gradle | GPL-3.0 | Active | module lifecycle, HUD diagnostics, entity selection test ideas | anti-cheat bypass and packet-manipulation modules; strong copyleft | No direct code reuse; concepts only |
 | Wurst-Imperium/Wurst7 | `master`; exact commit **PIN BEFORE STUDY** | modern | Java / Gradle | GPL-3.0 | Active | settings UX, ESP rendering concepts, SafeWalk test-case discovery | cheat features, public-server use, strong copyleft | No direct code reuse; concepts only |
 | dxxxxy/1.8.9ForgeTemplate | archived `master`; exact commit **PIN BEFORE ANY REUSE** | 1.8.9 | Java / Gradle 3.1 | repository licence not established in initial review | Repository warns its toolchain is deprecated/broken | historical wrapper/build troubleshooting only | archived, Forge artifacts removed/deprecated, unclear reuse licence | No code reuse; not a foundation donor |
+| PrismarineJS/mineflayer-pvp | commit `82e19b6ac66555f81d1e8e2f749233b4ae0bac4f`; `src/PVP.ts` blob `539ba6a23d74cfe7776ddabfb2c1204a8bf2c126` | multi-version Mineflayer | TypeScript / npm | MIT | Source reviewed only | explicit target ownership, local range separation, attack cadence, release on target loss | headless API and modern-version assumptions; not a Forge 1.8.9 dependency | Clean-room Java implementation; no source copied |
 
 ## Donor review procedure
 
@@ -38,8 +39,8 @@ This audit records architecture study only. No donor source has been copied into
 
 ## Reference-driven body audit
 
-Phase 11 adds `docs/REFERENCE_BODY_RESEARCH.md`. Baritone, Wurst, and the
+Phase 11 established `docs/REFERENCE_BODY_RESEARCH.md`; Phase 12 extends it with a pinned mineflayer-pvp combat reference. Baritone, Wurst, and the
 unlicensed MightyMiner repository are architecture-only references; no source text is
-copied. Mineflayer-pathfinder and AltoClef are MIT-licensed references. Any future direct
+copied. Mineflayer-pathfinder, mineflayer-pvp, and AltoClef are MIT-licensed references. Any future direct
 adaptation must preserve the required notices and remain within SawBotV1's private/local,
 visible, legitimate-control scope.

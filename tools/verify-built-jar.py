@@ -66,6 +66,10 @@ REQUIRED_ENTRIES = {
     "dev/fivesaw/sawbot/common/bridging/BridgeCorridorPlan.class",
     "dev/fivesaw/sawbot/common/bridging/BridgeCorridorPlanner.class",
     "dev/fivesaw/sawbot/forge/bridging/BridgingBodyController.class",
+    "dev/fivesaw/sawbot/common/combat/CombatMovementDecision.class",
+    "dev/fivesaw/sawbot/common/combat/CombatMovementPlanner.class",
+    "dev/fivesaw/sawbot/forge/combat/HumanRotationController.class",
+    "dev/fivesaw/sawbot/forge/combat/CombatBodyController.class",
 }
 
 

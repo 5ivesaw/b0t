@@ -21,7 +21,7 @@ Specialists execute known mechanics:
 - jumping, recovery, and live route invalidation
 - legal bridging placement, confirmation, and cautious advance mechanics
 - future inventory/shop interaction
-- future combat motor execution
+- explicit-target local combat motor execution
 
 A specialist never chooses Bedwars strategy by itself. It executes a bounded intent
 from the user, test harness, or learned brain.
@@ -70,3 +70,14 @@ worker, begins with validated local motion, stages replacement paths, reconciles
 the actual player position, and executes continuous legal controls. This strengthens the
 original boundary: the brain selects the destination and tactical reason; the body owns
 all reliable pathing mechanics.
+
+## Combat body v0.1
+
+Phase 12 adds a bounded local combat specialist. The brain or manual private test harness
+selects one stable tracking ID and tactical objective. The body validates that exact
+target, turns the visible camera with bounded acceleration, maintains supported local
+spacing, applies legal attack cadence, and restores every owned input on release. It does
+not choose an opponent, infer strategy, pursue across the map, or replace a lost target.
+
+Runtime specialist priority is combat, bridge, navigation, then the fallback actuator,
+but combat receives priority only while an explicit valid combat intent exists.

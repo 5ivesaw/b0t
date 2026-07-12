@@ -1,6 +1,8 @@
 package net.minecraft.client.multiplayer;
 
 import net.minecraft.client.entity.EntityPlayerSP;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.BlockPos;
@@ -9,6 +11,8 @@ import net.minecraft.util.Vec3;
 
 public class PlayerControllerMP {
     private int rightClicks;
+    private int attacks;
+    private Entity lastAttackTarget;
 
     public void updateController() { }
 
@@ -27,6 +31,18 @@ public class PlayerControllerMP {
         stack.stackSize--;
         return true;
     }
+
+
+    public void attackEntity(EntityPlayerSP player, Entity target) {
+        attacks++;
+        lastAttackTarget = target;
+        if (target instanceof EntityLivingBase) {
+            ((EntityLivingBase)target).hurtTime = 10;
+        }
+    }
+
+    public int attacksForTest() { return attacks; }
+    public Entity lastAttackTargetForTest() { return lastAttackTarget; }
 
     public int rightClicksForTest() {
         return rightClicks;

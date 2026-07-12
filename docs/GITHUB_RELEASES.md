@@ -4,7 +4,7 @@ Normal publication requires one push to `main`:
 
 ```powershell
 git add -A
-git commit -m "Implement Phase 11 reference-driven body pass"
+git commit -m "Implement Phase 12 human motion and PvP motor body"
 git push origin main
 ```
 
@@ -17,7 +17,7 @@ The CI workflow then:
 5. packages documentation/model evidence and SHA-256 hashes
 6. downloads and revalidates the exact tested artifact
 7. rejects a reused tag/version
-8. creates tag `v1.2.0-alpha.0` and publishes the GitHub Release
+8. creates tag `v1.3.0-alpha.0` and publishes the GitHub Release
 
 The manual recovery workflow exists only for exceptional publication failures. It is not
 part of the normal development path.
@@ -25,16 +25,19 @@ part of the normal development path.
 ## Version source
 
 ```properties
-sawbotVersion=1.2.0-alpha.0
+sawbotVersion=1.3.0-alpha.0
 ```
 
 Published versions are immutable. Every new main-branch release must bump the version.
 
-## Phase 11 primary assets
+## Phase 12 primary assets
 
-- `SawBotV1-1.2.0-alpha.0-mc1.8.9.jar`
-- `SawBotV1-1.2.0-alpha.0-sources.jar`
+- `SawBotV1-1.3.0-alpha.0-mc1.8.9.jar`
+- `SawBotV1-1.3.0-alpha.0-sources.jar`
 - `SHA256SUMS.txt`
+- `PHASE12_REPORT.md`
+- `COMBAT_BODY.md`
+- `HUMAN_MOTION_PROFILE.md`
 - `PHASE9_REPORT.md`
 - `SEGMENTED_NAVIGATION_CORE.md`
 - `BARITONE_ARCHITECTURE_RESEARCH.md`

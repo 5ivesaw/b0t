@@ -73,6 +73,7 @@ jobs:
           java -cp build/offline-classes dev.fivesaw.sawbot.verification.NavigationBodyContractTest
           java -cp build/offline-classes dev.fivesaw.sawbot.verification.SegmentedNavigationContractTest
           java -cp build/offline-classes dev.fivesaw.sawbot.verification.BridgingBodyContractTest
+          java -cp build/offline-classes dev.fivesaw.sawbot.verification.CombatBodyContractTest
 
   forge-build:
     name: Build Forge 1.8.9 mod
@@ -127,6 +128,9 @@ jobs:
             dist/SawBotV1-${{ needs.metadata.outputs.version }}-sources.jar
             dist/SHA256SUMS.txt
             dist/release-notes.md
+            dist/PHASE12_REPORT.md
+            dist/COMBAT_BODY.md
+            dist/HUMAN_MOTION_PROFILE.md
             dist/PHASE11_REPORT.md
             dist/REFERENCE_BODY_RESEARCH.md
             dist/VISUALIZATION_LIFECYCLE.md
@@ -223,6 +227,9 @@ jobs:
             "dist/SawBotV1-$VERSION-mc1.8.9.jar" \
             "dist/SawBotV1-$VERSION-sources.jar" \
             "dist/SHA256SUMS.txt" \
+            "dist/PHASE12_REPORT.md" \
+            "dist/COMBAT_BODY.md" \
+            "dist/HUMAN_MOTION_PROFILE.md" \
             "dist/PHASE11_REPORT.md" \
             "dist/REFERENCE_BODY_RESEARCH.md" \
             "dist/VISUALIZATION_LIFECYCLE.md" \

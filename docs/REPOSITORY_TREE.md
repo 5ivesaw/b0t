@@ -1,4 +1,4 @@
-# Repository tree — Phase 11 reference-driven body candidate
+# Repository tree — Phase 12 human-motion and PvP motor candidate
 
 ```text
 .github/workflows/ci.yml
@@ -7,6 +7,9 @@ README.md
 CHANGELOG.md
 gradle.properties
 build.gradle
+docs/PHASE12_REPORT.md
+docs/COMBAT_BODY.md
+docs/HUMAN_MOTION_PROFILE.md
 docs/PHASE11_REPORT.md
 docs/REFERENCE_BODY_RESEARCH.md
 docs/VISUALIZATION_LIFECYCLE.md
@@ -19,27 +22,17 @@ docs/NAVIGATION_BODY.md
 docs/HYBRID_ARCHITECTURE.md
 docs/BRIDGING_BODY.md
 docs/PHASE_GATES.md
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/ImmutableNavigationGrid.java
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/AnytimeMovementSearch.java
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/SearchDebugEdge.java
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementAStarPlanner.java
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementPath.java
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/MovementPlanResult.java
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/NavigationMovement.java
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/NavigationMovementType.java
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/NavigationProgressWatchdog.java
-sawbot-common/src/main/java/dev/fivesaw/sawbot/common/navigation/PathSegmentCoordinator.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/combat/CombatMovementDecision.java
+sawbot-common/src/main/java/dev/fivesaw/sawbot/common/combat/CombatMovementPlanner.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/combat/HumanRotationController.java
+sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/combat/CombatBodyController.java
 sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationBodyController.java
-sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationCameraController.java
-sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationMovementExecutor.java
-sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationPlannerWorker.java
-sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/NavigationSnapshotCapture.java
-sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/navigation/WorldNavigationGrid.java
 sawbot-forge-1.8.9/src/main/java/dev/fivesaw/sawbot/forge/bridging/BridgingBodyController.java
 sawbot-trainer/waypoint/RUN-WAYPOINT-MODEL.bat
 sawbot-tools/dummy-model/RUN-DUMMY-MODEL.bat
-verification-tests/src/dev/fivesaw/sawbot/verification/SegmentedNavigationContractTest.java
+verification-tests/src/dev/fivesaw/sawbot/verification/CombatBodyContractTest.java
 verification-tests/src/dev/fivesaw/sawbot/verification/NavigationBodyContractTest.java
+verification-tests/src/dev/fivesaw/sawbot/verification/SegmentedNavigationContractTest.java
 verification-tests/src/dev/fivesaw/sawbot/verification/BridgingBodyContractTest.java
 tools/offline-verify.sh
 tools/package-release.sh
@@ -47,4 +40,4 @@ tools/verify-built-jar.py
 tools/verify-release-payload.sh
 ```
 
-Only the primary Phase 11 and retained runtime/release files are listed here.
+Only the primary Phase 12 and retained runtime/release files are listed here.
